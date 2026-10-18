@@ -1,0 +1,118 @@
+name: Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      be: ${{ steps.filter.outputs.be }}
+      fe: ${{ steps.filter.outputs.fe }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            be:
+              - 'Arashyn-BE/**'
+            fe:
+              - 'Arashyn-FE/**'
+
+  be-lint:
+    needs: changes
+    if: needs.changes.outputs.be == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Arashyn-BE
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      - name: Lint
+        run: mvn pmd:check
+
+  be-test:
+    needs: changes
+    if: needs.changes.outputs.be == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Arashyn-BE
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+      - name: Test
+        run: mvn test
+
+  fe-lint:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Arashyn-FE
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Arashyn-FE/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  fe-build:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Arashyn-FE
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Arashyn-FE/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
