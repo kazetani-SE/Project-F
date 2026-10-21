@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT}
   servlet:
     context-path: /api
 
@@ -13,9 +13,9 @@ spring:
       - optional:file:.env[.properties]
 
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:}
+    active: ${SPRING_PROFILES_ACTIVE}
 
-  # PostgreSQL Configuration (Bắt buộc khai báo biến môi trường, không dùng default ở profile gốc)
+  # PostgreSQL Configuration (Amazon RDS / Supabase / Local)
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -24,7 +24,7 @@ spring:
 
   # Flyway Database Migration Configuration
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
+    enabled: ${FLYWAY_ENABLED}
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
@@ -33,7 +33,7 @@ spring:
   # Spring Data JPA / Hibernate Configuration (Profile gốc tối ưu cho Production)
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO}
     show-sql: false
     open-in-view: false
     properties:
@@ -48,7 +48,7 @@ aws:
   region: ${AWS_REGION}
   s3:
     bucket-name: ${AWS_S3_BUCKET}
-    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
+    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES}
 
 logging:
   level:
