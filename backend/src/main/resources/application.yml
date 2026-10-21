@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT}
   servlet:
     context-path: /api
 
@@ -7,26 +7,50 @@ spring:
   application:
     name: project-f-club-backend
 
-  profiles:
-    active: dev
+  # Profile gốc chỉ nạp duy nhất file .env gốc của backend
+  config:
+    import:
+      - optional:file:.env[.properties]
 
-  # Supabase PostgreSQL Configuration
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE}
+
+  # PostgreSQL Configuration (Amazon RDS / Supabase / Local)
   datasource:
-    url: ${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${SUPABASE_DB_USER:postgres}
-    password: ${SUPABASE_DB_PASSWORD:postgres}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
-  # Spring Data JPA / Hibernate Configuration
+  # Flyway Database Migration Configuration
+  flyway:
+    enabled: ${FLYWAY_ENABLED}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+
+  # Spring Data JPA / Hibernate Configuration (Profile gốc tối ưu cho Production)
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${JPA_DDL_AUTO}
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
         jdbc:
           lob:
             non_contextual_creation: true
+
+aws:
+  region: ${AWS_REGION}
+  s3:
+    bucket-name: ${AWS_S3_BUCKET}
+    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES}
+
+logging:
+  level:
+    root: INFO
+    com.projectf: INFO

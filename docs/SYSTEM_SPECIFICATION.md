@@ -72,6 +72,7 @@ CREATE TABLE club_members (
     phone VARCHAR(15),
     department department_enum,
     club_role club_role_enum,
+    batch VARCHAR(4) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     inactive_at TIMESTAMPTZ

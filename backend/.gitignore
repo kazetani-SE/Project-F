@@ -30,6 +30,7 @@ target/
 
 ### Environment & Secrets ###
 .env
-.env.local
+.env.*
+!.env.example
 application-local.properties
 application-local.yml
