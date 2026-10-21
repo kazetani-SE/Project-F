@@ -7,10 +7,11 @@ spring:
   application:
     name: project-f-club-backend
 
+  # Nạp biến môi trường của backend theo thứ tự ưu tiên: .env (gốc) -> .env.local (ghi đè cá nhân)
   config:
     import:
       - optional:file:.env[.properties]
-      - optional:file:./backend/.env[.properties]
+      - optional:file:.env.local[.properties]
 
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
@@ -30,16 +31,16 @@ spring:
     baseline-version: 0
     validate-on-migrate: true
 
-  # Spring Data JPA / Hibernate Configuration
+  # Spring Data JPA / Hibernate Configuration (Profile gốc tối ưu cho Production)
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:validate}
-    show-sql: true
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
         jdbc:
           lob:
             non_contextual_creation: true
@@ -49,3 +50,8 @@ aws:
   s3:
     bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
     presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
+
+logging:
+  level:
+    root: INFO
+    com.projectf: INFO

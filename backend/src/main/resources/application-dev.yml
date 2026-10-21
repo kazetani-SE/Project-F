@@ -1,13 +1,26 @@
 spring:
+  # Trong profile dev, cho phép nạp thêm .env.dev (nếu có) và đảm bảo .env.local luôn có độ ưu tiên cao nhất
+  config:
+    import:
+      - optional:file:.env.dev[.properties]
+      - optional:file:.env.local[.properties]
+
   devtools:
     restart:
       enabled: true
     livereload:
       enabled: true
 
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
 logging:
   level:
     root: INFO
     com.projectf: DEBUG
+    org.flywaydb: INFO
     org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.orm.jdbc.bind: TRACE
