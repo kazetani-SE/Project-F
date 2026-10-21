@@ -5,6 +5,12 @@ spring:
       - optional:file:.env.dev[.properties]
       - optional:file:.env.local[.properties]
 
+  # Giá trị mặc định chỉ dành cho môi trường phát triển (dev)
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/project_f_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
   devtools:
     restart:
       enabled: true
@@ -16,6 +22,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+aws:
+  region: ${AWS_REGION:ap-southeast-1}
+  s3:
+    bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
+    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
 
 logging:
   level:

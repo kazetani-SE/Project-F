@@ -7,20 +7,19 @@ spring:
   application:
     name: project-f-club-backend
 
-  # Nạp biến môi trường của backend theo thứ tự ưu tiên: .env (gốc) -> .env.local (ghi đè cá nhân)
+  # Profile gốc chỉ nạp duy nhất file .env gốc của backend
   config:
     import:
       - optional:file:.env[.properties]
-      - optional:file:.env.local[.properties]
 
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: ${SPRING_PROFILES_ACTIVE:}
 
-  # PostgreSQL Configuration (Amazon RDS / Supabase / Local)
+  # PostgreSQL Configuration (Bắt buộc khai báo biến môi trường, không dùng default ở profile gốc)
   datasource:
-    url: ${DB_URL:${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/project_f_db}}
-    username: ${DB_USERNAME:${SUPABASE_DB_USER:postgres}}
-    password: ${DB_PASSWORD:${SUPABASE_DB_PASSWORD:postgres}}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   # Flyway Database Migration Configuration
@@ -46,9 +45,9 @@ spring:
             non_contextual_creation: true
 
 aws:
-  region: ${AWS_REGION:ap-southeast-1}
+  region: ${AWS_REGION}
   s3:
-    bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
+    bucket-name: ${AWS_S3_BUCKET}
     presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
 
 logging:

@@ -62,13 +62,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Spring Dotenv for loading .env files -->
-        <dependency>
-            <groupId>me.paulschwarz</groupId>
-            <artifactId>spring-dotenv</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-
         <!-- Spring Boot DevTools for Hot Reload -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
