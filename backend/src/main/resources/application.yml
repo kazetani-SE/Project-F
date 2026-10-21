@@ -7,20 +7,33 @@ spring:
   application:
     name: project-f-club-backend
 
-  profiles:
-    active: dev
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:./backend/.env[.properties]
 
-  # Supabase PostgreSQL Configuration
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # PostgreSQL Configuration (Amazon RDS / Supabase / Local)
   datasource:
-    url: ${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${SUPABASE_DB_USER:postgres}
-    password: ${SUPABASE_DB_PASSWORD:postgres}
+    url: ${DB_URL:${SUPABASE_DB_URL:jdbc:postgresql://localhost:5432/project_f_db}}
+    username: ${DB_USERNAME:${SUPABASE_DB_USER:postgres}}
+    password: ${DB_PASSWORD:${SUPABASE_DB_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
+
+  # Flyway Database Migration Configuration
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
 
   # Spring Data JPA / Hibernate Configuration
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: true
     open-in-view: false
     properties:
@@ -30,3 +43,9 @@ spring:
         jdbc:
           lob:
             non_contextual_creation: true
+
+aws:
+  region: ${AWS_REGION:ap-southeast-1}
+  s3:
+    bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
+    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
