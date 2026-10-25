@@ -30,7 +30,7 @@
 | :--- | :--- |
 | **Frontend (Client)** | React 19, TypeScript, Vite |
 | **Backend (Server)** | Java 21 (LTS), Spring Boot 3.3.4, Spring Data JPA / Hibernate, Spring Security, Jakarta Validation |
-| **Database & Migration** | PostgreSQL 15+ (Amazon RDS), Flyway Migration |
+| **Database & Migration** | PostgreSQL 15+ (Amazon RDS / Supabase), Supabase Migration |
 | **Cloud Infrastructure (AWS)** | Amazon VPC (Public/Private Subnets), Amazon EC2 (kèm Nginx Reverse Proxy & IAM Instance Profile), Amazon RDS for PostgreSQL, Amazon S3 (Pre-signed URL Upload/Download), Amazon CloudWatch & AWS CloudTrail |
 
 ---
@@ -43,7 +43,10 @@ Project-F/
 ├── docs/
 │   ├── SYSTEM_SPECIFICATION.md        # Bản đặc tả kỹ thuật chi tiết & Lược đồ CSDL (PostgreSQL 15+)
 │   ├── ARCHITECTURE_AND_AWS.md        # Kiến trúc hệ thống, luồng S3 Pre-signed URL & Hạ tầng AWS
-│   └── TEAM_ALLOCATION_FINAL.md       # Phân chia nhiệm vụ theo Vertical Slices & AWS FCAJ (Team 3 người)
+│   ├── TEAM_ALLOCATION_FINAL.md       # Phân chia nhiệm vụ theo Vertical Slices & AWS FCAJ (Team 3 người)
+│   ├── API_SPECIFICATION.md           # Hợp đồng RESTful API, DTOs & Mã lỗi nghiệp vụ chuẩn
+│   ├── FRONTEND_SPECIFICATION.md      # Đặc tả kiến trúc Frontend, Routing, State & UX States
+│   └── adr/                           # Các bản ghi quyết định kiến trúc (Architecture Decision Records)
 ├── backend/                           # Mã nguồn Backend (Java 21 + Spring Boot 3)
 │   ├── README.md                      # Hướng dẫn cài đặt, cấu hình và chạy Backend
 │   └── src/main/java/com/projectf/
@@ -64,8 +67,14 @@ Project-F/
    - Kiến trúc Client-Server, thiết kế mạng VPC (Public/Private Subnet), bảo mật Security Group, IAM Role, và luồng tải tệp qua Amazon S3 Pre-signed URL.
 3. **[Phân Chia Công Việc Team 3 Người (Bản Final)](./docs/TEAM_ALLOCATION_FINAL.md)**:
    - Bảng phân công nhiệm vụ chi tiết theo Vertical Slices cho 3 thành viên (Dev 1, Dev 2, Dev 3).
-4. **[Tài Liệu Backend (`backend/README.md`)](./backend/README.md)** & **[Cấu trúc Feature (`features/README.md`)](./backend/src/main/java/com/projectf/features/README.md)**.
-5. **[Tài Liệu Frontend (`frontend/README.md`)](./frontend/README.md)**.
+4. **[Đặc Tả Hợp Đồng REST API](./docs/API_SPECIFICATION.md)**:
+   - Quy chuẩn Endpoints, cấu trúc Request/Response DTOs, Envelope `ApiResponse<T>`, phân trang và bộ mã lỗi nghiệp vụ chuẩn.
+5. **[Đặc Tả Kiến Trúc Frontend](./docs/FRONTEND_SPECIFICATION.md)**:
+   - Sơ đồ điều hướng React Router, quản lý State, Hook tải tệp S3 (`useS3Upload`) và quy chuẩn 4 trạng thái giao diện (Loading, Empty, Error, Toast).
+6. **[Bản Ghi Quyết Định Kiến Trúc (ADRs)](./docs/adr/)**:
+   - Lưu trữ các quyết định kiến trúc quan trọng (`0001-package-by-feature-vertical-slices.md`, `0002-s3-presigned-url-upload.md`, `0003-use-supabase-migrations-instead-of-flyway.md`).
+7. **[Tài Liệu Backend (`backend/README.md`)](./backend/README.md)** & **[Cấu trúc Feature (`features/README.md`)](./backend/src/main/java/com/projectf/features/README.md)**.
+8. **[Tài Liệu Frontend (`frontend/README.md`)](./frontend/README.md)**.
 
 ---
 
