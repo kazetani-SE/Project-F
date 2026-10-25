@@ -22,14 +22,6 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
-  # Flyway Database Migration Configuration
-  flyway:
-    enabled: ${FLYWAY_ENABLED}
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
-    validate-on-migrate: true
-
   # Spring Data JPA / Hibernate Configuration (Profile gốc tối ưu cho Production)
   jpa:
     hibernate:
