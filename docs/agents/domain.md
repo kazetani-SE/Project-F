@@ -20,7 +20,7 @@ Single-context repo (used in Project F):
 ├── docs/
 │   ├── SYSTEM_SPECIFICATION.md
 │   ├── ARCHITECTURE_AND_AWS.md
-│   ├── TEAM_ALLOCATION.md
+│   ├── TEAM_ALLOCATION_FINAL.md
 │   └── adr/
 │       ├── 0001-package-by-feature-vertical-slices.md
 │       └── 0002-s3-presigned-url-upload.md

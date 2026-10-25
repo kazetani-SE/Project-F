@@ -1,6 +1,6 @@
-# Danh Sách Tính Năng & Phân Chia Công Việc — Phiên Bản V2 (Định Hướng Full-Stack & AWS FCAJ)
+# Danh Sách Tính Năng & Phân Chia Công Việc — Phiên Bản Final (Định Hướng Full-Stack & AWS FCAJ)
 
-Tài liệu này là phiên bản nâng cấp (**V2**) của bảng phân công công việc cho **Team 3 Thành Viên Full-Stack**, được tối ưu hóa riêng cho mục tiêu học tập, thực hành triển khai hạ tầng đám mây **Amazon Web Services (AWS — Chương trình FCAJ)**.
+Tài liệu này là phiên bản chính thức (**Final**) của bảng phân công công việc cho **Team 3 Thành Viên Full-Stack**, được tối ưu hóa riêng cho mục tiêu học tập, thực hành triển khai hạ tầng đám mây **Amazon Web Services (AWS — Chương trình FCAJ)**.
 
 Mỗi thành viên sẽ làm chủ song song **2 trục trách nhiệm (Dual-Axis Ownership)**:
 1. **Trục Ứng dụng (Full-Stack Vertical Slice)**: Tự chủ hoàn toàn từ **Database Schema (Supabase/PostgreSQL)** $\rightarrow$ **Backend REST API (Spring Boot 3)** $\rightarrow$ **Frontend UI (React 19 + TypeScript + Vite)**.

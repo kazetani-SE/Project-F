@@ -9,7 +9,7 @@
 Trước khi thiết kế hoặc viết code cho bất kỳ phân hệ nào, hãy tham khảo:
 - **Đặc tả kỹ thuật & Lược đồ CSDL**: `docs/SYSTEM_SPECIFICATION.md`
 - **Kiến trúc hệ thống & Hạ tầng AWS**: `docs/ARCHITECTURE_AND_AWS.md`
-- **Phân công nhiệm vụ Vertical Slices (3 thành viên)**: `docs/TEAM_ALLOCATION.md`
+- **Phân công nhiệm vụ Vertical Slices & AWS FCAJ (3 thành viên)**: `docs/TEAM_ALLOCATION_FINAL.md`
 - **Quy ước tổ chức Backend Feature**: `backend/src/main/java/com/projectf/features/README.md`
 - **Từ điển miền nghiệp vụ**: `GLOSSARY.md`
 
