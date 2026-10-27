@@ -19,7 +19,7 @@ Trước khi thiết kế hoặc viết code cho bất kỳ phân hệ nào, hã
 
 1. **Backend (`backend/`)**:
    - Tuân thủ kiến trúc **Package-by-Feature (Vertical Slice)** trong `com.projectf.features.<feature_name>` (`controller`, `service`, `repository`, `entity`, `dto`, `mapper`).
-   - Lược đồ CSDL PostgreSQL 15+ được quản lý qua **Flyway Migration** (`src/main/resources/db/migration/`). Không tự ý sửa đổi cấu trúc bảng trái với `docs/SYSTEM_SPECIFICATION.md`.
+   - Lược đồ CSDL PostgreSQL 15+ được quản lý qua **Supabase Migration** (áp dụng trực tiếp trên Supabase Database và đồng bộ qua file migration SQL). Không tự ý sửa đổi cấu trúc bảng trái với `docs/SYSTEM_SPECIFICATION.md`.
    - Các cột `GENERATED ALWAYS AS (...) STORED` (`total_estimated_amount`, `total_amount`) phải đặt `@Column(..., insertable = false, updatable = false)`.
    - Các SQL Views (`v_event_budget_summary`, `v_projected_budget_from_previous_season`) ánh xạ bằng Read-only Entity (`@Immutable`).
    - Tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`) trong DB; mọi tệp đính kèm (`expense_receipts`, `event_documents`, `event_media_assets`, `event_feedbacks`) lưu qua **Amazon S3 Pre-signed URL** (giới hạn 15MB cho hóa đơn, 50MB cho tài liệu).

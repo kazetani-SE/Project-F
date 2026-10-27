@@ -7,8 +7,9 @@ Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết k�
 ## 1. Mô Hình Kiến Trúc Client-Server (Client-Server Architecture)
 
 ### 1.1. Tầng Client (Presentation Layer)
-- Ứng dụng giao diện người dùng (React + TypeScript + Vite) giao tiếp với hệ thống Backend thông qua các RESTful API chuẩn hóa (HTTP/HTTPS, định dạng dữ liệu JSON).
-- Tương tác trực tiếp với Amazon S3 khi tải tệp dung lượng lớn thông qua cơ chế **Pre-signed PUT/GET URL** để tối ưu hóa băng thông.
+- Ứng dụng giao diện người dùng (React 19 + TypeScript + Vite) được đóng gói dưới dạng Single Page Application (SPA), lưu trữ tĩnh trên **Amazon S3** và phân phối toàn cầu qua mạng lưới CDN **Amazon CloudFront** với chứng chỉ bảo mật HTTPS (AWS Certificate Manager - ACM).
+- Giao tiếp với hệ thống Backend thông qua các RESTful API chuẩn hóa (HTTP/HTTPS, định dạng dữ liệu JSON).
+- Tương tác trực tiếp với Amazon S3 khi tải tệp dung lượng lớn thông qua cơ chế **Pre-signed PUT/GET URL** để tối ưu hóa băng thông cho Backend server.
 
 ### 1.2. Tầng Backend Server (Application & Business Logic Layer)
 - Xây dựng trên nền tảng **Java 21 & Spring Boot 3**, tổ chức theo kiến trúc **Package-by-Feature (Vertical Slice)** kết hợp phân tách rõ các tầng `Controller -> Service -> Repository` (3-Tier Architecture) bên trong từng feature.
@@ -18,7 +19,7 @@ Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết k�
   - PostgreSQL `ARRAY` (`department_enum[]` trong bảng `event_incidents`)
   - `JSONB` (`custom_responses` trong bảng `event_feedbacks`)
   - Read-only Views (`v_event_budget_summary`, `v_projected_budget_from_previous_season`)
-- Quản lý phiên bản lược đồ cơ sở dữ liệu (Database Versioning) tự động và nhất quán qua các môi trường bằng **Flyway Migration** (`V1__init_schema.sql`).
+- Quản lý phiên bản lược đồ cơ sở dữ liệu (Database Versioning) đồng bộ và nhất quán qua **Supabase Migration** (quản lý file migration SQL và áp dụng trực tiếp lên cơ sở dữ liệu PostgreSQL).
 - Bảo mật ứng dụng bằng **Spring Security** kết hợp kiểm soát truy cập dựa trên vai trò cấp CLB (`club_role_enum`) và cấp sự kiện (`event_role_enum`).
 
 ---
@@ -27,7 +28,12 @@ Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết k�
 
 ```mermaid
 flowchart TB
-    Client["Client Browser (React + Vite)"]
+    UserBrowser["Trình duyệt người dùng (Client Browser)"]
+
+    subgraph CDN["Phân phối Giao diện Frontend"]
+        CF["Amazon CloudFront (CDN)\n[HTTPS Edge Distribution]"]
+        S3FE[("Amazon S3 (SPA Hosting)\nBuild artifacts: HTML, CSS, JS")]
+    end
 
     subgraph AWS["AWS Cloud (VPC)"]
         subgraph PublicSubnet["Public Subnet"]
@@ -39,16 +45,20 @@ flowchart TB
         end
     end
 
-    S3[("Amazon S3 Bucket\n(Block Public Access)\nDocuments, Media, Receipts")]
+    S3Assets[("Amazon S3 (Media Storage)\nDocuments, Media, Receipts\n[Block Public Access]")]
     CW["Amazon CloudWatch\n(Logs, Metrics, Alarms)"]
-    CT["AWS CloudTrail\n(Audit & Infrastructure Trail)"]
+    SNS["Amazon SNS\n(Email Alerts)"]
+    CT["AWS CloudTrail\n(Audit & Governance)"]
 
-    Client -- "1. REST API (HTTPS)" --> EC2
-    EC2 -- "2. Generate Pre-signed URL (AWS SDK)" --> S3
-    Client -- "3. Direct PUT/GET via Pre-signed URL" --> S3
-    EC2 -- "4. JDBC (Port 5432 via Security Group)" --> RDS
+    UserBrowser -- "1. Truy cập Web (HTTPS)" --> CF
+    CF -- "Origin Request" --> S3FE
+    UserBrowser -- "2. REST API (HTTPS /api/v1/*)" --> EC2
+    EC2 -- "3. Sinh Pre-signed URL (AWS SDK)" --> S3Assets
+    UserBrowser -- "4. Upload/Download trực tiếp qua Pre-signed URL" --> S3Assets
+    EC2 -- "5. JDBC (Port 5432 via Security Group)" --> RDS
     EC2 -. "App Logs & Metrics" .-> CW
     RDS -. "DB Metrics" .-> CW
+    CW -. "Kích hoạt cảnh báo lỗi 5xx / quá tải" .-> SNS
     AWS -. "API Activity Audit" .-> CT
 ```
 
@@ -70,6 +80,7 @@ flowchart TB
 
 ### 2.4. Lưu trữ Đối tượng Đám mây (Amazon S3 & Luồng Pre-signed URL)
 Toàn bộ tệp tĩnh dung lượng lớn bao gồm: ảnh hóa đơn chứng từ (`expense_receipts`), tài liệu kế hoạch (`event_documents`), ấn phẩm thiết kế (`event_media_assets`) và tệp đính kèm khảo sát (`event_feedbacks`) được lưu trữ tập trung trên **Amazon S3 Bucket** (chặn Public Access mặc định).
+- Cấu hình **S3 Lifecycle Rules** để tự động chuyển tài liệu/ấn phẩm của các mùa sự kiện đã hoàn thành (`COMPLETED`) sang lớp lưu trữ giá rẻ (**S3 Standard-IA** hoặc **S3 Glacier**) sau 90 ngày, tối ưu hóa chi phí hạ tầng.
 
 #### Luồng tải tệp lên (Pre-signed Upload Flow):
 ```mermaid
@@ -93,6 +104,12 @@ sequenceDiagram
     API-->>User: 201 Created / 200 OK
 ```
 
-### 2.5. Giám sát, Nhật ký & Kiểm vết (Amazon CloudWatch & AWS CloudTrail)
+### 2.5. Giám sát, Nhật ký & Cảnh báo (Amazon CloudWatch, Amazon SNS & AWS CloudTrail)
 - **Amazon CloudWatch**: Thu thập log ứng dụng từ EC2, theo dõi chỉ số hiệu năng (CPU, Memory, Disk, RDS Connections) và thiết lập cảnh báo (**CloudWatch Alarms**) khi hệ thống quá tải hoặc phát sinh lỗi `5xx`.
+- **Amazon SNS**: Đăng ký Topic thông báo qua Email để nhận cảnh báo tức thời từ CloudWatch Alarms khi có sự cố hệ thống.
 - **AWS CloudTrail**: Ghi nhận toàn bộ lịch sử tác động lên hạ tầng AWS và kiểm vết truy cập tài nguyên bảo mật.
+
+### 2.6. Phân phối Giao diện Tĩnh (Amazon S3 Static Hosting & Amazon CloudFront CDN)
+- Bản build tĩnh của ứng dụng Frontend (`frontend/dist/`) được đồng bộ lên **Amazon S3 Bucket** (chế độ bảo mật chặn truy cập công khai trực tiếp).
+- **Amazon CloudFront** đóng vai trò là CDN phân phối nội dung toàn cầu, tự động cache các tệp tĩnh (`.js`, `.css`, hình ảnh) tại các Edge Location, hỗ trợ nén Gzip/Brotli và bảo mật HTTPS với độ trễ tối thiểu cho người dùng cuối.
+- Cấu hình **Custom Error Response** trên CloudFront (trỏ mã lỗi 403/404 về `/index.html` với mã HTTP 200) để đảm bảo cơ chế Routing của Single Page Application (React Router) hoạt động trơn tru.
