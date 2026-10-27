@@ -2,9 +2,11 @@ package com.projectf;
 
 import com.projectf.common.enums.Department;
 import com.projectf.features.event.dto.request.CreateEventRequest;
+import com.projectf.features.event.dto.request.UpdateEventRequest;
 import com.projectf.features.event.entity.Event;
 import com.projectf.features.event.mapper.EventMapper;
 import com.projectf.features.member.dto.request.CreateMemberRequest;
+import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.entity.ClubMember;
 import com.projectf.features.member.mapper.MemberMapper;
 import jakarta.persistence.Table;
@@ -38,6 +40,31 @@ class MemberEventFoundationTest {
                     LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2), new BigDecimal("-1"));
             assertFalse(factory.getValidator().validate(request).isEmpty());
         }
+    }
+
+    @Test
+    void eventRequestsRejectInvalidDateRanges() {
+        try (var factory = Validation.buildDefaultValidatorFactory()) {
+            var start = LocalDate.of(2026, 11, 2);
+            var end = LocalDate.of(2026, 11, 1);
+            var create = new CreateEventRequest(null, "2026", "Project F", null, start, end, BigDecimal.ZERO);
+            var update = new UpdateEventRequest(null, "2026", "Project F", null, end, start,
+                    start, end, null, BigDecimal.ZERO);
+            assertTrue(factory.getValidator().validate(create).stream()
+                    .anyMatch(violation -> violation.getPropertyPath().toString().equals("expectedDateRangeValid")));
+            assertTrue(factory.getValidator().validate(update).stream()
+                    .anyMatch(violation -> violation.getPropertyPath().toString().equals("actualDateRangeValid")));
+        }
+    }
+
+    @Test
+    void memberMapperUpdatesActiveWhenProvided() {
+        var member = new ClubMember();
+        member.setActive(true);
+        var request = new UpdateMemberRequest("Nguyen Van A", "a@example.com", null,
+                Department.HR, null, "K18", false);
+        new MemberMapper().update(member, request);
+        assertFalse(member.getActive());
     }
 
     @Test

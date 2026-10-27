@@ -7,14 +7,17 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 @Configuration
+// Spring khởi tạo config bằng constructor mặc định; không cần constructor rỗng tường minh.
+@SuppressWarnings("PMD.AtLeastOneConstructor")
 public class CorsConfig {
  @Bean
- CorsConfigurationSource corsConfigurationSource(@Value("${CORS_ALLOWED_ORIGINS:http://localhost:5173}") String origins) {
-  CorsConfiguration config=new CorsConfiguration();
+ public CorsConfigurationSource corsConfigurationSource(
+  @Value("${CORS_ALLOWED_ORIGINS:http://localhost:5173}") final String origins) {
+  final CorsConfiguration config=new CorsConfiguration();
   config.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).toList());
   config.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
   config.setAllowedHeaders(java.util.List.of("Authorization","Content-Type"));
-  UrlBasedCorsConfigurationSource source=new UrlBasedCorsConfigurationSource();
+  final UrlBasedCorsConfigurationSource source=new UrlBasedCorsConfigurationSource();
   source.registerCorsConfiguration("/**",config);
   return source;
  }

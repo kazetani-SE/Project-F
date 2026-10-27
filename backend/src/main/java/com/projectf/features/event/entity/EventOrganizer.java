@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.type.SqlTypes;
+// 'id' ánh xạ khóa chính UUID theo migration V1.
+@SuppressWarnings("PMD.ShortVariable")
 @Getter @Setter @NoArgsConstructor @Entity @DynamicInsert @Table(name="event_organizers",uniqueConstraints=@UniqueConstraint(name="uq_event_member",columnNames={"event_id","member_id"}))
 public class EventOrganizer {
  @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;

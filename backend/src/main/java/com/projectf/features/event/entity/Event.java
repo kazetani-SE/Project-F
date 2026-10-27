@@ -9,7 +9,10 @@ import lombok.Setter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
+// 'id' ánh xạ khóa chính UUID theo migration V1.
+@SuppressWarnings("PMD.ShortVariable")
 @Getter @Setter @NoArgsConstructor @Entity @DynamicInsert @Table(name="events")
 public class Event {
  @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
@@ -26,5 +29,6 @@ public class Event {
  @Enumerated(EnumType.STRING) @JdbcTypeCode(SqlTypes.NAMED_ENUM) @Column(columnDefinition="event_status_enum",nullable=false) private EventStatus status;
  @Column(name="allocated_fund",nullable=false,precision=15,scale=2) private BigDecimal allocatedFund;
  @Column(name="created_at",nullable=false,insertable=false) private OffsetDateTime createdAt;
- @Column(name="updated_at",nullable=false,insertable=false) private OffsetDateTime updatedAt;
+ /** V1 không có trigger cập nhật; Hibernate ghi mốc thời gian mỗi lần sửa entity. */
+ @UpdateTimestamp @Column(name="updated_at",nullable=false) private OffsetDateTime updatedAt;
 }

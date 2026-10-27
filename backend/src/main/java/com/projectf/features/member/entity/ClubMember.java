@@ -9,6 +9,8 @@ import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+// 'id' ánh xạ khóa chính UUID theo migration V1.
+@SuppressWarnings("PMD.ShortVariable")
 @Getter @Setter @NoArgsConstructor @Entity @Table(name = "club_members")
 public class ClubMember {
  @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;

@@ -3,6 +3,7 @@ import com.projectf.features.event.dto.request.AssignOrganizerRequest;
 import com.projectf.features.event.dto.request.CreateEventRequest;
 import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventRequest;
+import com.projectf.features.event.dto.request.UpdateEventSeriesRequest;
 import com.projectf.features.event.dto.response.EventResponse;
 import com.projectf.features.event.dto.response.EventSeriesResponse;
 import com.projectf.features.event.dto.response.OrganizerResponse;
@@ -11,35 +12,50 @@ import com.projectf.features.event.entity.EventOrganizer;
 import com.projectf.features.event.entity.EventSeries;
 import org.springframework.stereotype.Component;
 @Component
+@SuppressWarnings("PMD.AtLeastOneConstructor") // Spring dùng constructor mặc định; constructor rỗng tường minh bị PMD coi là thừa.
 public class EventMapper {
- public EventResponse toResponse(Event e) {
-  return new EventResponse(e.getId(),e.getSeriesId(),e.getSeasonName(),e.getTitle(),e.getDescription(),
-   e.getExpectedStartDate(),e.getExpectedEndDate(),e.getActualStartDate(),e.getActualEndDate(),
-   e.getStatus(),e.getAllocatedFund(),e.getCreatedAt(),e.getUpdatedAt());
+ public EventResponse toResponse(final Event event) {
+  return new EventResponse(event.getId(),event.getSeriesId(),event.getSeasonName(),event.getTitle(),event.getDescription(),
+   event.getExpectedStartDate(),event.getExpectedEndDate(),event.getActualStartDate(),event.getActualEndDate(),
+   event.getStatus(),event.getAllocatedFund(),event.getCreatedAt(),event.getUpdatedAt());
  }
- public EventSeriesResponse toResponse(EventSeries e) {
-  return new EventSeriesResponse(e.getId(),e.getName(),e.getDescription(),e.getCreatedAt());
+ public EventSeriesResponse toResponse(final EventSeries series) {
+  return new EventSeriesResponse(series.getId(),series.getName(),series.getDescription(),series.getCreatedAt());
  }
- public OrganizerResponse toResponse(EventOrganizer e) {
-  return new OrganizerResponse(e.getId(),e.getEventId(),e.getMemberId(),e.getRole(),e.getAssignedTasks(),e.getJoinedAt());
+ public OrganizerResponse toResponse(final EventOrganizer organizer) {
+  return new OrganizerResponse(organizer.getId(),organizer.getEventId(),organizer.getMemberId(),organizer.getRole(),
+   organizer.getAssignedTasks(),organizer.getJoinedAt());
  }
- public Event toEntity(CreateEventRequest r) {
-  Event e=new Event(); e.setSeriesId(r.seriesId()); e.setSeasonName(r.seasonName()); e.setTitle(r.title());
-  e.setDescription(r.description()); e.setExpectedStartDate(r.expectedStartDate()); e.setExpectedEndDate(r.expectedEndDate());
-  e.setAllocatedFund(r.allocatedFund());
-  return e;
+ public Event toEntity(final CreateEventRequest request) {
+  final Event event=new Event();
+  event.setSeriesId(request.seriesId()); event.setSeasonName(request.seasonName()); event.setTitle(request.title());
+  event.setDescription(request.description()); event.setExpectedStartDate(request.expectedStartDate());
+  event.setExpectedEndDate(request.expectedEndDate()); event.setAllocatedFund(request.allocatedFund());
+  return event;
  }
- public EventSeries toEntity(CreateEventSeriesRequest r) {
-  EventSeries e=new EventSeries(); e.setName(r.name()); e.setDescription(r.description()); return e;
+ public EventSeries toEntity(final CreateEventSeriesRequest request) {
+  final EventSeries series=new EventSeries();
+  series.setName(request.name()); series.setDescription(request.description()); return series;
  }
- public EventOrganizer toEntity(AssignOrganizerRequest r) {
-  EventOrganizer e=new EventOrganizer(); e.setEventId(r.eventId()); e.setMemberId(r.memberId());
-  e.setRole(r.role()); e.setAssignedTasks(r.assignedTasks()); return e;
+ public void updateSeries(final EventSeries series,final UpdateEventSeriesRequest request) {
+  series.setName(request.name());
+  series.setDescription(request.description());
  }
- public void update(Event e,UpdateEventRequest r) {
-  e.setSeriesId(r.seriesId()); e.setSeasonName(r.seasonName()); e.setTitle(r.title()); e.setDescription(r.description());
-  e.setExpectedStartDate(r.expectedStartDate()); e.setExpectedEndDate(r.expectedEndDate());
-  e.setActualStartDate(r.actualStartDate()); e.setActualEndDate(r.actualEndDate());
-  e.setStatus(r.status()); e.setAllocatedFund(r.allocatedFund());
+ public EventOrganizer toEntity(final AssignOrganizerRequest request) {
+  final EventOrganizer organizer=new EventOrganizer();
+  organizer.setEventId(request.eventId()); organizer.setMemberId(request.memberId());
+  organizer.setRole(request.role()); organizer.setAssignedTasks(request.assignedTasks()); return organizer;
+ }
+ public void update(final Event event,final UpdateEventRequest request) {
+  event.setSeriesId(request.seriesId()); event.setSeasonName(request.seasonName());
+  event.setTitle(request.title()); event.setDescription(request.description());
+  event.setExpectedStartDate(request.expectedStartDate()); event.setExpectedEndDate(request.expectedEndDate());
+  event.setActualStartDate(request.actualStartDate()); event.setActualEndDate(request.actualEndDate());
+  if (request.status() != null) {
+   event.setStatus(request.status());
+  }
+  if (request.allocatedFund() != null) {
+   event.setAllocatedFund(request.allocatedFund());
+  }
  }
 }
