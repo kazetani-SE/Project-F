@@ -1,5 +1,6 @@
 package com.projectf.features.member.service;
-import com.projectf.features.member.dto.request.*;
+import com.projectf.features.member.dto.request.CreateMemberRequest;
+import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.dto.response.MemberResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

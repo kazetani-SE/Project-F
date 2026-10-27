@@ -1,7 +1,14 @@
 package com.projectf.features.event.mapper;
-import com.projectf.features.event.dto.request.*;
-import com.projectf.features.event.dto.response.*;
-import com.projectf.features.event.entity.*;
+import com.projectf.features.event.dto.request.AssignOrganizerRequest;
+import com.projectf.features.event.dto.request.CreateEventRequest;
+import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
+import com.projectf.features.event.dto.request.UpdateEventRequest;
+import com.projectf.features.event.dto.response.EventResponse;
+import com.projectf.features.event.dto.response.EventSeriesResponse;
+import com.projectf.features.event.dto.response.OrganizerResponse;
+import com.projectf.features.event.entity.Event;
+import com.projectf.features.event.entity.EventOrganizer;
+import com.projectf.features.event.entity.EventSeries;
 import org.springframework.stereotype.Component;
 @Component
 public class EventMapper {

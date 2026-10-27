@@ -1,5 +1,6 @@
 package com.projectf.features.member.mapper;
-import com.projectf.features.member.dto.request.*;
+import com.projectf.features.member.dto.request.CreateMemberRequest;
+import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.entity.ClubMember;
 import org.springframework.stereotype.Component;

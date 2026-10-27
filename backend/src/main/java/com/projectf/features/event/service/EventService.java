@@ -1,6 +1,11 @@
 package com.projectf.features.event.service;
-import com.projectf.features.event.dto.request.*;
-import com.projectf.features.event.dto.response.*;
+import com.projectf.features.event.dto.request.AssignOrganizerRequest;
+import com.projectf.features.event.dto.request.CreateEventRequest;
+import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
+import com.projectf.features.event.dto.request.UpdateEventRequest;
+import com.projectf.features.event.dto.response.EventResponse;
+import com.projectf.features.event.dto.response.EventSeriesResponse;
+import com.projectf.features.event.dto.response.OrganizerResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.UUID;

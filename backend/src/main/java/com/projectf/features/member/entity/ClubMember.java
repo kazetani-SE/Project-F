@@ -1,5 +1,6 @@
 package com.projectf.features.member.entity;
-import com.projectf.common.enums.*;
+import com.projectf.common.enums.ClubRole;
+import com.projectf.common.enums.Department;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;

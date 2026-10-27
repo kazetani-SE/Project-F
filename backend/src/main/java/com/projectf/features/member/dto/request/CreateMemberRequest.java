@@ -1,5 +1,6 @@
 package com.projectf.features.member.dto.request;
-import com.projectf.common.enums.*;
+import com.projectf.common.enums.ClubRole;
+import com.projectf.common.enums.Department;
 import jakarta.validation.constraints.*;
 public record CreateMemberRequest(
  @NotBlank @Size(min=8,max=8) String studentId,
