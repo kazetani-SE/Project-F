@@ -55,7 +55,7 @@ CREATE TYPE department_enum AS ENUM ('HR', 'PLAN', 'MEDIA', 'ACADEMIC');
 CREATE TYPE event_status_enum AS ENUM ('PLANNING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
 CREATE TYPE approval_status_enum AS ENUM ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE incident_severity_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
-CREATE TYPE event_role_enum AS ENUM ('MASTER_PLAN', 'RUNNING_ORDER', 'SPONSOR_PROPOSAL', 'MEETING_MINUTES', 'RISK_PLAN', 'MEMBER');
+CREATE TYPE event_role_enum AS ENUM ('HEAD_ORGANIZER', 'VICE_ORGANIZER', 'LEAD_FINANCE', 'LEAD_LOGISTICS', 'LEAD_MEDIA', 'LEAD_CONTENT', 'LEAD_EXTERNAL', 'MEMBER');
 CREATE TYPE club_role_enum AS ENUM ('PRESIDENT', 'VICEPRESIDENT', 'MEMBER');
 
 -- ============================================================================
@@ -66,6 +66,7 @@ CREATE TYPE club_role_enum AS ENUM ('PRESIDENT', 'VICEPRESIDENT', 'MEMBER');
 -- Bảng Thành viên CLB
 CREATE TABLE club_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auth_user_id UUID UNIQUE,
     student_id VARCHAR(8) UNIQUE NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,

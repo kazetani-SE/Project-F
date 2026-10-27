@@ -42,6 +42,13 @@ aws:
     bucket-name: ${AWS_S3_BUCKET}
     presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES}
 
+supabase:
+  url: ${SUPABASE_URL:}
+  publishable-key: ${SUPABASE_PUBLISHABLE_KEY:}
+
+app:
+  cors-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 logging:
   level:
     root: INFO

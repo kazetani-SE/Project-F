@@ -11,12 +11,12 @@ Mỗi feature đại diện cho một miền nghiệp vụ độc lập. Bên tr
 
 ```text
 features/
-└── [feature_name]/              # Ví dụ: member, event, finance, storage, document, media, knowledge
-    ├── controller/              # REST Controller xử lý HTTP requests, routing & @PreAuthorize RBAC
+└── [feature_name]/              # member, event, finance, knowledge; storage là dịch vụ S3
+    ├── controller/              # REST Controller xử lý HTTP requests và routing
     │   └── [Feature]Controller.java
     ├── service/                 # Tầng nghiệp vụ (Business Logic & Transaction Management)
     │   ├── [Feature]Service.java          # Service interface
-    │   └── [Feature]ServiceImpl.java      # Triển khai logic nghiệp vụ
+    │   └── impl/[Feature]ServiceImpl.java # Triển khai logic nghiệp vụ
     ├── repository/              # Tầng truy xuất dữ liệu (Spring Data JPA)
     │   └── [Feature]Repository.java
     ├── entity/                  # JPA Entity ánh xạ bảng/view PostgreSQL 15+ (Amazon RDS)
@@ -41,9 +41,7 @@ features/
 | **`event`** | `event_series`, `events` (`event_status_enum`), `event_organizers` (`event_role_enum`) | Dev 1 (Tech Lead & Cloud Infra) |
 | **`finance`** | `budget_categories`, `item_price_benchmarks`, `budget_items`, `expenses`, `expense_receipts`, `v_event_budget_summary`, `v_projected_budget_from_previous_season` | Dev 2 (Finance & Analytics) |
 | **`storage`** | Tích hợp AWS SDK v2 S3 (Sinh Pre-signed PUT/GET URL, kiểm tra MIME & giới hạn 15MB/50MB) | Dev 3 (Storage, Media & Knowledge) |
-| **`document`** | `event_documents` (Quản lý phiên bản qua `parent_document_id`, luồng duyệt `approval_status_enum`) | Dev 3 (Storage, Media & Knowledge) |
-| **`media`** | `event_media_assets` (Quản lý ấn phẩm thiết kế, trạng thái in ấn `is_printed` & phê duyệt) | Dev 3 (Storage, Media & Knowledge) |
-| **`knowledge`** | `event_incidents` (`incident_severity_enum`, `department_enum[]`), `event_faqs`, `event_feedbacks` (`JSONB custom_responses`) | Dev 3 (Storage, Media & Knowledge) |
+| **`knowledge`** | `event_documents`, `event_media_assets`, `event_incidents` (`incident_severity_enum`, `department_enum[]`), `event_faqs`, `event_feedbacks` (`JSONB custom_responses`) | Dev 3 (Storage, Media & Knowledge) |
 
 ---
 

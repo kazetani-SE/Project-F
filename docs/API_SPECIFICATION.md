@@ -9,6 +9,7 @@ Tài liệu này là **Nguồn Chuẩn Duy Nhất (Single Source of Truth - SSOT
 
 - **Giao thức & Định dạng**: `HTTP/1.1` & `HTTPS`, dữ liệu trao đổi định dạng `application/json; charset=UTF-8`.
 - **Tiền tố đường dẫn (Base URL)**: `/api/v1`
+- **Xác thực**: Mọi endpoint trừ `GET /api/v1/health` yêu cầu `Authorization: Bearer <Supabase access token>` của tài khoản có email trùng `club_members.email`, đã xác nhận email và đang hoạt động. Frontend dùng Supabase Auth; dữ liệu nghiệp vụ luôn đi qua backend.
 - **Định dạng thời gian**: Chuỗi chuẩn ISO 8601 UTC (`YYYY-MM-DDTHH:mm:ssZ`) cho các trường `timestamp` / `TIMESTAMPTZ`, và `YYYY-MM-DD` cho các trường `DATE`.
 - **Quy ước đặt tên trường trong JSON**: Toàn bộ thuộc tính sử dụng định dạng **`camelCase`**.
 
@@ -78,6 +79,8 @@ interface PageResponse<T> {
 
 ## 2. Chi Tiết API Phân Hệ 1: Nhân Sự CLB & Ban Tổ Chức (Slice 1)
 
+- **`GET /api/v1/auth/me`**: Hồ sơ thành viên gắn với tài khoản đang đăng nhập.
+
 ### 2.1. Quản lý Thành viên CLB (`club_members`)
 
 - **`GET /api/v1/members`**
@@ -125,7 +128,7 @@ interface PageResponse<T> {
     ```json
     {
       "memberId": "123e4567-e89b-12d3-a456-426614174000",
-      "role": "MASTER_PLAN",
+      "role": "HEAD_ORGANIZER",
       "assignedTasks": "Chịu trách nhiệm đề án tổng thể và timeline"
     }
     ```

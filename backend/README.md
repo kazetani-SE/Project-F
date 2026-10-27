@@ -1,5 +1,7 @@
 # Project F — Backend Service (Spring Boot 3 + PostgreSQL + AWS)
 
+> Hướng dẫn cấu hình Supabase Auth/RBAC: [docs/LOCAL_FEATURE_SETUP.md](../docs/LOCAL_FEATURE_SETUP.md). File `src/main/resources/application.yml` và `.env.example` là nguồn cấu hình hiện hành.
+
 Dịch vụ Backend RESTful API cho **Hệ thống Quản lý Tổ chức Sự kiện Câu lạc bộ (Project F)**, được thiết kế theo kiến trúc **Package-by-Feature (Vertical Slice)** và triển khai trên hạ tầng **AWS (EC2, RDS PostgreSQL 15+, S3, CloudWatch)**.
 
 ---
@@ -9,7 +11,7 @@ Dịch vụ Backend RESTful API cho **Hệ thống Quản lý Tổ chức Sự k
 - **Ngôn ngữ**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `spring-boot-starter-validation`, `spring-boot-starter-security`)
 - **Cơ sở dữ liệu**: PostgreSQL 15+ (Amazon RDS for PostgreSQL trên Production / PostgreSQL Local hoặc Cloud ở môi trường Dev)
-- **Database Migration**: Flyway (`src/main/resources/db/migration/V1__init_schema.sql`)
+- **Database Migration**: SQL trong `supabase/migrations/`; backend chạy `JPA_DDL_AUTO=validate`
 - **Lưu trữ đối tượng**: AWS SDK for Java v2 — Amazon S3 (Pre-signed PUT/GET URL)
 - **Build Tool**: Apache Maven (kèm sẵn Maven Wrapper `mvnw`, `mvnw.cmd`)
 
@@ -29,9 +31,7 @@ com.projectf
     ├── event/                     # Chuỗi sự kiện, mùa sự kiện & phân công BTC (event_series, events, event_organizers)
     ├── finance/                   # Danh mục chi, bảng giá chuẩn, dự trù, thực chi, hóa đơn & 2 Views dự toán
     ├── storage/                   # Dịch vụ sinh S3 Pre-signed URL & kiểm tra định dạng/dung lượng tệp (15MB/50MB)
-    ├── document/                  # Quản lý tài liệu kế hoạch & lịch sử phiên bản (event_documents)
-    ├── media/                     # Quản lý ấn phẩm truyền thông & in ấn (event_media_assets)
-    └── knowledge/                 # Sự cố Post-Mortem (event_incidents), FAQ (event_faqs) & Khảo sát JSONB (event_feedbacks)
+    └── knowledge/                 # Tài liệu, ấn phẩm, sự cố, FAQ và feedback JSONB (5 bảng)
 ```
 
 > Xem chi tiết quy ước tổ chức từng feature tại: [`src/main/java/com/projectf/features/README.md`](./src/main/java/com/projectf/features/README.md).
@@ -40,38 +40,7 @@ com.projectf
 
 ## ⚙️ Cấu Hình Môi Trường (`application.yml`)
 
-Hệ thống sử dụng biến môi trường để kết nối tới **Amazon RDS for PostgreSQL** và **Amazon S3** (trên EC2 sử dụng trực tiếp **IAM Instance Profile**, không hardcode Access Key / Secret Key):
-
-```yaml
-server:
-  port: 8080
-
-spring:
-  application:
-    name: project-f-club-backend
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/project_f_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate # Lược đồ CSDL được quản lý chặt chẽ qua Flyway
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-
-aws:
-  region: ${AWS_REGION:ap-southeast-1}
-  s3:
-    bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
-    presigned-url-expiration-minutes: 10
-```
+Copy `.env.example` thành `.env` trong thư mục `backend/`, điền PostgreSQL, Supabase Auth và S3. Chạy với working directory là `backend/`. Hibernate dùng `JPA_DDL_AUTO=validate`; nó không tự tạo bảng. Xem [hướng dẫn chạy local](../docs/LOCAL_FEATURE_SETUP.md) trước khi áp dụng migration trên database thử nghiệm.
 
 ---
 
