@@ -4,6 +4,5 @@ import com.projectf.common.enums.Department;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 // 'id' giữ đúng tên trường JSON của API.
-@SuppressWarnings("PMD.ShortVariable")
 public record MemberResponse(UUID id,String studentId,String fullName,String email,String phone,
  Department department,ClubRole clubRole,String batch,Boolean active,OffsetDateTime createdAt,OffsetDateTime inactiveAt) {}

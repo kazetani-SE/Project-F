@@ -97,10 +97,7 @@
                     <failOnViolation>true</failOnViolation>
                     <printFailingErrors>true</printFailingErrors>
                     <rulesets>
-                        <ruleset>category/java/bestpractices.xml</ruleset>
-                        <ruleset>category/java/codestyle.xml</ruleset>
-                        <ruleset>category/java/errorprone.xml</ruleset>
-                        <ruleset>category/java/performance.xml</ruleset>
+                        <ruleset>pmd-ruleset.xml</ruleset>
                     </rulesets>
                 </configuration>
                 <executions>

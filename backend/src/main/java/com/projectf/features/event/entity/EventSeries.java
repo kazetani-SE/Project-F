@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 // 'id' ánh xạ khóa chính UUID theo migration V1.
-@SuppressWarnings("PMD.ShortVariable")
 @Getter @Setter @NoArgsConstructor @Entity @Table(name="event_series")
 public class EventSeries {
  @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;

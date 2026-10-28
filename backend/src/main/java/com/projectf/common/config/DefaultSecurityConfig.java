@@ -7,10 +7,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @Profile("!dev")
-@SuppressWarnings("PMD.AtLeastOneConstructor")
 public class DefaultSecurityConfig {
  @Bean
- public SecurityFilterChain defaultSecurityFilterChain(final HttpSecurity http) throws Exception {
+ public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
   // Chưa có Supabase Auth/RBAC: các môi trường khác dev chặn mặc định để tránh lộ API.
   return http.csrf(AbstractHttpConfigurer::disable).cors(Customizer.withDefaults())
    .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

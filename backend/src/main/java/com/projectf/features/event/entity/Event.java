@@ -12,7 +12,6 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 // 'id' ánh xạ khóa chính UUID theo migration V1.
-@SuppressWarnings("PMD.ShortVariable")
 @Getter @Setter @NoArgsConstructor @Entity @DynamicInsert @Table(name="events")
 public class Event {
  @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
