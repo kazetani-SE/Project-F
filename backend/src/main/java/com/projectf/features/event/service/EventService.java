@@ -7,6 +7,7 @@ import com.projectf.features.event.dto.request.UpdateEventSeriesRequest;
 import com.projectf.features.event.dto.response.EventResponse;
 import com.projectf.features.event.dto.response.EventSeriesResponse;
 import com.projectf.features.event.dto.response.OrganizerResponse;
+import com.projectf.features.event.entity.EventStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.UUID;
@@ -18,8 +19,9 @@ public interface EventService {
  EventSeriesResponse updateSeries(UUID seriesId,UpdateEventSeriesRequest request);
  EventResponse create(CreateEventRequest request);
  EventResponse get(UUID eventId);
- Page<EventResponse> list(Pageable pageable);
+ Page<EventResponse> list(UUID seriesId,EventStatus status,Pageable pageable);
  EventResponse update(UUID eventId,UpdateEventRequest request);
  OrganizerResponse assign(AssignOrganizerRequest request);
  Page<OrganizerResponse> listOrganizers(UUID eventId,Pageable pageable);
+ void removeOrganizer(UUID eventId,UUID memberId);
 }

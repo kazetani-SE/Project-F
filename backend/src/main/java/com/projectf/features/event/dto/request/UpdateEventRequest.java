@@ -18,6 +18,6 @@ public record UpdateEventRequest(UUID seriesId,@NotBlank @Size(max=50) String se
  }
  @AssertTrue(message="actualEndDate phải lớn hơn hoặc bằng actualStartDate")
  public boolean isActualDateRangeValid() {
-  return actualStartDate == null || actualEndDate == null || !actualEndDate.isBefore(actualStartDate);
+  return actualEndDate == null || (actualStartDate != null && !actualEndDate.isBefore(actualStartDate));
  }
 }
