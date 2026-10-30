@@ -1,5 +1,25 @@
+/* src/index.css */
 @import "tailwindcss";
 
-:root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+@theme {
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --color-primary: #218f2f;
+    --color-primary-hover: #28993e;
+    --color-primary-light: #2fb656;
+    --color-primary-bright: #5bce5f;
+    --color-primary-border: #81cd94;
+    --color-primary-surface: #e5f1e4;
+    --color-gold: #fec71c;
+    --color-amber: #edbf37;
+    --color-amber-surface: #f5e7bf;
+    --color-canvas: #f8faf9;
+    --color-title: #111827;
+    --color-body: #374151;
+    --color-muted: #6b7280;
+    --color-danger: #dc2626;
+    --color-danger-bg: #fee2e2;
 }
+
+body { @apply bg-gray-50/50 font-sans text-slate-800 antialiased; }
