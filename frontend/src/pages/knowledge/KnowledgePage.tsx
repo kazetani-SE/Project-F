@@ -12,7 +12,7 @@ export const KnowledgePage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'FAQS' | 'FEEDBACKS'>('INCIDENTS');
 
     const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
-    const seriesId = 'series-tech-camp'; // Chuỗi sự kiện dùng cho FAQ đa mùa
+    const seriesId = currentEvent?.seriesId || '22222222-2222-4222-8222-222222222201';
 
     return (
         <div className="space-y-6">

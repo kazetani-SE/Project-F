@@ -10,17 +10,19 @@ import type {
 } from '../types/models/knowledge.ts';
 
 export const MOCK_USER: AuthUser = {
-    id: 'u-0001',
+    id: '11111111-1111-4111-8111-111111111101',
     fullName: 'Nguyễn Văn An',
     email: 'an.nguyen@fcode.local',
     clubRole: 'PRESIDENT',
 };
 
+export const MOCK_SERIES_ID = '22222222-2222-4222-8222-222222222201';
+
 export const MOCK_EVENTS: EventSummary[] = [
-    { id: 'ev-tech-fall-2026', name: 'Tech-Camp', seasonLabel: 'Season Fall 2026', status: 'IN_PROGRESS' },
-    { id: 'ev-codewars-2026', name: 'Code Wars', seasonLabel: 'Season 2026', status: 'PLANNING' },
-    { id: 'ev-git-101', name: 'Workshop Git & GitHub 101', seasonLabel: null, status: 'COMPLETED' },
-    { id: 'ev-hackathon-2025', name: 'Hackathon', seasonLabel: 'Season 2025', status: 'CANCELLED' },
+    { id: 'ev-tech-fall-2026', seriesId: MOCK_SERIES_ID, name: 'Tech-Camp', seasonLabel: 'Season Fall 2026', status: 'IN_PROGRESS' },
+    { id: 'ev-codewars-2026', seriesId: MOCK_SERIES_ID, name: 'Code Wars', seasonLabel: 'Season 2026', status: 'PLANNING' },
+    { id: 'ev-git-101', seriesId: MOCK_SERIES_ID, name: 'Workshop Git & GitHub 101', seasonLabel: null, status: 'COMPLETED' },
+    { id: 'ev-hackathon-2025', seriesId: MOCK_SERIES_ID, name: 'Hackathon', seasonLabel: 'Season 2025', status: 'CANCELLED' },
 ];
 
 // Muốn test vai trò nào thì sửa ở đây. null = "Không thuộc BTC"
@@ -150,7 +152,7 @@ export const MOCK_INCIDENTS: IncidentResponse[] = [
         reportedBy: 'Nguyễn Kỹ Thuật',
         title: 'Mất kết nối mạng Wi-Fi khu vực thi đấu Hackathon',
         severity: 'CRITICAL',
-        departments: ['TECH', 'LOGISTICS'],
+        departments: ['ACADEMIC', 'PLAN'],
         description: 'Đường truyền cáp quang chính của phòng máy bị nghẽn do quá tải cấp phát IP DHCP lúc 14:00.',
         rootCause: 'Router phòng máy chỉ cấp dải subnet /24 (tối đa 250 thiết bị) trong khi có 380 thiết bị cùng kết nối.',
         immediateSolution: 'Kích hoạt ngay 4 cục phát Wi-Fi 4G công nghiệp dự phòng của CLB và mở rộng dải subnet router lên /22.',
@@ -163,7 +165,7 @@ export const MOCK_INCIDENTS: IncidentResponse[] = [
         reportedBy: 'Phạm Hậu Cần',
         title: 'Thiếu 30 suất ăn trưa cho tình nguyện viên hỗ trợ',
         severity: 'MEDIUM',
-        departments: ['LOGISTICS', 'HR'],
+        departments: ['PLAN', 'HR'],
         description: 'Số lượng TNV phát sinh tăng thêm 25 bạn so với danh sách chốt ban đầu dẫn đến thiếu cơm trưa.',
         rootCause: 'Ban Nhân sự bổ sung nhân lực giờ chót nhưng chưa cập nhật vào bảng dự trù thực chi của Ban Hậu cần.',
         immediateSolution: 'Đặt bổ sung gấp 35 suất bánh mì kẹp và sữa tươi từ cửa hàng tiện lợi cách trường 200m trong vòng 20 phút.',
@@ -176,7 +178,7 @@ export const MOCK_INCIDENTS: IncidentResponse[] = [
 export const MOCK_FAQS: FaqResponse[] = [
     {
         id: 'faq-001',
-        seriesId: 'series-tech-camp',
+        seriesId: MOCK_SERIES_ID,
         question: 'Sinh viên năm nhất chưa có kinh nghiệm lập trình có tham gia Tech-Camp được không?',
         answer: 'Hoàn toàn được! Tech-Camp được thiết kế phân tầng theo các bảng: Bảng Nhập môn (Dành cho K19/K20 làm quen logic & Git) và Bảng Chuyên sâu. Ban tổ chức có đội ngũ Mentor hỗ trợ 1-1 suốt sự kiện.',
         category: 'Thể lệ & Tham dự',
@@ -185,7 +187,7 @@ export const MOCK_FAQS: FaqResponse[] = [
     },
     {
         id: 'faq-002',
-        seriesId: 'series-tech-camp',
+        seriesId: MOCK_SERIES_ID,
         question: 'Quy trình hoàn ứng và thanh toán hóa đơn chi phí tổ chức như thế nào?',
         answer: 'Tất cả hóa đơn/chứng từ phải là hóa đơn hợp lệ (ảnh chụp rõ nét hoặc file PDF) được tải lên qua hệ thống S3. Lead Finance sẽ đối soát và phê duyệt trong vòng 48 giờ làm việc.',
         category: 'Tài chính & Hoàn ứng',
@@ -194,7 +196,7 @@ export const MOCK_FAQS: FaqResponse[] = [
     },
     {
         id: 'faq-003',
-        seriesId: 'series-tech-camp',
+        seriesId: MOCK_SERIES_ID,
         question: 'Quy cách thiết kế poster và backdrop chuẩn của CLB là gì?',
         answer: 'Mọi ấn phẩm truyền thông phải sử dụng đúng bảng màu Brand Guidelines của F-Code (Mã màu chủ đạo: Emerald #059669 và Slate #0f172a). File in ấn cần xuất hệ màu CMYK độ phân giải 300 DPI.',
         category: 'Truyền thông & Ấn phẩm',

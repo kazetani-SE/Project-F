@@ -12,6 +12,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
+
+    private static final Set<String> VALID_SOURCES = Set.of(
+            "ATTENDEE",
+            "ORGANIZER",
+            "SPONSOR",
+            "SPEAKER"
+    );
 
     private final FeedbackRepository feedbackRepo;
     private final FeedbackMapper feedbackMapper;
@@ -70,6 +78,10 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Override
     @Transactional
     public FeedbackResponse submitFeedback(UUID eventId, CreateFeedbackRequest request) {
+        if (request.sourceType() != null && !request.sourceType().isBlank()
+                && !VALID_SOURCES.contains(request.sourceType())) {
+            throw new IllegalArgumentException("Nguồn đánh giá không hợp lệ: " + request.sourceType());
+        }
         EventFeedback entity = feedbackMapper.toEntity(eventId, request);
         EventFeedback saved = feedbackRepo.save(entity);
         return feedbackMapper.toResponse(saved);

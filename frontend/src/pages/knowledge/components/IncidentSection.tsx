@@ -12,6 +12,7 @@ import {
     getIncidentsByEvent,
     createIncident,
 } from '../../../services/knowledgeService';
+import { useAuth } from '../../../context/authContext';
 import {
     type IncidentResponse,
     type IncidentSeverity,
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export const IncidentSection: React.FC<Props> = ({ eventId }) => {
+    const { user } = useAuth();
     const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [formTitle, setFormTitle] = useState('');
     const [formSeverity, setFormSeverity] = useState<IncidentSeverity>('MEDIUM');
-    const [formDepts, setFormDepts] = useState<Department[]>(['TECH']);
+    const [formDepts, setFormDepts] = useState<Department[]>(['PLAN']);
     const [formDesc, setFormDesc] = useState('');
     const [formRootCause, setFormRootCause] = useState('');
     const [formSolution, setFormSolution] = useState('');
@@ -69,6 +71,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
         setIsSubmitting(true);
         try {
             const req: CreateIncidentRequest = {
+                reportedBy: user?.id || null,
                 title: formTitle.trim(),
                 severity: formSeverity,
                 departments: formDepts,

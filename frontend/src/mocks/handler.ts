@@ -1,4 +1,4 @@
-import { delay, http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse, passthrough } from 'msw';
 import {
     MOCK_EVENTS,
     MOCK_ROLES,
@@ -11,7 +11,12 @@ import {
     MOCK_FEEDBACK_SUMMARY,
 } from './data';
 import type { CreateDocumentRequest, DocumentApprovalRequest, DocumentResponse } from '../types/models/document';
-import type { CreateMediaAssetRequest, MediaAssetResponse, UpdatePrintStatusRequest } from '../types/models/media';
+import type {
+    CreateMediaAssetRequest,
+    MediaApprovalRequest,
+    MediaAssetResponse,
+    UpdatePrintStatusRequest,
+} from '../types/models/media';
 import type {
     CreateFaqRequest,
     CreateIncidentRequest,
@@ -49,10 +54,17 @@ export const handlers = [
 
     // --- Storage Service ---
     http.post(`${BASE}/storage/presigned-upload`, async ({ request }) => {
+        if (import.meta.env.VITE_MOCK_STORAGE === 'false') {
+            return passthrough();
+        }
         await delay(250);
         const body = (await request.json()) as PresignedUploadRequest;
-        const sanitized = body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const objectKey = `${body.category.toLowerCase()}s/${Date.now()}-${sanitized}`;
+        const sanitized =
+            body.fileName
+                .normalize('NFC')
+                .replace(/[\u0000-\u001f/\\]+/g, '_')
+                .trim() || 'unnamed-file';
+        const objectKey = `${body.category.toLowerCase()}s/${sanitized}`;
         const s3Base = 'https://project-f-media-storage.s3.ap-southeast-1.amazonaws.com';
 
         return ok({
@@ -64,6 +76,9 @@ export const handlers = [
     }),
 
     http.get(`${BASE}/storage/presigned-download`, async ({ request }) => {
+        if (import.meta.env.VITE_MOCK_STORAGE === 'false') {
+            return passthrough();
+        }
         await delay(200);
         const url = new URL(request.url);
         const objectKey = url.searchParams.get('objectKey') || 'sample.pdf';
@@ -78,6 +93,9 @@ export const handlers = [
 
     // Mock direct S3 PUT binary upload
     http.put('https://project-f-media-storage.s3.ap-southeast-1.amazonaws.com/*', async () => {
+        if (import.meta.env.VITE_MOCK_STORAGE === 'false') {
+            return passthrough();
+        }
         await delay(600);
         return new HttpResponse(null, { status: 200 });
     }),
@@ -185,6 +203,26 @@ export const handlers = [
         mediaAssetsState = mediaAssetsState.map((m) => {
             if (m.id === assetId) {
                 return { ...m, isPrinted: body.isPrinted };
+            }
+            return m;
+        });
+
+        const updated = mediaAssetsState.find((m) => m.id === assetId);
+        return ok(updated);
+    }),
+
+    http.patch(`${BASE}/events/:eventId/media-assets/:assetId/approval`, async ({ params, request }) => {
+        await delay(300);
+        const assetId = params.assetId as string;
+        const body = (await request.json()) as MediaApprovalRequest;
+
+        mediaAssetsState = mediaAssetsState.map((m) => {
+            if (m.id === assetId) {
+                return {
+                    ...m,
+                    approvalStatus: body.approvalStatus,
+                    approvedBy: body.approvedBy,
+                };
             }
             return m;
         });

@@ -1,13 +1,6 @@
 export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export type Department =
-    | 'HR'
-    | 'PR_EVENT'
-    | 'TECH'
-    | 'LOGISTICS'
-    | 'PLAN'
-    | 'DESIGN'
-    | 'MEDIA';
+export type Department = 'HR' | 'PLAN' | 'MEDIA' | 'ACADEMIC';
 
 export interface IncidentResponse {
     id: string;
@@ -95,13 +88,10 @@ export const INCIDENT_SEVERITY_CONFIG: Record<
 };
 
 export const DEPARTMENT_LABELS: Record<Department, string> = {
-    HR: 'Ban Nhân sự',
-    PR_EVENT: 'Ban Đối ngoại & Sự kiện',
-    TECH: 'Ban Kỹ thuật - Công nghệ',
-    LOGISTICS: 'Ban Hậu cần',
-    PLAN: 'Ban Kế hoạch & Điều phối',
-    DESIGN: 'Ban Thiết kế',
-    MEDIA: 'Ban Truyền thông',
+    HR: 'Ban Nhân sự (HR)',
+    PLAN: 'Ban Kế hoạch & Tổ chức (PLAN)',
+    MEDIA: 'Ban Truyền thông & Ấn phẩm (MEDIA)',
+    ACADEMIC: 'Ban Học thuật & Chuyên môn (ACADEMIC)',
 };
 
 export const FEEDBACK_SOURCE_LABELS: Record<FeedbackSourceType, string> = {

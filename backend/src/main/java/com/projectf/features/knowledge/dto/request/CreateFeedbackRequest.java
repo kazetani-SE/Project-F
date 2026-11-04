@@ -1,5 +1,7 @@
 package com.projectf.features.knowledge.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +24,8 @@ public record CreateFeedbackRequest(
 
         String highlightContent,
 
+        @JsonProperty("improvementContent")
+        @JsonAlias("improveContent")
         String improveContent,
 
         Map<String, Object> customResponses

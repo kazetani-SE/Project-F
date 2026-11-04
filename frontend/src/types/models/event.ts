@@ -6,6 +6,7 @@ export type EventRole =
 
 export interface EventSummary {
     id: string;
+    seriesId?: string | null;
     name: string;
     seasonLabel: string | null;
     status: EventStatus;

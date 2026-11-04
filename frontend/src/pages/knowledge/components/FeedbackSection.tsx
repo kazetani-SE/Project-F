@@ -13,7 +13,10 @@ import {
     getFeedbackSummaryByEvent,
     submitFeedback,
 } from '../../../services/knowledgeService';
+import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
+import { executeStagedUploadAndSave } from '../../../services/uploadWorkflow';
+import { useS3Upload } from '../../../hooks/useS3Upload';
 import {
     type FeedbackResponse,
     type FeedbackSummaryResponse,
@@ -38,10 +41,12 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
     const [formRating, setFormRating] = useState(5);
     const [formHighlights, setFormHighlights] = useState('');
     const [formImprovements, setFormImprovements] = useState('');
-    const [formFileUrl, setFormFileUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const [customQuestionKey, setCustomQuestionKey] = useState('recommendToFriend');
     const [customQuestionVal, setCustomQuestionVal] = useState('Có, rất đáng tham gia');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isUploading, progress, uploadFile } = useS3Upload();
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -66,33 +71,54 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
 
     const handleSubmitFeedback = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formFileUrl) {
-            alert('Vui lòng đính kèm tệp minh chứng hoặc ảnh khảo sát');
+        if (!selectedFile) {
+            setUploadError('Vui lòng đính kèm tệp minh chứng hoặc ảnh khảo sát');
             return;
         }
 
         setIsSubmitting(true);
+        setUploadError(null);
         try {
-            const req: CreateFeedbackRequest = {
-                sourceType: formSourceType,
-                ratingScore: formRating,
-                fileUrl: formFileUrl,
-                highlightContent: formHighlights.trim() || null,
-                improvementContent: formImprovements.trim() || null,
-                customResponses: {
-                    [customQuestionKey]: customQuestionVal,
+            await executeStagedUploadAndSave({
+                file: selectedFile,
+                category: 'FEEDBACK',
+                uploadToS3: (file, cat) => uploadFile(file, cat),
+                saveToDatabase: async (fileUrl) => {
+                    const req: CreateFeedbackRequest = {
+                        sourceType: formSourceType,
+                        ratingScore: formRating,
+                        fileUrl,
+                        highlightContent: formHighlights.trim() || null,
+                        improvementContent: formImprovements.trim() || null,
+                        customResponses: {
+                            [customQuestionKey]: customQuestionVal,
+                        },
+                    };
+                    return await submitFeedback(eventId, req);
                 },
-            };
-            await submitFeedback(eventId, req);
+            });
+
             setIsCreateModalOpen(false);
             setFormHighlights('');
             setFormImprovements('');
-            setFormFileUrl('');
+            setSelectedFile(null);
+            setUploadError(null);
             await fetchData();
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : 'Lỗi khi gửi phản hồi');
+            const msg = err instanceof Error ? err.message : 'Lỗi khi gửi phản hồi';
+            setUploadError(msg);
+            alert(msg);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleOpenAttachment = async (fileUrl: string) => {
+        try {
+            const res = await getPresignedDownloadUrl(fileUrl);
+            window.open(res.downloadUrl, '_blank');
+        } catch {
+            window.open(fileUrl, '_blank');
         }
     };
 
@@ -218,15 +244,14 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                 </div>
 
                                 {fb.fileUrl && (
-                                    <a
-                                        href={fb.fileUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenAttachment(fb.fileUrl)}
                                         className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
                                     >
                                         <FileText className="h-3.5 w-3.5" />
                                         <span>Minh chứng đính kèm</span>
-                                    </a>
+                                    </button>
                                 )}
                             </div>
 
@@ -377,31 +402,41 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                 </label>
                                 <FileUploader
                                     category="FEEDBACK"
-                                    onUploadSuccess={(res) => setFormFileUrl(res.fileUrl)}
+                                    selectedFile={selectedFile}
+                                    onFileSelect={setSelectedFile}
+                                    isUploading={isUploading}
+                                    progress={progress}
+                                    error={uploadError}
                                     description="Hỗ trợ ảnh chụp JPG, PNG hoặc PDF minh chứng"
                                 />
-                                {formFileUrl && (
-                                    <p className="mt-1.5 truncate text-xs text-emerald-600 font-medium">
-                                        ✓ Đã đính kèm: {formFileUrl}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateModalOpen(false)}
-                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                                    disabled={isSubmitting || isUploading}
+                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                                 >
                                     Hủy bỏ
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!formFileUrl || isSubmitting}
+                                    disabled={!selectedFile || isSubmitting || isUploading}
                                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
-                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                                    <span>Gửi phản hồi</span>
+                                    {(isSubmitting || isUploading) ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <CheckCircle className="h-4 w-4" />
+                                    )}
+                                    <span>
+                                        {isUploading
+                                            ? `Đang đẩy lên S3 (${progress}%)...`
+                                            : isSubmitting
+                                              ? 'Đang lưu CSDL...'
+                                              : 'Gửi phản hồi'}
+                                    </span>
                                 </button>
                             </div>
                         </form>
