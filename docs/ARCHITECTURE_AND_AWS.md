@@ -19,7 +19,7 @@ Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết k�
   - PostgreSQL `ARRAY` (`department_enum[]` trong bảng `event_incidents`)
   - `JSONB` (`custom_responses` trong bảng `event_feedbacks`)
   - Read-only Views (`v_event_budget_summary`, `v_projected_budget_from_previous_season`)
-- Quản lý phiên bản lược đồ cơ sở dữ liệu (Database Versioning) đồng bộ và nhất quán qua **Supabase Migration** (quản lý file migration SQL và áp dụng trực tiếp lên cơ sở dữ liệu PostgreSQL).
+- Quản lý phiên bản lược đồ cơ sở dữ liệu qua các file SQL có phiên bản và `MigrationTool` dùng chung cho Supabase dev và RDS production (xem `docs/DATABASE_MIGRATIONS.md`).
 - Bảo mật ứng dụng bằng **Spring Security** kết hợp kiểm soát truy cập dựa trên vai trò cấp CLB (`club_role_enum`) và cấp sự kiện (`event_role_enum`).
 
 ---

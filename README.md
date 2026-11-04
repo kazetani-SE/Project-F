@@ -30,7 +30,7 @@
 | :--- | :--- |
 | **Frontend (Client)** | React 19, TypeScript, Vite |
 | **Backend (Server)** | Java 21 (LTS), Spring Boot 3.3.4, Spring Data JPA / Hibernate, Spring Security, Jakarta Validation |
-| **Database & Migration** | PostgreSQL 15+ (Amazon RDS / Supabase), Supabase Migration |
+| **Database & Migration** | PostgreSQL 15+ (Supabase dev / Amazon RDS production), [versioned SQL migrations](docs/DATABASE_MIGRATIONS.md) |
 | **Cloud Infrastructure (AWS)** | Amazon VPC (Public/Private Subnets), Amazon EC2 (kèm Nginx Reverse Proxy & IAM Instance Profile), Amazon RDS for PostgreSQL, Amazon S3 (Pre-signed URL Upload/Download), Amazon CloudWatch & AWS CloudTrail |
 
 ---
