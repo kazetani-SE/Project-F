@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, X, Loader2, FileText } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, X, Loader2, FileText, FileSpreadsheet } from 'lucide-react';
 import {
     type StorageCategory,
     STORAGE_LIMIT_LABELS,
@@ -68,6 +68,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 if (m === 'application/pdf') return '.pdf';
                 if (m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
                 if (m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return '.xlsx';
+                if (m === 'application/vnd.ms-excel') return '.xls';
+                if (m === 'text/csv' || m === 'application/csv') return '.csv';
+                if (m === 'text/plain') return '.txt';
                 return m;
             })
             .join(',');
@@ -177,6 +180,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                                     alt="Preview"
                                     className="h-12 w-12 shrink-0 rounded-lg object-cover border border-emerald-200 shadow-xs"
                                 />
+                            ) : selectedFile?.name.match(/\.(xlsx|xls|csv)$/i) || category === 'FEEDBACK' ? (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                                    <FileSpreadsheet className="h-6 w-6" />
+                                </div>
                             ) : (
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
                                     <FileText className="h-6 w-6" />

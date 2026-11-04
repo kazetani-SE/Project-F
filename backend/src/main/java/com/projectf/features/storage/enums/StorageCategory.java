@@ -34,7 +34,11 @@ public enum StorageCategory {
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             Constants.MIME_PDF,
-            Constants.MIME_PLAIN
+            Constants.MIME_PLAIN,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+            "text/csv",
+            "application/csv"
     ));
 
     private final long maxSizeBytes;
