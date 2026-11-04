@@ -7,10 +7,8 @@
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>5.11.4</version><scope>test</scope></dependency>
   </dependencies>
   <build>
-    <sourceDirectory>../backend/src/main/java</sourceDirectory>
-    <testSourceDirectory>../backend/src/test/java</testSourceDirectory>
     <plugins>
-      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version><configuration><includes><include>com/projectf/migration/MigrationTool.java</include></includes><testIncludes><testInclude>com/projectf/migration/MigrationFilesTest.java</testInclude></testIncludes></configuration></plugin>
+      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version></plugin>
       <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version></plugin>
       <plugin><groupId>org.codehaus.mojo</groupId><artifactId>exec-maven-plugin</artifactId><version>3.5.0</version><configuration><mainClass>com.projectf.migration.MigrationTool</mainClass></configuration></plugin>
     </plugins>
