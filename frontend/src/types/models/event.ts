@@ -10,4 +10,10 @@ export interface EventSummary {
     name: string;
     seasonLabel: string | null;
     status: EventStatus;
+    year?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    location?: string | null;
+    allocatedBudget?: number | null;
 }
+
