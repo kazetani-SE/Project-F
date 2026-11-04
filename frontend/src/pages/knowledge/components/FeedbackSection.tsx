@@ -3,10 +3,10 @@ import {
     Star,
     MessageSquare,
     Plus,
-    FileText,
     AlertCircle,
     Loader2,
-    CheckCircle,
+    XCircle,
+    Download,
 } from 'lucide-react';
 import {
     getFeedbacksByEvent,
@@ -34,6 +34,9 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
     const [summary, setSummary] = useState<FeedbackSummaryResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Filters
+    const [selectedSource, setSelectedSource] = useState<string>('ALL');
 
     // Modal state
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -122,22 +125,26 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
         }
     };
 
+    const filteredFeedbacks = feedbacks.filter((fb) => {
+        return selectedSource === 'ALL' || fb.sourceType === selectedSource;
+    });
+
     return (
         <div className="space-y-6">
-            {/* Thanh công cụ & Nút gửi phản hồi */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Toolbar */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h3 className="text-base font-bold text-slate-900">
                         Khảo Sát & Phản Hồi Đa Chiều
                     </h3>
                     <p className="text-xs text-slate-500">
-                        Thu thập ý kiến đóng góp từ người tham dự, ban tổ chức và nhà tài trợ.
+                        Thu thập ý kiến đóng góp từ người tham dự, ban tổ chức và nhà tài trợ kèm tệp đính kèm S3.
                     </p>
                 </div>
 
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
                 >
                     <Plus className="h-4 w-4" />
                     <span>Gửi phản hồi / Khảo sát</span>
@@ -192,7 +199,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                             style={{ width: `${percent}%` }}
                                         />
                                     </div>
-                                    <span className="w-10 text-right text-slate-400">{count} lượt</span>
+                                    <span className="w-12 text-right text-slate-400 font-medium">{count} ({percent}%)</span>
                                 </div>
                             );
                         })}
@@ -200,13 +207,45 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                 </div>
             )}
 
+            {/* Source Filter Pills */}
+            <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px]">
+                    Đối tượng:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                        onClick={() => setSelectedSource('ALL')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                            selectedSource === 'ALL'
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        Tất cả ({feedbacks.length})
+                    </button>
+                    {Object.entries(FEEDBACK_SOURCE_LABELS).map(([k, v]) => (
+                        <button
+                            key={k}
+                            onClick={() => setSelectedSource(k)}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                selectedSource === k
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            {v} ({feedbacks.filter((f) => f.sourceType === k).length})
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Danh sách các phản hồi chi tiết */}
             {isLoading ? (
                 <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-500">
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
                     <p className="text-sm">Đang tải danh sách phản hồi…</p>
                 </div>
-            ) : feedbacks.length === 0 ? (
+            ) : filteredFeedbacks.length === 0 ? (
                 <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
                     <MessageSquare className="h-10 w-10 text-slate-400" />
                     <h3 className="mt-3 text-sm font-semibold text-slate-700">Chưa có khảo sát nào</h3>
@@ -216,23 +255,23 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {feedbacks.map((fb) => (
+                    {filteredFeedbacks.map((fb) => (
                         <div
                             key={fb.id}
                             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300"
                         >
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                                        <span className="rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
                                             {FEEDBACK_SOURCE_LABELS[fb.sourceType]}
                                         </span>
                                         <div className="flex items-center text-amber-400">
                                             {[1, 2, 3, 4, 5].map((s) => (
                                                 <Star
                                                     key={s}
-                                                    className={`h-3.5 w-3.5 ${
-                                                        s <= fb.ratingScore ? 'fill-amber-400' : 'text-slate-200'
+                                                    className={`h-4 w-4 ${
+                                                        s <= fb.ratingScore ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
                                                     }`}
                                                 />
                                             ))}
@@ -247,10 +286,10 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                     <button
                                         type="button"
                                         onClick={() => handleOpenAttachment(fb.fileUrl)}
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-colors"
                                     >
-                                        <FileText className="h-3.5 w-3.5" />
-                                        <span>Minh chứng đính kèm</span>
+                                        <Download className="h-3.5 w-3.5 text-emerald-600" />
+                                        <span>Minh chứng đính kèm (S3)</span>
                                     </button>
                                 )}
                             </div>
@@ -261,7 +300,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                         <span className="font-bold text-emerald-800 block mb-1">
                                             ✓ Điểm làm tốt:
                                         </span>
-                                        <p className="text-slate-700">{fb.highlightContent}</p>
+                                        <p className="text-slate-700 leading-relaxed">{fb.highlightContent}</p>
                                     </div>
                                 )}
                                 {fb.improvementContent && (
@@ -269,7 +308,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                         <span className="font-bold text-amber-800 block mb-1">
                                             ! Điểm cần cải thiện:
                                         </span>
-                                        <p className="text-slate-700">{fb.improvementContent}</p>
+                                        <p className="text-slate-700 leading-relaxed">{fb.improvementContent}</p>
                                     </div>
                                 )}
                             </div>
@@ -277,7 +316,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                             {/* Dữ liệu khảo sát động JSONB */}
                             {fb.customResponses && Object.keys(fb.customResponses).length > 0 && (
                                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                                    <span className="text-[11px] font-semibold text-slate-400 uppercase">
+                                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                                         Câu hỏi mở rộng (JSONB):
                                     </span>
                                     {Object.entries(fb.customResponses).map(([key, val]) => (
@@ -301,12 +340,17 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h3 className="text-base font-bold text-slate-900">Gửi phản hồi / Khảo sát</h3>
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Gửi phản hồi / Khảo sát</h3>
+                                <p className="text-xs text-slate-500">
+                                    Đánh giá chất lượng và tải minh chứng trực tiếp lên Amazon S3
+                                </p>
+                            </div>
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
                             >
-                                ✕
+                                <XCircle className="h-5 w-5" />
                             </button>
                         </div>
 
@@ -357,48 +401,54 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                     rows={2}
                                     value={formHighlights}
                                     onChange={(e) => setFormHighlights(e.target.value)}
-                                    placeholder="Những trải nghiệm hài lòng nhất..."
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Nội dung hay, ban tổ chức nhiệt tình, tổ chức chuyên nghiệp..."
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700">Điểm cần cải thiện</label>
+                                <label className="block text-xs font-semibold text-slate-700">Điểm cần cải thiện (Improvements)</label>
                                 <textarea
                                     rows={2}
                                     value={formImprovements}
                                     onChange={(e) => setFormImprovements(e.target.value)}
-                                    placeholder="Góp ý để các mùa sau hoàn thiện hơn..."
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Thời gian gấp gáp, nhiệt độ phòng hội thảo, khâu teabreak..."
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
-                            {/* Trường câu hỏi khảo sát động JSONB */}
-                            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-                                <label className="block text-xs font-bold text-slate-700 mb-2">
-                                    Tiêu chí khảo sát mở rộng (Lưu trữ PostgreSQL JSONB)
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input
-                                        type="text"
-                                        value={customQuestionKey}
-                                        onChange={(e) => setCustomQuestionKey(e.target.value)}
-                                        placeholder="Tên tiêu chí (key)"
-                                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-mono"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={customQuestionVal}
-                                        onChange={(e) => setCustomQuestionVal(e.target.value)}
-                                        placeholder="Giá trị trả lời"
-                                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
-                                    />
+                            {/* Dynamic JSONB field */}
+                            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                                <span className="block text-xs font-bold text-slate-700 mb-2">
+                                    Trường tùy biến động (Dynamic JSONB Responses)
+                                </span>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <label className="text-slate-500">Tên trường (Key)</label>
+                                        <input
+                                            type="text"
+                                            value={customQuestionKey}
+                                            onChange={(e) => setCustomQuestionKey(e.target.value)}
+                                            placeholder="favoriteSession, recommendToFriend..."
+                                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 font-mono text-xs focus:border-emerald-500 focus:outline-hidden"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-slate-500">Giá trị (Value)</label>
+                                        <input
+                                            type="text"
+                                            value={customQuestionVal}
+                                            onChange={(e) => setCustomQuestionVal(e.target.value)}
+                                            placeholder="Workshop Git Actions..."
+                                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs focus:border-emerald-500 focus:outline-hidden"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                    Tệp đính kèm (Ảnh phiếu khảo sát / Minh chứng) *
+                                    Tệp minh chứng khảo sát (Upload Amazon S3) *
                                 </label>
                                 <FileUploader
                                     category="FEEDBACK"
@@ -407,7 +457,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                     isUploading={isUploading}
                                     progress={progress}
                                     error={uploadError}
-                                    description="Hỗ trợ ảnh chụp JPG, PNG hoặc PDF minh chứng"
+                                    description="Tải ảnh chụp form giấy, file PDF kết quả khảo sát (Tối đa 15MB)"
                                 />
                             </div>
 
@@ -425,17 +475,13 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                     disabled={!selectedFile || isSubmitting || isUploading}
                                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
-                                    {(isSubmitting || isUploading) ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <CheckCircle className="h-4 w-4" />
-                                    )}
+                                    {(isSubmitting || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
                                     <span>
                                         {isUploading
                                             ? `Đang đẩy lên S3 (${progress}%)...`
                                             : isSubmitting
                                               ? 'Đang lưu CSDL...'
-                                              : 'Gửi phản hồi'}
+                                              : 'Gửi khảo sát'}
                                     </span>
                                 </button>
                             </div>
