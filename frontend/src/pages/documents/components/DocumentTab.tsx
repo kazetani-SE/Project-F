@@ -6,7 +6,6 @@ import {
     Plus,
     CheckCircle,
     XCircle,
-    Clock,
     Search,
     AlertCircle,
     Loader2,
@@ -32,7 +31,6 @@ import {
     type DocumentDocType,
     type CreateDocumentRequest,
     DOC_TYPE_LABELS,
-    APPROVAL_STATUS_CONFIG,
 } from '../../../types/models/document';
 
 interface Props {
@@ -50,6 +48,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedDocType, setSelectedDocType] = useState<string>('ALL');
+    const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
     // Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -190,45 +189,110 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
             doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             doc.version.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = selectedDocType === 'ALL' || doc.docType === selectedDocType;
-        return matchQuery && matchType;
+        const matchStatus = selectedStatus === 'ALL' || doc.status === selectedStatus;
+        return matchQuery && matchType && matchStatus;
     });
 
     return (
         <div className="space-y-6">
             {/* Thanh công cụ Tìm kiếm & Bộ lọc & Nút tạo */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-1 flex-wrap items-center gap-3">
-                    <div className="relative min-w-[240px] flex-1 max-w-md">
+                    <div className="relative min-w-[260px] flex-1 max-w-md">
                         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Tìm kiếm tài liệu theo tiêu đề, phiên bản..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-emerald-500 focus:outline-hidden"
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden"
                         />
                     </div>
-                    <select
-                        value={selectedDocType}
-                        onChange={(e) => setSelectedDocType(e.target.value)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-hidden"
-                    >
-                        <option value="ALL">Tất cả phân loại</option>
+
+                    {/* Filter Pills: Type */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                            onClick={() => setSelectedDocType('ALL')}
+                            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                selectedDocType === 'ALL'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            Tất cả phân loại
+                        </button>
                         {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
-                            <option key={k} value={k}>
+                            <button
+                                key={k}
+                                onClick={() => setSelectedDocType(k)}
+                                className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                    selectedDocType === k
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                            >
                                 {v}
-                            </option>
+                            </button>
                         ))}
-                    </select>
+                    </div>
                 </div>
 
                 <button
                     onClick={() => handleOpenCreateModal()}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
                 >
                     <Plus className="h-4 w-4" />
                     <span>Tải lên tài liệu mới</span>
                 </button>
+            </div>
+
+            {/* Status Pills */}
+            <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px]">
+                    Trạng thái:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                        onClick={() => setSelectedStatus('ALL')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            selectedStatus === 'ALL'
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        Tất cả ({documents.length})
+                    </button>
+                    <button
+                        onClick={() => setSelectedStatus('APPROVED')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            selectedStatus === 'APPROVED'
+                                ? 'bg-emerald-100 text-emerald-800 font-semibold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        • Đã duyệt ({documents.filter((d) => d.status === 'APPROVED').length})
+                    </button>
+                    <button
+                        onClick={() => setSelectedStatus('PENDING')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            selectedStatus === 'PENDING'
+                                ? 'bg-amber-100 text-amber-800 font-semibold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        • Chờ phê duyệt ({documents.filter((d) => d.status === 'PENDING').length})
+                    </button>
+                    <button
+                        onClick={() => setSelectedStatus('REJECTED')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            selectedStatus === 'REJECTED'
+                                ? 'bg-rose-100 text-rose-800 font-semibold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        • Từ chối ({documents.filter((d) => d.status === 'REJECTED').length})
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -247,7 +311,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
             ) : filteredDocs.length === 0 ? (
                 <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
                     <FileText className="h-10 w-10 text-slate-400" />
-                    <h3 className="mt-3 text-sm font-semibold text-slate-700">Chưa có tài liệu nào</h3>
+                    <h3 className="mt-3 text-sm font-semibold text-slate-700">Chưa có tài liệu phù hợp</h3>
                     <p className="mt-1 text-xs text-slate-400">
                         Bắt đầu bằng cách tải lên kế hoạch tổng thể hoặc kịch bản chương trình.
                     </p>
@@ -256,72 +320,87 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <thead className="border-b border-slate-100 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                                 <tr>
-                                    <th className="py-3.5 px-4">Tài liệu & Phiên bản</th>
-                                    <th className="py-3.5 px-4">Phân loại</th>
-                                    <th className="py-3.5 px-4">Trạng thái duyệt</th>
-                                    <th className="py-3.5 px-4">Người tải lên</th>
-                                    <th className="py-3.5 px-4 text-right">Thao tác</th>
+                                    <th className="py-3 px-5">Tài liệu & Phiên bản</th>
+                                    <th className="py-3 px-5">Phân loại</th>
+                                    <th className="py-3 px-5">Trạng thái duyệt</th>
+                                    <th className="py-3 px-5">Người tải lên</th>
+                                    <th className="py-3 px-5 text-right">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {filteredDocs.map((doc) => {
-                                    const statusCfg = APPROVAL_STATUS_CONFIG[doc.status];
                                     return (
                                         <tr key={doc.id} className="hover:bg-slate-50/70 transition-colors">
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-5">
                                                 <div className="flex items-start gap-3">
-                                                    <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                                                    <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 border border-emerald-100 shrink-0">
                                                         <FileText className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <p className="font-semibold text-slate-900">{doc.title}</p>
-                                                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                                                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
                                                                 v{doc.version}
                                                             </span>
                                                             {doc.parentDocumentId && (
-                                                                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
                                                                     <GitBranch className="h-3 w-3" /> Bản cập nhật
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-slate-400">
+                                                        <p className="mt-0.5 text-xs text-slate-400">
                                                             Ngày tạo: {new Date(doc.createdAt).toLocaleDateString('vi-VN')}
                                                         </p>
                                                         {doc.rejectionReason && (
-                                                            <p className="mt-1 text-xs text-rose-600">
+                                                            <p className="mt-1 inline-block rounded-md bg-rose-50 px-2 py-0.5 text-xs text-rose-700 border border-rose-200">
                                                                 Lý do từ chối: {doc.rejectionReason}
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-5">
                                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                                                     {DOC_TYPE_LABELS[doc.docType]}
                                                 </span>
                                             </td>
-                                            <td className="py-3.5 px-4">
-                                                <span
-                                                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}
-                                                >
-                                                    {doc.status === 'APPROVED' && <CheckCircle className="h-3.5 w-3.5" />}
-                                                    {doc.status === 'REJECTED' && <XCircle className="h-3.5 w-3.5" />}
-                                                    {doc.status === 'PENDING' && <Clock className="h-3.5 w-3.5" />}
-                                                    {statusCfg.label}
-                                                </span>
+                                            <td className="py-3.5 px-5">
+                                                {doc.status === 'APPROVED' && (
+                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                                                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                                        Đã phê duyệt
+                                                    </span>
+                                                )}
+                                                {doc.status === 'PENDING' && (
+                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+                                                        <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                                        Chờ phê duyệt
+                                                    </span>
+                                                )}
+                                                {doc.status === 'REJECTED' && (
+                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600">
+                                                        <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                                        Từ chối
+                                                    </span>
+                                                )}
+                                                {doc.status === 'DRAFT' && (
+                                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                                                        <span className="h-2 w-2 rounded-full bg-slate-400" />
+                                                        Bản nháp
+                                                    </span>
+                                                )}
                                             </td>
-                                            <td className="py-3.5 px-4 text-xs text-slate-600">
+                                            <td className="py-3.5 px-5 text-xs text-slate-600 font-medium">
                                                 {doc.uploadedBy}
                                             </td>
-                                            <td className="py-3.5 px-4 text-right">
+                                            <td className="py-3.5 px-5 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
                                                         onClick={() => handleDownload(doc.fileUrl)}
                                                         className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                                                        title="Tải xuống tệp"
+                                                        title="Tải xuống tệp S3"
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </button>
@@ -376,7 +455,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                                 <p className="text-xs text-slate-500">
                                     {selectedParentDoc
                                         ? `Tài liệu gốc: ${selectedParentDoc.title}`
-                                        : 'Tải tệp PDF/Docx lên Amazon S3 và lưu vào hệ thống'}
+                                        : 'Tải tệp PDF/Docx trực tiếp lên Amazon S3'}
                                 </p>
                             </div>
                             <button
@@ -545,35 +624,35 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
 
                         <div className="mt-4 space-y-3">
                             {resolveVersionHistoryChain(documents, versionHistoryDoc).map((ver) => (
-                                    <div
-                                        key={ver.id}
-                                        className={`flex items-center justify-between rounded-xl border p-3 ${
-                                            ver.id === versionHistoryDoc.id
-                                                ? 'border-emerald-300 bg-emerald-50/50'
-                                                : 'border-slate-200 bg-white'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-800">
-                                                v{ver.version}
-                                            </span>
-                                            <div>
-                                                <p className="text-sm font-semibold text-slate-900">{ver.title}</p>
-                                                <p className="text-xs text-slate-500">
-                                                    Tải lên bởi {ver.uploadedBy} •{' '}
-                                                    {new Date(ver.createdAt).toLocaleDateString('vi-VN')}
-                                                </p>
-                                            </div>
+                                <div
+                                    key={ver.id}
+                                    className={`flex items-center justify-between rounded-xl border p-3 ${
+                                        ver.id === versionHistoryDoc.id
+                                            ? 'border-emerald-300 bg-emerald-50/50'
+                                            : 'border-slate-200 bg-white'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-800">
+                                            v{ver.version}
+                                        </span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">{ver.title}</p>
+                                            <p className="text-xs text-slate-500">
+                                                Tải lên bởi {ver.uploadedBy} •{' '}
+                                                {new Date(ver.createdAt).toLocaleDateString('vi-VN')}
+                                            </p>
                                         </div>
-                                        <button
-                                            onClick={() => handleDownload(ver.fileUrl)}
-                                            className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
-                                            title="Xem tài liệu"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </button>
                                     </div>
-                                ))}
+                                    <button
+                                        onClick={() => handleDownload(ver.fileUrl)}
+                                        className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                                        title="Xem tài liệu"
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
