@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertTriangle, HelpCircle, MessageSquare, ChevronRight, Sparkles } from 'lucide-react';
 import { IncidentSection } from './components/IncidentSection';
 import { FaqSection } from './components/FaqSection';
 import { FeedbackSection } from './components/FeedbackSection';
 import { useActiveEvent } from '../../context/activeEventContext';
+import { getIncidentsByEvent, getFaqsBySeries, getFeedbacksByEvent } from '../../services/knowledgeService';
 
 export const KnowledgePage: React.FC = () => {
     const { eventId: paramEventId } = useParams<{ eventId: string }>();
@@ -14,40 +15,73 @@ export const KnowledgePage: React.FC = () => {
     const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
     const seriesId = currentEvent?.seriesId || '22222222-2222-4222-8222-222222222201';
 
+    const [incidentCount, setIncidentCount] = useState<number | null>(null);
+    const [faqCount, setFaqCount] = useState<number | null>(null);
+    const [feedbackCount, setFeedbackCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchCounters = async () => {
+            try {
+                const [incidents, faqs, feedbacks] = await Promise.allSettled([
+                    getIncidentsByEvent(eventId),
+                    getFaqsBySeries(seriesId),
+                    getFeedbacksByEvent(eventId),
+                ]);
+                if (isMounted) {
+                    if (incidents.status === 'fulfilled') setIncidentCount(incidents.value.length);
+                    if (faqs.status === 'fulfilled') setFaqCount(faqs.value.length);
+                    if (feedbacks.status === 'fulfilled') setFeedbackCount(feedbacks.value.length);
+                }
+            } catch {
+                // Ignore counter error
+            }
+        };
+        fetchCounters();
+        return () => {
+            isMounted = false;
+        };
+    }, [eventId, seriesId, activeTab]);
+
     return (
         <div className="space-y-6">
             {/* Header & Breadcrumb */}
             <div>
                 <nav className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                    <Link to="/events" className="hover:text-slate-600 transition-colors">
+                    <Link to="/events" className="hover:text-emerald-600 transition-colors">
                         Sự kiện
                     </Link>
                     <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="text-slate-600">
+                    <span className="text-slate-600 font-medium">
                         {currentEvent?.name || 'Chi tiết sự kiện'}
                     </span>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="font-semibold text-emerald-600">Kho tri thức</span>
                 </nav>
 
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-2.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                            Kho Tri Thức & Kinh Nghiệm Đa Mùa
-                        </h1>
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                                Kho Tri Thức & Kinh Nghiệm Đa Mùa
+                            </h1>
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                                Task 3 Slice
+                            </span>
+                        </div>
                         <p className="mt-1 text-sm text-slate-500">
                             Lưu trữ bài học kinh nghiệm Post-Mortem, ngân hàng câu hỏi FAQ tích lũy và khảo sát sau sự kiện.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
                         <Sparkles className="h-4 w-4" />
                         <span>Kế thừa tri thức đa mùa</span>
                     </div>
                 </div>
             </div>
 
-            {/* Tab navigation */}
+            {/* Tab navigation matching Figma */}
             <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('INCIDENTS')}
@@ -59,6 +93,17 @@ export const KnowledgePage: React.FC = () => {
                 >
                     <AlertTriangle className="h-4 w-4 text-rose-500" />
                     <span>Nhật ký sự cố & Post-Mortem</span>
+                    {incidentCount != null && (
+                        <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                activeTab === 'INCIDENTS'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-100 text-slate-600'
+                            }`}
+                        >
+                            {incidentCount}
+                        </span>
+                    )}
                 </button>
 
                 <button
@@ -71,6 +116,17 @@ export const KnowledgePage: React.FC = () => {
                 >
                     <HelpCircle className="h-4 w-4 text-emerald-600" />
                     <span>Kho FAQ chuỗi sự kiện</span>
+                    {faqCount != null && (
+                        <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                activeTab === 'FAQS'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-100 text-slate-600'
+                            }`}
+                        >
+                            {faqCount}
+                        </span>
+                    )}
                 </button>
 
                 <button
@@ -83,6 +139,17 @@ export const KnowledgePage: React.FC = () => {
                 >
                     <MessageSquare className="h-4 w-4 text-amber-500" />
                     <span>Khảo sát & Đánh giá (JSONB)</span>
+                    {feedbackCount != null && (
+                        <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                activeTab === 'FEEDBACKS'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-slate-100 text-slate-600'
+                            }`}
+                        >
+                            {feedbackCount}
+                        </span>
+                    )}
                 </button>
             </div>
 
