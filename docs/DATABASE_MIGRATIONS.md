@@ -19,13 +19,21 @@ Trước khi baseline, so sánh bảng, enum, view, cột, constraints, indexes 
 
 ```powershell
 $env:BASELINE_SCHEMA_VERIFIED = 'true'
+$env:BASELINE_REQUIRED_RELATIONS = 'public.club_members,public.events'
 mvn -q -DskipTests compile exec:java '-Dexec.args=baseline'
 Remove-Item Env:BASELINE_SCHEMA_VERIFIED
+Remove-Item Env:BASELINE_REQUIRED_RELATIONS
 ```
 
 `baseline` ghi V1 vào lịch sử mà không chạy lại SQL. Biến xác nhận là trách nhiệm của người vận hành, không phải phép đối chiếu tự động. Sau đó chạy `validate`, kiểm tra lịch sử và mới chạy `migrate` để áp dụng V2 trở đi. Không baseline một database trống.
 
 ## Database mới và RDS production
+
+Runner tìm thư mục SQL từ thư mục làm việc hiện tại lên các thư mục cha, nên hỗ trợ chạy từ root repo hoặc module. Với thư mục SQL ngoài repo/bản đóng gói, truyền `'-Dexec.args=migrate --directory <absolute-path>'`. Từ root repo có thể chạy `mvn -f migration/pom.xml -q -DskipTests compile exec:java '-Dexec.args=validate'`.
+
+Checksum SHA-256 chuẩn hóa CRLF và CR thành LF trước khi hash UTF-8. Không bỏ khoảng trắng hay sửa SQL. Nếu đã ghi lịch sử bằng runner cũ dùng raw bytes, cần so sánh nội dung và checksum cũ với file gốc trước khi chuyển đổi lịch sử; runner không tự ghi đè checksum. Đừng baseline lại database đã có lịch sử hoặc xóa history để bỏ qua lỗi checksum.
+
+`BASELINE_REQUIRED_RELATIONS` là danh sách bảng/view phân cách bằng dấu phẩy, có schema qualification. Giá trị ví dụ ở trên là lựa chọn cho Project-F; chỉnh danh sách theo schema cần xác nhận. Công cụ dùng tham số JDBC cho tên relation và chỉ kiểm tra tồn tại, không tự so sánh cột/constraints.
 
 Trên PostgreSQL trống, chạy `migrate` từ V1. RDS private cần chạy lệnh từ máy/CI runner trong VPC có quyền kết nối; không mở RDS ra Internet. Sau khi kiểm tra schema và backup, chạy `validate`. Production triển khai migration trước phiên bản backend yêu cầu schema mới. Không chạy trực tiếp SQL Editor để sửa database chung vì lịch sử/checksum sẽ không ghi nhận thay đổi đó.
 

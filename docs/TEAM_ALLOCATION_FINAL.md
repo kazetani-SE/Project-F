@@ -48,7 +48,7 @@ flowchart TB
 
 | Thành viên | Hạng mục Khởi tạo Nền tảng Dùng chung (Phase 0) | Đầu ra bàn giao cho cả nhóm (Deliverables) |
 | :--- | :--- | :--- |
-| **Thành viên 1** | **Backend Core & Database Schema** | - Quản lý lược đồ CSDL qua **Supabase Migration** (`V1__init_schema.sql`).<br/>- Cấu hình `common.response` (`ApiResponse<T>`), `common.exception` (`GlobalExceptionHandler`), các Enum dùng chung và cấu hình CORS / Spring Security cơ bản. |
+| **Thành viên 1** | **Backend Core & Database Schema** | - Quản lý lược đồ CSDL bằng SQL có phiên bản và runner PostgreSQL độc lập cho Supabase dev / RDS production, giữ nguyên `V1__init_schema.sql` (ADR-0004; xem `docs/DATABASE_MIGRATIONS.md`).<br/>- Cấu hình `common.response` (`ApiResponse<T>`), `common.exception` (`GlobalExceptionHandler`), các Enum dùng chung và cấu hình CORS / Spring Security cơ bản. |
 | **Thành viên 2** | **Frontend Core & App Shell** | - Dựng bộ khung `frontend/src/`: Cấu hình `react-router-dom`, HTTP Client (`services/apiClient.ts` kèm interceptors), khung giao diện chính (`MainLayout`, `Sidebar`, `Header`).<br/>- Xây dựng `ActiveEventContext` (cho phép chọn Mùa sự kiện đang làm việc để các trang của cả 3 thành viên lấy được `eventId` hiện hành). |
 | **Thành viên 3** | **Shared S3 Storage Service (BE + FE)** | - Xây dựng module `com.projectf.features.storage` sử dụng **AWS SDK v2 (`S3Presigner`)** sinh Pre-signed PUT/GET URL (kiểm tra kích thước $\le 15\text{MB}$ cho hóa đơn, $\le 50\text{MB}$ cho tài liệu).<br/>- Xây dựng custom hook `useS3Upload` và component `FileUploader` trên Frontend để Thành viên 2 (upload hóa đơn `expense_receipts`) và Thành viên 3 (tài liệu, ấn phẩm, khảo sát) tái sử dụng. |
 

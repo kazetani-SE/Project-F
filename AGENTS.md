@@ -31,6 +31,26 @@ Trước khi thiết kế hoặc viết code cho bất kỳ phân hệ nào, hã
 
 ## Agent skills
 
+### Kiểm tra trước khi bàn giao
+
+- Trước khi kết luận hoàn tất, đọc `.github/workflows/` và chạy các bước kiểm tra áp dụng cho phần thay đổi, với đúng phiên bản runtime và working directory của CI. Unit test pass hoặc `git diff --check` sạch không thay thế lint/build/test mà workflow yêu cầu.
+- Khi thay đổi module hoặc vị trí source, kiểm tra cả module cũ và mới; cập nhật path filters/job CI để code mới tiếp tục được kiểm tra. Không tắt rule, bỏ job hoặc loại source khỏi lint chỉ để làm CI xanh; việc tách module phải có lý do kiến trúc và được kiểm thử riêng.
+- Đọc exit code và report, không chỉ dòng cuối log. Nếu build artifacts cũ gây lỗi, chạy lại với clean build trước khi quy lỗi cho code hoặc môi trường.
+- Bàn giao phải ghi rõ lệnh đã chạy, kết quả và phần chưa xác minh. Chỉ nói CI trên remote đã pass khi đã xem kết quả của đúng commit; kiểm tra local pass chỉ chứng minh kết quả local.
+
+### Quyết định kiến trúc và tài liệu
+
+- Đối chiếu review với code, yêu cầu người dùng và ADR trước khi sửa; nêu lý do nếu nhận xét mâu thuẫn với quyết định đã được duyệt. Không tự thay đổi công cụ, cấu trúc hay tên file mà người dùng yêu cầu giữ nguyên.
+- Khi thay thế quyết định kiến trúc, tạo ADR mới ghi bối cảnh, lựa chọn, trade-offs và ADR bị thay thế. Giữ nguyên nội dung ADR cũ; liên kết quyết định hiện hành từ tài liệu hướng dẫn.
+- Khi thay đổi quy trình, đồng bộ README, hướng dẫn vận hành, phân công deliverable và AGENTS nếu liên quan. Giữ các mô tả khớp nhau thay vì để lại hướng dẫn cũ đang mâu thuẫn.
+
+### Thay đổi migration
+
+- Trước khi sửa runner hoặc SQL, đọc `docs/DATABASE_MIGRATIONS.md` và ADR-0004. Giữ tên/vị trí V1; bổ sung migration mới cho thay đổi schema đã triển khai, không sửa migration cũ hay tự ghi đè checksum trong database.
+- Kiểm thử checksum với CRLF/LF, thay đổi nội dung SQL và lịch sử bị thiếu/sai thứ tự. Khi đổi thuật toán checksum, tài liệu phải nêu cách xử lý lịch sử đã có.
+- Kiểm thử đường dẫn từ root repo và module; cung cấp cấu hình đường dẫn cho môi trường đóng gói. Các điều kiện baseline theo dự án phải được cấu hình rõ, không gán cứng tên bảng trong runner dùng chung.
+- Chỉ chạy baseline/migration trên database chung khi người dùng đã xác định môi trường đích và cho phép thao tác đó. Baseline cần đối chiếu schema thực tế trước; unit test của runner không chứng minh schema Supabase/RDS tương đương V1.
+
 ### Issue tracker
 
 Issues and specs are tracked in GitHub Issues (`kazetani-SE/Project-F`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.

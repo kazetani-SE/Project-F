@@ -1,7 +1,5 @@
 # Sử Dụng Supabase Migration Thay Cho Flyway Migration
 
-> Superseded: quy trình hiện hành dùng SQL có phiên bản và runner PostgreSQL độc lập, xem `docs/DATABASE_MIGRATIONS.md`. Supabase chỉ là database dev; production dùng Amazon RDS.
-
 ## Context & Decision
 Ban đầu dự án sử dụng Flyway tích hợp trong Spring Boot để quản lý migration lược đồ CSDL. Tuy nhiên, khi kết nối tới Supabase PostgreSQL (phiên bản PostgreSQL 17), cơ chế tự động can thiệp của Flyway trong vòng đời khởi động của ứng dụng Spring Boot gây ra sự phụ thuộc chặt và xung đột về tương thích driver/phiên bản cơ sở dữ liệu cloud. Chúng tôi quyết định gỡ bỏ hoàn toàn Flyway khỏi Backend và chuyển sang quản lý lược đồ CSDL trực tiếp thông qua **Supabase Migration** (sử dụng Supabase CLI / SQL Scripts).
 
