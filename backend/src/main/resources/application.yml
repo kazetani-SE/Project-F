@@ -37,10 +37,13 @@ spring:
             non_contextual_creation: true
 
 aws:
-  region: ${AWS_REGION}
+  region: ${AWS_REGION:ap-southeast-1}
+  access-key-id: ${AWS_ACCESS_KEY_ID:}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+  session-token: ${AWS_SESSION_TOKEN:}
   s3:
-    bucket-name: ${AWS_S3_BUCKET}
-    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES}
+    bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
+    presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
 
 logging:
   level:

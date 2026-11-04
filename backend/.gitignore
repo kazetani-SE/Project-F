@@ -34,3 +34,6 @@ target/
 !.env.example
 application-local.properties
 application-local.yml
+
+.postman
+postman
