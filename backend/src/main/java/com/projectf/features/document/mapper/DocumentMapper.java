@@ -19,7 +19,7 @@ public class DocumentMapper {
         document.setVersion(request.version() == null || request.version().isBlank() ? "1.0" : request.version());
         document.setFileUrl(request.fileUrl());
         document.setUploadedBy(request.uploadedBy());
-        document.setStatus(ApprovalStatus.DRAFT);
+        document.setStatus(ApprovalStatus.PENDING);
         return document;
     }
 

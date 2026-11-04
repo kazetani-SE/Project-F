@@ -19,7 +19,14 @@ import {
 } from '../../../services/documentService';
 import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
+import {
+    executeStagedUploadAndSave,
+    incrementDocumentVersion,
+    resolveVersionHistoryChain,
+} from '../../../services/uploadWorkflow';
+import { useS3Upload } from '../../../hooks/useS3Upload';
 import { useActiveEvent } from '../../../context/activeEventContext';
+import { useAuth } from '../../../context/authContext';
 import {
     type DocumentResponse,
     type DocumentDocType,
@@ -34,6 +41,8 @@ interface Props {
 
 export const DocumentTab: React.FC<Props> = ({ eventId }) => {
     const { role } = useActiveEvent();
+    const { user } = useAuth();
+    const currentMemberUuid = user?.id || '11111111-1111-4111-8111-111111111101';
     const [documents, setDocuments] = useState<DocumentResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -53,8 +62,10 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
     const [formTitle, setFormTitle] = useState('');
     const [formDocType, setFormDocType] = useState<DocumentDocType>('MASTER_PLAN');
     const [formVersion, setFormVersion] = useState('1.0');
-    const [formFileUrl, setFormFileUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isUploading, progress, uploadFile } = useS3Upload();
 
     const isLeader =
         role === 'HEAD_ORGANIZER' ||
@@ -84,39 +95,53 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
             setSelectedParentDoc(parentDoc);
             setFormTitle(parentDoc.title);
             setFormDocType(parentDoc.docType);
-            // Gợi ý phiên bản tiếp theo
-            const currentVer = parseFloat(parentDoc.version);
-            const nextVer = isNaN(currentVer) ? '1.1' : (currentVer + 0.1).toFixed(1);
-            setFormVersion(nextVer);
+            setFormVersion(incrementDocumentVersion(parentDoc.version));
         } else {
             setSelectedParentDoc(null);
             setFormTitle('');
             setFormDocType('MASTER_PLAN');
             setFormVersion('1.0');
         }
-        setFormFileUrl('');
+        setSelectedFile(null);
+        setUploadError(null);
         setIsCreateModalOpen(true);
     };
 
     const handleCreateDocument = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formTitle.trim() || !formFileUrl) return;
+        if (!formTitle.trim()) return;
+        if (!selectedFile) {
+            setUploadError('Vui lòng chọn tệp tài liệu đính kèm');
+            return;
+        }
 
         setIsSubmitting(true);
+        setUploadError(null);
         try {
-            const req: CreateDocumentRequest = {
-                parentDocumentId: selectedParentDoc ? selectedParentDoc.id : null,
-                docType: formDocType,
-                title: formTitle.trim(),
-                version: formVersion.trim() || '1.0',
-                fileUrl: formFileUrl,
-                uploadedBy: role || 'Thành viên BTC',
-            };
-            await createDocument(eventId, req);
+            await executeStagedUploadAndSave({
+                file: selectedFile,
+                category: 'DOCUMENT',
+                uploadToS3: (file, cat) => uploadFile(file, cat),
+                saveToDatabase: async (fileUrl) => {
+                    const req: CreateDocumentRequest = {
+                        parentDocumentId: selectedParentDoc ? selectedParentDoc.id : null,
+                        docType: formDocType,
+                        title: formTitle.trim(),
+                        version: formVersion.trim() || '1.0',
+                        fileUrl,
+                        uploadedBy: currentMemberUuid,
+                    };
+                    return await createDocument(eventId, req);
+                },
+            });
+
             setIsCreateModalOpen(false);
+            setSelectedFile(null);
             await fetchDocuments();
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : 'Lỗi khi tạo tài liệu');
+            const msg = err instanceof Error ? err.message : 'Lỗi khi tạo tài liệu';
+            setUploadError(msg);
+            alert(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -135,7 +160,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                 approvalModalDoc.id,
                 {
                     status,
-                    approvedBy: role || 'HEAD_ORGANIZER',
+                    approvedBy: currentMemberUuid,
                     rejectionReason: status === 'REJECTED' ? rejectionReason.trim() : null,
                 },
                 eventId,
@@ -317,7 +342,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                                                         <Plus className="h-4 w-4" />
                                                     </button>
 
-                                                    {isLeader && doc.status === 'PENDING' && (
+                                                    {isLeader && (doc.status === 'PENDING' || doc.status === 'DRAFT') && (
                                                         <button
                                                             onClick={() => setApprovalModalDoc(doc)}
                                                             className="rounded-lg p-1.5 text-amber-600 hover:bg-amber-50 transition-colors"
@@ -409,31 +434,37 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                                 </label>
                                 <FileUploader
                                     category="DOCUMENT"
-                                    onUploadSuccess={(res) => setFormFileUrl(res.fileUrl)}
+                                    selectedFile={selectedFile}
+                                    onFileSelect={setSelectedFile}
+                                    isUploading={isUploading}
+                                    progress={progress}
+                                    error={uploadError}
                                     description="Hỗ trợ PDF, DOCX, XLSX (Tối đa 50MB)"
                                 />
-                                {formFileUrl && (
-                                    <p className="mt-1.5 truncate text-xs text-emerald-600 font-medium">
-                                        ✓ Đã liên kết: {formFileUrl}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateModalOpen(false)}
-                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                                    disabled={isSubmitting || isUploading}
+                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                                 >
                                     Hủy bỏ
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!formFileUrl || isSubmitting}
+                                    disabled={!selectedFile || isSubmitting || isUploading}
                                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
-                                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    <span>Lưu tài liệu</span>
+                                    {(isSubmitting || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    <span>
+                                        {isUploading
+                                            ? `Đang đẩy lên S3 (${progress}%)...`
+                                            : isSubmitting
+                                              ? 'Đang lưu CSDL...'
+                                              : 'Lưu tài liệu'}
+                                    </span>
                                 </button>
                             </div>
                         </form>
@@ -513,14 +544,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                         </div>
 
                         <div className="mt-4 space-y-3">
-                            {documents
-                                .filter(
-                                    (d) =>
-                                        d.id === versionHistoryDoc.id ||
-                                        d.parentDocumentId === versionHistoryDoc.id ||
-                                        d.id === versionHistoryDoc.parentDocumentId,
-                                )
-                                .map((ver) => (
+                            {resolveVersionHistoryChain(documents, versionHistoryDoc).map((ver) => (
                                     <div
                                         key={ver.id}
                                         className={`flex items-center justify-between rounded-xl border p-3 ${

@@ -9,12 +9,24 @@ import com.projectf.features.media.mapper.MediaAssetMapper;
 import com.projectf.features.media.repository.MediaAssetRepository;
 import com.projectf.features.media.service.MediaAssetService;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MediaAssetServiceImpl implements MediaAssetService {
+
+    private static final Set<String> VALID_TYPES = Set.of(
+            "POSTER",
+            "BANNER",
+            "STANDEE",
+            "BACKDROP",
+            "BADGE",
+            "TRAILER",
+            "SOCIAL_POST",
+            "OTHER"
+    );
 
     private final MediaAssetRepository mediaRepo;
     private final MediaAssetMapper mediaMapper;
@@ -47,6 +59,9 @@ public class MediaAssetServiceImpl implements MediaAssetService {
     @Override
     @Transactional
     public MediaAssetResponse createMediaAsset(UUID eventId, CreateMediaAssetRequest request) {
+        if (!VALID_TYPES.contains(request.assetType())) {
+            throw new IllegalArgumentException("Loại ấn phẩm không hợp lệ: " + request.assetType());
+        }
         EventMediaAsset entity = mediaMapper.toEntity(eventId, request);
         EventMediaAsset saved = mediaRepo.save(entity);
         return mediaMapper.toResponse(saved);

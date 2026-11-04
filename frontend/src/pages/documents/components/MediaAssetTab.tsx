@@ -7,14 +7,21 @@ import {
     AlertCircle,
     Loader2,
     CheckCircle2,
+    XCircle,
     Clock,
 } from 'lucide-react';
 import {
     getMediaAssetsByEvent,
     createMediaAsset,
     updateMediaPrintStatus,
+    updateMediaApproval,
 } from '../../../services/mediaService';
+import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
+import { executeStagedUploadAndSave } from '../../../services/uploadWorkflow';
+import { useS3Upload } from '../../../hooks/useS3Upload';
+import { useActiveEvent } from '../../../context/activeEventContext';
+import { useAuth } from '../../../context/authContext';
 import {
     type MediaAssetResponse,
     type MediaAssetType,
@@ -27,7 +34,17 @@ interface Props {
 }
 
 export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
+    const { role } = useActiveEvent();
+    const { user } = useAuth();
+    const currentMemberUuid = user?.id || '11111111-1111-4111-8111-111111111101';
+    const isLeader =
+        role === 'HEAD_ORGANIZER' ||
+        role === 'VICE_ORGANIZER' ||
+        role === 'LEAD_MEDIA' ||
+        role === 'LEAD_CONTENT';
+
     const [assets, setAssets] = useState<MediaAssetResponse[]>([]);
+    const [resolvedPreviews, setResolvedPreviews] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedType, setSelectedType] = useState<string>('ALL');
@@ -38,8 +55,10 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
     const [formAssetType, setFormAssetType] = useState<MediaAssetType>('POSTER');
     const [formSpecs, setFormSpecs] = useState('');
     const [formDesignUrl, setFormDesignUrl] = useState('');
-    const [formPreviewUrl, setFormPreviewUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isUploading, progress, uploadFile } = useS3Upload();
 
     const fetchAssets = useCallback(async () => {
         setIsLoading(true);
@@ -61,6 +80,53 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
         fetchAssets();
     }, [fetchAssets]);
 
+    useEffect(() => {
+        let cancelled = false;
+        const resolveS3Urls = async () => {
+            const entries = await Promise.all(
+                assets.map(async (asset) => {
+                    const rawUrl = asset.previewImageUrl;
+                    if (!rawUrl) return [asset.id, ''] as const;
+                    if (rawUrl.includes('.amazonaws.com/')) {
+                        try {
+                            const signed = await getPresignedDownloadUrl(rawUrl);
+                            return [asset.id, signed.downloadUrl] as const;
+                        } catch {
+                            return [asset.id, rawUrl] as const;
+                        }
+                    }
+                    return [asset.id, rawUrl] as const;
+                }),
+            );
+            if (!cancelled) {
+                setResolvedPreviews(Object.fromEntries(entries));
+            }
+        };
+        resolveS3Urls();
+        return () => {
+            cancelled = true;
+        };
+    }, [assets]);
+
+    const handleApproveAsset = async (
+        asset: MediaAssetResponse,
+        approvalStatus: 'APPROVED' | 'REJECTED',
+    ) => {
+        try {
+            const updated = await updateMediaApproval(
+                asset.id,
+                {
+                    approvalStatus,
+                    approvedBy: currentMemberUuid,
+                },
+                eventId,
+            );
+            setAssets((prev) => prev.map((a) => (a.id === asset.id ? updated : a)));
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái duyệt ấn phẩm');
+        }
+    };
+
     const handleTogglePrint = async (asset: MediaAssetResponse) => {
         try {
             const nextStatus = !asset.isPrinted;
@@ -78,23 +144,46 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
         if (!formTitle.trim()) return;
 
         setIsSubmitting(true);
+        setUploadError(null);
         try {
-            const req: CreateMediaAssetRequest = {
-                assetType: formAssetType,
-                title: formTitle.trim(),
-                specifications: formSpecs.trim() || null,
-                designFileUrl: formDesignUrl.trim() || null,
-                previewImageUrl: formPreviewUrl.trim() || null,
-            };
-            await createMediaAsset(eventId, req);
+            if (selectedFile) {
+                await executeStagedUploadAndSave({
+                    file: selectedFile,
+                    category: 'MEDIA',
+                    uploadToS3: (file, cat) => uploadFile(file, cat),
+                    saveToDatabase: async (fileUrl) => {
+                        const req: CreateMediaAssetRequest = {
+                            assetType: formAssetType,
+                            title: formTitle.trim(),
+                            specifications: formSpecs.trim() || null,
+                            designFileUrl: formDesignUrl.trim() || null,
+                            previewImageUrl: fileUrl,
+                        };
+                        return await createMediaAsset(eventId, req);
+                    },
+                });
+            } else {
+                const req: CreateMediaAssetRequest = {
+                    assetType: formAssetType,
+                    title: formTitle.trim(),
+                    specifications: formSpecs.trim() || null,
+                    designFileUrl: formDesignUrl.trim() || null,
+                    previewImageUrl: null,
+                };
+                await createMediaAsset(eventId, req);
+            }
+
             setIsCreateModalOpen(false);
             setFormTitle('');
             setFormSpecs('');
             setFormDesignUrl('');
-            setFormPreviewUrl('');
+            setSelectedFile(null);
+            setUploadError(null);
             await fetchAssets();
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : 'Lỗi khi tạo ấn phẩm');
+            const msg = err instanceof Error ? err.message : 'Lỗi khi tạo ấn phẩm';
+            setUploadError(msg);
+            alert(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -163,7 +252,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                             <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
                                 {asset.previewImageUrl ? (
                                     <img
-                                        src={asset.previewImageUrl}
+                                        src={resolvedPreviews[asset.id] || asset.previewImageUrl}
                                         alt={asset.title}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     />
@@ -217,23 +306,57 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                     </button>
 
                                     {/* Trạng thái duyệt */}
-                                    <span
-                                        className={`flex items-center gap-1 text-xs font-medium ${
-                                            asset.approvalStatus === 'APPROVED'
-                                                ? 'text-emerald-600'
-                                                : 'text-amber-600'
-                                        }`}
-                                    >
-                                        {asset.approvalStatus === 'APPROVED' ? (
-                                            <>
-                                                <CheckCircle2 className="h-3.5 w-3.5" /> Đã duyệt
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Clock className="h-3.5 w-3.5" /> Chờ duyệt
-                                            </>
-                                        )}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span
+                                            className={`flex items-center gap-1 text-xs font-medium ${
+                                                asset.approvalStatus === 'APPROVED'
+                                                    ? 'text-emerald-600'
+                                                    : asset.approvalStatus === 'REJECTED'
+                                                      ? 'text-rose-600'
+                                                      : 'text-amber-600'
+                                            }`}
+                                        >
+                                            {asset.approvalStatus === 'APPROVED' ? (
+                                                <>
+                                                    <CheckCircle2 className="h-3.5 w-3.5" /> Đã duyệt
+                                                </>
+                                            ) : asset.approvalStatus === 'REJECTED' ? (
+                                                <>
+                                                    <XCircle className="h-3.5 w-3.5" /> Từ chối
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Clock className="h-3.5 w-3.5" /> Chờ duyệt
+                                                </>
+                                            )}
+                                        </span>
+                                        {isLeader &&
+                                            (asset.approvalStatus === 'PENDING' ||
+                                                asset.approvalStatus === 'DRAFT') && (
+                                                <div className="flex items-center gap-1 ml-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleApproveAsset(asset, 'APPROVED')
+                                                        }
+                                                        className="rounded-md bg-emerald-50 p-1 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                                                        title="Phê duyệt ấn phẩm"
+                                                    >
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleApproveAsset(asset, 'REJECTED')
+                                                        }
+                                                        className="rounded-md bg-rose-50 p-1 text-rose-600 hover:bg-rose-100 transition-colors"
+                                                        title="Từ chối ấn phẩm"
+                                                    >
+                                                        <XCircle className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -314,31 +437,37 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                 </label>
                                 <FileUploader
                                     category="MEDIA"
-                                    onUploadSuccess={(res) => setFormPreviewUrl(res.fileUrl)}
+                                    selectedFile={selectedFile}
+                                    onFileSelect={setSelectedFile}
+                                    isUploading={isUploading}
+                                    progress={progress}
+                                    error={uploadError}
                                     description="Tải lên ảnh PNG, JPG hoặc SVG để làm thumbnail"
                                 />
-                                {formPreviewUrl && (
-                                    <p className="mt-1.5 truncate text-xs text-emerald-600 font-medium">
-                                        ✓ Đã tải ảnh xem trước: {formPreviewUrl}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateModalOpen(false)}
-                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                                    disabled={isSubmitting || isUploading}
+                                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                                 >
                                     Hủy bỏ
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!formTitle.trim() || isSubmitting}
+                                    disabled={!formTitle.trim() || isSubmitting || isUploading}
                                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
-                                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    <span>Tạo ấn phẩm</span>
+                                    {(isSubmitting || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    <span>
+                                        {isUploading
+                                            ? `Đang đẩy lên S3 (${progress}%)...`
+                                            : isSubmitting
+                                              ? 'Đang lưu CSDL...'
+                                              : 'Tạo ấn phẩm'}
+                                    </span>
                                 </button>
                             </div>
                         </form>

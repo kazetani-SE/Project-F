@@ -19,7 +19,7 @@ public class MediaAssetMapper {
         asset.setDesignFileUrl(request.designFileUrl());
         asset.setPreviewImageUrl(request.previewImageUrl());
         asset.setIsPrinted(false);
-        asset.setApprovalStatus(ApprovalStatus.DRAFT);
+        asset.setApprovalStatus(ApprovalStatus.PENDING);
         return asset;
     }
 

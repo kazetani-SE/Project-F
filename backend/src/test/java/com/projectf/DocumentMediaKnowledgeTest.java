@@ -3,13 +3,16 @@ package com.projectf;
 import com.projectf.common.enums.ApprovalStatus;
 import com.projectf.common.enums.Department;
 import com.projectf.common.enums.IncidentSeverity;
+import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import com.projectf.features.document.entity.EventDocument;
 import com.projectf.features.document.mapper.DocumentMapper;
 import com.projectf.features.document.repository.DocumentRepository;
 import com.projectf.features.document.service.impl.DocumentServiceImpl;
+import com.projectf.features.knowledge.dto.request.CreateFeedbackRequest;
 import com.projectf.features.knowledge.dto.request.CreateIncidentRequest;
+import com.projectf.features.knowledge.dto.response.FeedbackResponse;
 import com.projectf.features.knowledge.dto.response.FeedbackSummaryResponse;
 import com.projectf.features.knowledge.entity.EventFeedback;
 import com.projectf.features.knowledge.entity.EventIncident;
@@ -158,6 +161,64 @@ class DocumentMediaKnowledgeTest {
         assertEquals(2L, summary.ratingBreakdown().get(5));
         assertEquals(1L, summary.ratingBreakdown().get(4));
         assertEquals(0L, summary.ratingBreakdown().get(1));
+    }
+
+    @Test
+    void createDocumentInitializesPendingAndAutoIncrementsSameEventParentVersion() {
+        DocumentRepository docRepo = Mockito.mock(DocumentRepository.class);
+        DocumentMapper mapper = new DocumentMapper();
+        DocumentServiceImpl service = new DocumentServiceImpl(docRepo, mapper);
+
+        UUID eventId = UUID.randomUUID();
+        UUID parentId = UUID.randomUUID();
+        EventDocument parentDoc = new EventDocument();
+        parentDoc.setId(parentId);
+        parentDoc.setEventId(eventId);
+        parentDoc.setVersion("1.9");
+
+        when(docRepo.findById(parentId)).thenReturn(Optional.of(parentDoc));
+        when(docRepo.save(any(EventDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateDocumentRequest req = new CreateDocumentRequest(
+                parentId,
+                "MASTER_PLAN",
+                "Đề án cập nhật",
+                "",
+                "https://s3.amazonaws.com/bucket/documents/plan.pdf",
+                UUID.randomUUID()
+        );
+
+        DocumentResponse created = service.createDocument(eventId, req);
+        assertEquals(ApprovalStatus.PENDING, created.status());
+        assertEquals("1.10", created.version());
+
+        UUID otherEventId = UUID.randomUUID();
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createDocument(otherEventId, req)
+        );
+    }
+
+    @Test
+    void submitFeedbackPreservesImprovementContent() {
+        FeedbackRepository feedbackRepo = Mockito.mock(FeedbackRepository.class);
+        FeedbackMapper mapper = new FeedbackMapper();
+        FeedbackServiceImpl service = new FeedbackServiceImpl(feedbackRepo, mapper);
+
+        when(feedbackRepo.save(any(EventFeedback.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UUID eventId = UUID.randomUUID();
+        CreateFeedbackRequest req = new CreateFeedbackRequest(
+                "ATTENDEE",
+                "https://s3.amazonaws.com/bucket/feedbacks/fb.png",
+                5,
+                "Tổ chức rất tốt",
+                "Cần mở rộng phòng hội thảo",
+                java.util.Map.of("recommend", true)
+        );
+
+        FeedbackResponse response = service.submitFeedback(eventId, req);
+        assertEquals("Cần mở rộng phòng hội thảo", response.improveContent());
     }
 
     @Test
