@@ -1,17 +1,21 @@
-import React, { useState, useRef } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, X, Loader2 } from 'lucide-react';
-import { useS3Upload } from '../../hooks/useS3Upload';
+import React, { useState, useRef, useEffect } from 'react';
+import { UploadCloud, CheckCircle2, AlertCircle, X, Loader2, FileText } from 'lucide-react';
 import {
     type StorageCategory,
-    type UploadedFileResult,
     STORAGE_LIMIT_LABELS,
     ALLOWED_MIME_TYPES,
 } from '../../types/models/storage';
+import { validateUploadFile } from '../../services/uploadWorkflow';
 
 interface FileUploaderProps {
     category: StorageCategory;
-    onUploadSuccess?: (result: UploadedFileResult) => void;
-    onUploadError?: (error: string) => void;
+    // Chế độ Staged (chờ người dùng bấm Lưu mới upload lên S3)
+    selectedFile?: File | null;
+    onFileSelect?: (file: File | null) => void;
+    isUploading?: boolean;
+    progress?: number;
+    error?: string | null;
+
     accept?: string;
     label?: string;
     description?: string;
@@ -22,8 +26,11 @@ interface FileUploaderProps {
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
     category,
-    onUploadSuccess,
-    onUploadError,
+    selectedFile,
+    onFileSelect,
+    isUploading = false,
+    progress = 0,
+    error: externalError,
     accept,
     label,
     description,
@@ -31,10 +38,27 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     initialUrl,
     className = '',
 }) => {
-    const { isUploading, progress, error, uploadedFile, uploadFile, reset } = useS3Upload();
     const [isDragOver, setIsDragOver] = useState(false);
+    const [localError, setLocalError] = useState<string | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(initialUrl ?? null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Hiển thị preview cho tệp ảnh đã chọn hoặc initialUrl
+    useEffect(() => {
+        if (selectedFile) {
+            if (selectedFile.type.startsWith('image/')) {
+                const objectUrl = URL.createObjectURL(selectedFile);
+                setPreviewUrl(objectUrl);
+                return () => URL.revokeObjectURL(objectUrl);
+            } else {
+                setPreviewUrl(null);
+            }
+        } else if (initialUrl) {
+            setPreviewUrl(initialUrl);
+        } else {
+            setPreviewUrl(null);
+        }
+    }, [selectedFile, initialUrl]);
 
     const defaultAccept =
         accept ||
@@ -42,21 +66,22 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             ?.map((m) => {
                 if (m.startsWith('image/')) return '.' + m.split('/')[1];
                 if (m === 'application/pdf') return '.pdf';
+                if (m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
+                if (m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return '.xlsx';
                 return m;
             })
             .join(',');
 
-    const handleFile = async (file: File) => {
+    const handleFile = (file: File) => {
+        setLocalError(null);
         try {
-            if (file.type.startsWith('image/')) {
-                const objectUrl = URL.createObjectURL(file);
-                setPreviewUrl(objectUrl);
-            }
-            const result = await uploadFile(file, category);
-            onUploadSuccess?.(result);
+            // Kiểm tra dung lượng & định dạng trước khi nhận tệp
+            validateUploadFile(file, category);
+            onFileSelect?.(file);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Tải tệp lên thất bại';
-            onUploadError?.(msg);
+            const msg = err instanceof Error ? err.message : 'Tệp không hợp lệ';
+            setLocalError(msg);
+            onFileSelect?.(null);
         }
     };
 
@@ -89,14 +114,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
     const handleClear = (e: React.MouseEvent) => {
         e.stopPropagation();
-        reset();
+        setLocalError(null);
         setPreviewUrl(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+        onFileSelect?.(null);
     };
 
     const limitLabel = STORAGE_LIMIT_LABELS[category];
+    const displayError = externalError || localError;
+
+    const hasFile = !!selectedFile || !!previewUrl || !!initialUrl;
 
     return (
         <div className={`w-full ${className}`}>
@@ -139,24 +168,30 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                             />
                         </div>
                     </div>
-                ) : uploadedFile || previewUrl ? (
+                ) : hasFile ? (
                     <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            {previewUrl && (
+                            {previewUrl ? (
                                 <img
                                     src={previewUrl}
                                     alt="Preview"
                                     className="h-12 w-12 shrink-0 rounded-lg object-cover border border-emerald-200 shadow-xs"
                                 />
+                            ) : (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                                    <FileText className="h-6 w-6" />
+                                </div>
                             )}
                             <div className="min-w-0 text-left">
                                 <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                                     <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                                    <span className="truncate">{uploadedFile?.fileName || 'Tệp đã tải lên'}</span>
+                                    <span className="truncate">
+                                        {selectedFile?.name || 'Tệp đã chọn'}
+                                    </span>
                                 </div>
                                 <p className="text-xs text-slate-500">
-                                    {uploadedFile
-                                        ? `${(uploadedFile.fileSize / 1024).toFixed(0)} KB • Đã tải lên S3`
+                                    {selectedFile
+                                        ? `${(selectedFile.size / 1024).toFixed(0)} KB • Sẵn sàng tải lên S3 khi lưu`
                                         : 'Đã lưu trữ'}
                                 </p>
                             </div>
@@ -164,7 +199,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                         <button
                             type="button"
                             onClick={handleClear}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-600 transition-colors"
+                            disabled={isUploading}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-600 transition-colors disabled:opacity-50"
                             title="Xóa và chọn tệp khác"
                         >
                             <X className="h-4 w-4" />
@@ -185,10 +221,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 )}
             </div>
 
-            {error && (
+            {displayError && (
                 <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                    <span>{error}</span>
+                    <span>{displayError}</span>
                 </div>
             )}
         </div>

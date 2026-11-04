@@ -5,8 +5,11 @@ import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.dto.response.PresignedUploadResponse;
 import com.projectf.features.storage.enums.StorageCategory;
 import com.projectf.features.storage.service.StorageService;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.Duration;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -48,8 +51,8 @@ public class S3StorageServiceImpl implements StorageService {
             throw new IllegalArgumentException("Định dạng tệp không được hỗ trợ cho danh mục " + category);
         }
 
-        String sanitized = request.fileName().replaceAll("[^a-zA-Z0-9._-]", "_");
-        String objectKey = category.getFolderName() + "/" + UUID.randomUUID() + "-" + sanitized;
+        String sanitized = sanitizeFileName(request.fileName());
+        String objectKey = category.getFolderName() + "/" + sanitized;
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -79,16 +82,18 @@ public class S3StorageServiceImpl implements StorageService {
             throw new IllegalArgumentException("Đường dẫn tệp (objectKey) không được để trống");
         }
 
-        String cleanKey = objectKey;
-        String prefix = "https://" + bucketName + ".s3." + region + ".amazonaws.com/";
-        if (cleanKey.startsWith(prefix)) {
-            cleanKey = cleanKey.substring(prefix.length());
+        String versionId = extractVersionId(objectKey);
+        String cleanKey = extractObjectKey(objectKey);
+
+        GetObjectRequest.Builder requestBuilder = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(cleanKey);
+
+        if (versionId != null && !versionId.isBlank()) {
+            requestBuilder.versionId(versionId);
         }
 
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(cleanKey)
-                .build();
+        GetObjectRequest getObjectRequest = requestBuilder.build();
 
         int expMinutes = 15;
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -103,5 +108,71 @@ public class S3StorageServiceImpl implements StorageService {
                 cleanKey,
                 expMinutes
         );
+    }
+
+    public static String sanitizeFileName(String rawFileName) {
+        String result = "unnamed-file";
+        if (rawFileName != null && !rawFileName.isBlank()) {
+            String normalized = Normalizer.normalize(rawFileName, Normalizer.Form.NFC);
+            String cleaned = normalized.replaceAll("[\\p{Cntrl}/\\\\]+", "_").trim();
+            if (!cleaned.isBlank()) {
+                result = cleaned;
+            }
+        }
+        return result;
+    }
+
+    private String extractVersionId(String objectKeyOrUrl) {
+        String result = null;
+        if (objectKeyOrUrl != null) {
+            int queryIdx = objectKeyOrUrl.indexOf('?');
+            if (queryIdx >= 0) {
+                String queryString = objectKeyOrUrl.substring(queryIdx + 1);
+                String[] pairs = queryString.split("&");
+                for (String pair : pairs) {
+                    int eqIdx = pair.indexOf('=');
+                    if (eqIdx > 0) {
+                        String key = pair.substring(0, eqIdx);
+                        if ("versionId".equalsIgnoreCase(key) && eqIdx < pair.length() - 1) {
+                            result = pair.substring(eqIdx + 1);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    private String extractObjectKey(String objectKeyOrUrl) {
+        String candidate = objectKeyOrUrl.trim();
+        int queryIdx = candidate.indexOf('?');
+        if (queryIdx >= 0) {
+            candidate = candidate.substring(0, queryIdx);
+        }
+
+        String prefix = "https://" + bucketName + ".s3." + region + ".amazonaws.com/";
+        if (candidate.startsWith(prefix)) {
+            candidate = candidate.substring(prefix.length());
+        } else if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+            try {
+                URI parsed = URI.create(candidate);
+                if (parsed.getRawPath() != null) {
+                    candidate = parsed.getRawPath();
+                }
+            } catch (IllegalArgumentException ignored) {
+                int slashIdx = candidate.indexOf('/', candidate.indexOf("://") + 3);
+                if (slashIdx >= 0) {
+                    candidate = candidate.substring(slashIdx + 1);
+                }
+            }
+        }
+        while (candidate.startsWith("/")) {
+            candidate = candidate.substring(1);
+        }
+        if (candidate.contains("%")) {
+            candidate = URLDecoder.decode(candidate.replace("+", "%2B"), StandardCharsets.UTF_8);
+        }
+        return candidate;
     }
 }

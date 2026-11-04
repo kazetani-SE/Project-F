@@ -3,12 +3,10 @@ import {
     getPresignedUploadUrl,
     uploadBinaryToS3,
 } from '../services/storageService';
+import { validateUploadFile } from '../services/uploadWorkflow';
 import {
     type StorageCategory,
     type UploadedFileResult,
-    STORAGE_LIMITS,
-    STORAGE_LIMIT_LABELS,
-    ALLOWED_MIME_TYPES,
 } from '../types/models/storage';
 
 export function useS3Upload() {
@@ -29,21 +27,13 @@ export function useS3Upload() {
             setError(null);
             setProgress(0);
 
-            // 1. Kiểm tra kích thước tệp
-            const maxLimit = STORAGE_LIMITS[category];
-            if (file.size > maxLimit) {
-                const limitLabel = STORAGE_LIMIT_LABELS[category];
-                const msg = `Kích thước tệp (${(file.size / (1024 * 1024)).toFixed(1)}MB) vượt quá hạn mức cho phép (${limitLabel})`;
+            try {
+                validateUploadFile(file, category);
+            } catch (validationErr: unknown) {
+                const msg =
+                    validationErr instanceof Error ? validationErr.message : 'Tệp tải lên không hợp lệ';
                 setError(msg);
-                throw new Error(msg);
-            }
-
-            // 2. Kiểm tra định dạng MIME nếu danh mục có whitelist
-            const allowed = ALLOWED_MIME_TYPES[category];
-            if (allowed && allowed.length > 0 && file.type && !allowed.includes(file.type)) {
-                const msg = `Định dạng tệp "${file.type}" không được hỗ trợ cho danh mục ${category}`;
-                setError(msg);
-                throw new Error(msg);
+                throw validationErr;
             }
 
             setIsUploading(true);
@@ -57,12 +47,16 @@ export function useS3Upload() {
                 });
 
                 // 4. Upload binary trực tiếp lên S3
-                await uploadBinaryToS3(presigned.uploadUrl, file, (percent) => {
+                const uploadResult = await uploadBinaryToS3(presigned.uploadUrl, file, (percent) => {
                     setProgress(percent);
                 });
 
+                const finalFileUrl = uploadResult?.versionId
+                    ? `${presigned.fileUrl}?versionId=${encodeURIComponent(uploadResult.versionId)}`
+                    : presigned.fileUrl;
+
                 const result: UploadedFileResult = {
-                    fileUrl: presigned.fileUrl,
+                    fileUrl: finalFileUrl,
                     objectKey: presigned.objectKey,
                     fileName: file.name,
                     fileSize: file.size,

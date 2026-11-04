@@ -8,6 +8,7 @@ import com.projectf.features.storage.service.impl.S3StorageServiceImpl;
 import java.net.URI;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -105,6 +106,54 @@ class StorageServiceTest {
                 () -> storageService.generatePresignedUploadUrl(request)
         );
         assertTrue(ex.getMessage().contains("50MB"));
+    }
+
+    @Test
+    void preservesVietnameseUtf8FileNameOnS3UploadAndDownload() throws Exception {
+        PresignedPutObjectRequest mockPut = Mockito.mock(PresignedPutObjectRequest.class);
+        when(mockPut.url()).thenReturn(URI.create("https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/signed").toURL());
+        ArgumentCaptor<PutObjectPresignRequest> putCaptor = ArgumentCaptor.forClass(PutObjectPresignRequest.class);
+        when(s3Presigner.presignPutObject(putCaptor.capture())).thenReturn(mockPut);
+
+        String originalName = "Ôn tập. Bài 4.5 JPD123.pdf";
+        PresignedUploadRequest uploadReq = new PresignedUploadRequest(
+                originalName,
+                "application/pdf",
+                1024L,
+                StorageCategory.DOCUMENT
+        );
+
+        PresignedUploadResponse uploadRes = storageService.generatePresignedUploadUrl(uploadReq);
+        assertEquals("documents/" + originalName, uploadRes.objectKey());
+        assertEquals("documents/" + originalName, putCaptor.getValue().putObjectRequest().key());
+
+        PresignedGetObjectRequest mockGet = Mockito.mock(PresignedGetObjectRequest.class);
+        when(mockGet.url()).thenReturn(URI.create("https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/download").toURL());
+        ArgumentCaptor<GetObjectPresignRequest> getCaptor = ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+        when(s3Presigner.presignGetObject(getCaptor.capture())).thenReturn(mockGet);
+
+        String encodedUrlWithVersion = "https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/%C3%94n%20t%E1%BA%ADp.%20B%C3%A0i%204.5%20JPD123.pdf?versionId=test-ver-123";
+        PresignedDownloadResponse downloadRes = storageService.generatePresignedDownloadUrl(encodedUrlWithVersion);
+
+        assertEquals("documents/Ôn tập. Bài 4.5 JPD123.pdf", downloadRes.objectKey());
+        assertEquals("documents/Ôn tập. Bài 4.5 JPD123.pdf", getCaptor.getValue().getObjectRequest().key());
+        assertEquals("test-ver-123", getCaptor.getValue().getObjectRequest().versionId());
+    }
+
+    @Test
+    void rejectsDocumentWithUnsupportedExecutableMimeType() {
+        PresignedUploadRequest request = new PresignedUploadRequest(
+                "malware.exe",
+                "application/x-msdownload",
+                1024L,
+                StorageCategory.DOCUMENT
+        );
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> storageService.generatePresignedUploadUrl(request)
+        );
+        assertTrue(ex.getMessage().contains("không được hỗ trợ"));
     }
 
     @Test

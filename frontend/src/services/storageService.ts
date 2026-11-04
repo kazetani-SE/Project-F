@@ -32,7 +32,7 @@ export function uploadBinaryToS3(
     uploadUrl: string,
     file: File,
     onProgress?: (percentage: number) => void,
-): Promise<void> {
+): Promise<{ versionId?: string | null }> {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl, true);
@@ -50,7 +50,8 @@ export function uploadBinaryToS3(
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 if (onProgress) onProgress(100);
-                resolve();
+                const versionId = xhr.getResponseHeader('x-amz-version-id');
+                resolve({ versionId: versionId?.trim() || null });
             } else {
                 reject(
                     new Error(

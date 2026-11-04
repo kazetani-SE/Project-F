@@ -13,7 +13,8 @@
       "https://*.cloudfront.net"
     ],
     "ExposeHeaders": [
-      "ETag"
+      "ETag",
+      "x-amz-version-id"
     ],
     "MaxAgeSeconds": 3000
   }
