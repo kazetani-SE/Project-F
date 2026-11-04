@@ -1,0 +1,21 @@
+[
+  {
+    "AllowedHeaders": [
+      "*"
+    ],
+    "AllowedMethods": [
+      "PUT",
+      "GET",
+      "HEAD"
+    ],
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "https://*.cloudfront.net"
+    ],
+    "ExposeHeaders": [
+      "ETag",
+      "x-amz-version-id"
+    ],
+    "MaxAgeSeconds": 3000
+  }
+]
