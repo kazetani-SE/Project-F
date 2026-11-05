@@ -4,12 +4,15 @@
       "*"
     ],
     "AllowedMethods": [
-      "PUT",
       "GET",
+      "PUT",
+      "POST",
       "HEAD"
     ],
     "AllowedOrigins": [
       "http://localhost:5173",
+      "https://*.ngrok-free.dev",
+      "https://*.ngrok.app",
       "https://*.cloudfront.net"
     ],
     "ExposeHeaders": [
