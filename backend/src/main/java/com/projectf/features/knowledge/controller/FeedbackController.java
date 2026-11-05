@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1")
 public class FeedbackController {
 
+    private static final String EVENT_ID_PARAM = "eventId";
+
     private final FeedbackService feedbackService;
 
     public FeedbackController(FeedbackService feedbackService) {
@@ -29,7 +31,7 @@ public class FeedbackController {
 
     @GetMapping("/events/{eventId}/feedbacks")
     public ResponseEntity<ApiResponse<List<FeedbackResponse>>> getFeedbacks(
-            @PathVariable("eventId") UUID eventId
+            @PathVariable(EVENT_ID_PARAM) UUID eventId
     ) {
         List<FeedbackResponse> response = feedbackService.getFeedbacksByEvent(eventId);
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -37,7 +39,7 @@ public class FeedbackController {
 
     @GetMapping("/events/{eventId}/feedbacks/summary")
     public ResponseEntity<ApiResponse<FeedbackSummaryResponse>> getFeedbackSummary(
-            @PathVariable("eventId") UUID eventId
+            @PathVariable(EVENT_ID_PARAM) UUID eventId
     ) {
         FeedbackSummaryResponse response = feedbackService.getFeedbackSummaryByEvent(eventId);
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -45,7 +47,7 @@ public class FeedbackController {
 
     @PostMapping("/events/{eventId}/feedbacks")
     public ResponseEntity<ApiResponse<FeedbackResponse>> submitFeedback(
-            @PathVariable("eventId") UUID eventId,
+            @PathVariable(EVENT_ID_PARAM) UUID eventId,
             @Valid @RequestBody CreateFeedbackRequest request
     ) {
         FeedbackResponse response = feedbackService.submitFeedback(eventId, request);
@@ -54,7 +56,7 @@ public class FeedbackController {
 
     @PostMapping("/events/{eventId}/feedbacks/batch")
     public ResponseEntity<ApiResponse<List<FeedbackResponse>>> submitFeedbacksBatch(
-            @PathVariable("eventId") UUID eventId,
+            @PathVariable(EVENT_ID_PARAM) UUID eventId,
             @Valid @RequestBody List<CreateFeedbackRequest> requests
     ) {
         List<FeedbackResponse> response = feedbackService.submitFeedbacksBatch(eventId, requests);
