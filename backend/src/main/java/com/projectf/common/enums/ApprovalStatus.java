@@ -6,4 +6,3 @@ public enum ApprovalStatus {
     APPROVED,
     REJECTED
 }
-
