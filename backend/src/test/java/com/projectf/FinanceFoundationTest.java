@@ -101,7 +101,7 @@ class FinanceFoundationTest {
         benchmark.setCategoryId(catId);
         benchmark.setItemName("Nước suối Aquafina 500ml");
         benchmark.setUnit("Thùng");
-        benchmark.setCurrentMarketPrice(new BigDecimal("95000"));
+        benchmark.setCurMarketPrice(new BigDecimal("95000"));
         benchmark.setSupplierReference("Đại lý nước FPT");
 
         var bmResp = financeMapper.toResponse(benchmark);
