@@ -12,4 +12,6 @@ public interface FeedbackService {
     FeedbackSummaryResponse getFeedbackSummaryByEvent(UUID eventId);
 
     FeedbackResponse submitFeedback(UUID eventId, CreateFeedbackRequest request);
+
+    List<FeedbackResponse> submitFeedbacksBatch(UUID eventId, List<CreateFeedbackRequest> requests);
 }

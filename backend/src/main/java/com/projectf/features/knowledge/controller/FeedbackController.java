@@ -51,4 +51,13 @@ public class FeedbackController {
         FeedbackResponse response = feedbackService.submitFeedback(eventId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
+
+    @PostMapping("/events/{eventId}/feedbacks/batch")
+    public ResponseEntity<ApiResponse<List<FeedbackResponse>>> submitFeedbacksBatch(
+            @PathVariable("eventId") UUID eventId,
+            @Valid @RequestBody List<CreateFeedbackRequest> requests
+    ) {
+        List<FeedbackResponse> response = feedbackService.submitFeedbacksBatch(eventId, requests);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
 }

@@ -27,6 +27,7 @@ import com.projectf.features.media.service.impl.MediaAssetServiceImpl;
 import jakarta.persistence.Table;
 import jakarta.validation.Validation;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 class DocumentMediaKnowledgeTest {
@@ -214,11 +216,47 @@ class DocumentMediaKnowledgeTest {
                 5,
                 "Tổ chức rất tốt",
                 "Cần mở rộng phòng hội thảo",
-                java.util.Map.of("recommend", true)
+                Map.of("recommend", true)
         );
 
         FeedbackResponse response = service.submitFeedback(eventId, req);
         assertEquals("Cần mở rộng phòng hội thảo", response.improveContent());
+    }
+
+    @Test
+    void submitFeedbacksBatchSavesAllRecords() {
+        FeedbackRepository feedbackRepo = Mockito.mock(FeedbackRepository.class);
+        FeedbackMapper mapper = new FeedbackMapper();
+        FeedbackServiceImpl service = new FeedbackServiceImpl(feedbackRepo, mapper);
+
+        when(feedbackRepo.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        UUID eventId = UUID.randomUUID();
+        List<CreateFeedbackRequest> requests = List.of(
+                new CreateFeedbackRequest("ATTENDEE", "https://s3.amazonaws.com/b/feedback.xlsx", 5, "Nhiệt tình", "Âm thanh nhỏ", Map.of("role", "SV")),
+                new CreateFeedbackRequest("SPEAKER", "https://s3.amazonaws.com/b/feedback.xlsx", 4, "Tổ chức chu đáo", "Cần màn chiếu to hơn", Map.of("role", "Diễn giả"))
+        );
+
+        List<FeedbackResponse> responses = service.submitFeedbacksBatch(eventId, requests);
+        assertEquals(2, responses.size());
+        assertEquals("ATTENDEE", responses.get(0).sourceType());
+        assertEquals(5, responses.get(0).ratingScore());
+        assertEquals("SPEAKER", responses.get(1).sourceType());
+        assertEquals(4, responses.get(1).ratingScore());
+    }
+
+    @Test
+    void submitFeedbacksBatchThrowsOnInvalidSource() {
+        FeedbackRepository feedbackRepo = Mockito.mock(FeedbackRepository.class);
+        FeedbackMapper mapper = new FeedbackMapper();
+        FeedbackServiceImpl service = new FeedbackServiceImpl(feedbackRepo, mapper);
+
+        UUID eventId = UUID.randomUUID();
+        List<CreateFeedbackRequest> requests = List.of(
+                new CreateFeedbackRequest("UNKNOWN_ROLE", "https://s3.amazonaws.com/b/feedback.xlsx", 5, "Nhiệt tình", "", Map.of())
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> service.submitFeedbacksBatch(eventId, requests));
     }
 
     @Test
