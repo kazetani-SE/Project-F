@@ -343,4 +343,25 @@ export const handlers = [
         feedbacksState = [newFeedback, ...feedbacksState];
         return ok(newFeedback);
     }),
+
+    http.post(`${BASE}/events/:eventId/feedbacks/batch`, async ({ params, request }) => {
+        await delay(500);
+        const eventId = params.eventId as string;
+        const bodyList = (await request.json()) as CreateFeedbackRequest[];
+
+        const createdList: FeedbackResponse[] = bodyList.map((body, idx) => ({
+            id: `fb-${Date.now()}-${idx}`,
+            eventId,
+            sourceType: body.sourceType,
+            fileUrl: body.fileUrl,
+            ratingScore: body.ratingScore,
+            highlightContent: body.highlightContent ?? null,
+            improvementContent: body.improvementContent ?? null,
+            customResponses: body.customResponses ?? {},
+            submittedAt: new Date().toISOString(),
+        }));
+
+        feedbacksState = [...createdList, ...feedbacksState];
+        return ok(createdList);
+    }),
 ];
