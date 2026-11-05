@@ -8,9 +8,8 @@ public record EventBudgetSummaryResponse(
     String eventTitle,
     String seasonName,
     BigDecimal allocatedFund,
-    BigDecimal totalBudgetEstimated,
+    BigDecimal totalBudgetEst,
     BigDecimal totalActualSpent,
-    BigDecimal remainingAllocatedFund,
-    BigDecimal varianceAgainstEstimate
+    BigDecimal remainingFund,
+    BigDecimal estimateVariance
 ) {}
-

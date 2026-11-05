@@ -35,7 +35,7 @@ public class ItemPriceBenchmark {
     private String unit;
 
     @Column(name = "current_market_price", nullable = false, precision = 15, scale = 2)
-    private BigDecimal currentMarketPrice;
+    private BigDecimal curMarketPrice;
 
     @Column(name = "supplier_reference", length = 200)
     private String supplierReference;
@@ -44,4 +44,3 @@ public class ItemPriceBenchmark {
     @Column(name = "last_updated_at", nullable = false)
     private OffsetDateTime lastUpdatedAt;
 }
-

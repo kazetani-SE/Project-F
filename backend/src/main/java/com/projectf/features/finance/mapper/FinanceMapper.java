@@ -36,7 +36,7 @@ public class FinanceMapper {
         entity.setCategoryId(request.categoryId());
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
-        entity.setCurrentMarketPrice(request.currentMarketPrice());
+        entity.setCurMarketPrice(request.curMarketPrice());
         entity.setSupplierReference(request.supplierReference());
         return entity;
     }
@@ -45,7 +45,7 @@ public class FinanceMapper {
         entity.setCategoryId(request.categoryId());
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
-        entity.setCurrentMarketPrice(request.currentMarketPrice());
+        entity.setCurMarketPrice(request.curMarketPrice());
         entity.setSupplierReference(request.supplierReference());
     }
 
@@ -55,7 +55,7 @@ public class FinanceMapper {
             entity.getCategoryId(),
             entity.getItemName(),
             entity.getUnit(),
-            entity.getCurrentMarketPrice(),
+            entity.getCurMarketPrice(),
             entity.getSupplierReference(),
             entity.getLastUpdatedAt()
         );
@@ -71,7 +71,7 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setQuantity(request.quantity());
         entity.setUnit(request.unit().trim());
-        entity.setEstimatedUnitPrice(request.estimatedUnitPrice());
+        entity.setEstUnitPrice(request.estUnitPrice());
         entity.setNotes(request.notes());
         entity.setApprovalStatus(ApprovalStatus.PENDING);
         return entity;
@@ -84,7 +84,7 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setQuantity(request.quantity());
         entity.setUnit(request.unit().trim());
-        entity.setEstimatedUnitPrice(request.estimatedUnitPrice());
+        entity.setEstUnitPrice(request.estUnitPrice());
         entity.setNotes(request.notes());
     }
 
@@ -98,8 +98,8 @@ public class FinanceMapper {
             entity.getItemName(),
             entity.getQuantity(),
             entity.getUnit(),
-            entity.getEstimatedUnitPrice(),
-            entity.getTotalEstimatedAmount(),
+            entity.getEstUnitPrice(),
+            entity.getTotalEstAmount(),
             entity.getNotes(),
             entity.getApprovalStatus(),
             entity.getApprovedBy(),
@@ -183,26 +183,26 @@ public class FinanceMapper {
             view.getEventTitle(),
             view.getSeasonName(),
             view.getAllocatedFund(),
-            view.getTotalBudgetEstimated(),
+            view.getTotalBudgetEst(),
             view.getTotalActualSpent(),
-            view.getRemainingAllocatedFund(),
-            view.getVarianceAgainstEstimate()
+            view.getRemainingFund(),
+            view.getEstimateVariance()
         );
     }
 
     public ProjectedBudgetResponse toResponse(ProjectedBudgetView view) {
         return new ProjectedBudgetResponse(
-            view.getPreviousBudgetItemId(),
+            view.getPrevBudgetItemId(),
             view.getPreviousEventId(),
             view.getCategoryId(),
             view.getBenchmarkId(),
             view.getItemName(),
             view.getUnit(),
-            view.getPreviousPlannedQty(),
-            view.getBaseQuantityForProjection(),
+            view.getPrevPlannedQty(),
+            view.getBaseProjectionQty(),
             view.getPreviousUnitPrice(),
-            view.getCurrentAdjustedUnitPrice(),
-            view.getProjectedCurrentCost()
+            view.getAdjustedUnitPrice(),
+            view.getProjectedCost()
         );
     }
 }

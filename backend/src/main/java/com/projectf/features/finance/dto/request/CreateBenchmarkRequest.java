@@ -22,9 +22,8 @@ public record CreateBenchmarkRequest(
 
     @NotNull(message = "Đơn giá thị trường hiện tại là bắt buộc")
     @PositiveOrZero(message = "Đơn giá thị trường phải lớn hơn hoặc bằng 0")
-    BigDecimal currentMarketPrice,
+    BigDecimal curMarketPrice,
 
     @Size(max = 200, message = "Tham chiếu nhà cung cấp tối đa 200 ký tự")
     String supplierReference
 ) {}
-

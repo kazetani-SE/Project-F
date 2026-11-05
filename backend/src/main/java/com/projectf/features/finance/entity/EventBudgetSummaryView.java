@@ -32,15 +32,14 @@ public class EventBudgetSummaryView {
     private BigDecimal allocatedFund;
 
     @Column(name = "total_budget_estimated")
-    private BigDecimal totalBudgetEstimated;
+    private BigDecimal totalBudgetEst;
 
     @Column(name = "total_actual_spent")
     private BigDecimal totalActualSpent;
 
     @Column(name = "remaining_allocated_fund")
-    private BigDecimal remainingAllocatedFund;
+    private BigDecimal remainingFund;
 
     @Column(name = "variance_against_estimate")
-    private BigDecimal varianceAgainstEstimate;
+    private BigDecimal estimateVariance;
 }
-

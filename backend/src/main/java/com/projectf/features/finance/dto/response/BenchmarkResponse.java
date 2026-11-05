@@ -9,8 +9,7 @@ public record BenchmarkResponse(
     UUID categoryId,
     String itemName,
     String unit,
-    BigDecimal currentMarketPrice,
+    BigDecimal curMarketPrice,
     String supplierReference,
     OffsetDateTime lastUpdatedAt
 ) {}
-

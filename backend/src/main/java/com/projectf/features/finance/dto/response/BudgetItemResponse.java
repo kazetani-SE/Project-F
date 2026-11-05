@@ -15,8 +15,8 @@ public record BudgetItemResponse(
     String itemName,
     BigDecimal quantity,
     String unit,
-    BigDecimal estimatedUnitPrice,
-    BigDecimal totalEstimatedAmount,
+    BigDecimal estUnitPrice,
+    BigDecimal totalEstAmount,
     String notes,
     ApprovalStatus approvalStatus,
     UUID approvedBy,
@@ -24,4 +24,3 @@ public record BudgetItemResponse(
     String rejectionReason,
     OffsetDateTime createdAt
 ) {}
-

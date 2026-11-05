@@ -16,17 +16,11 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.repository.query.FluentQuery;
 
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -55,7 +49,7 @@ class FinanceFoundationTest {
         assertTrue(violatedFields.contains("categoryId"));
         assertTrue(violatedFields.contains("itemName"));
         assertTrue(violatedFields.contains("unit"));
-        assertTrue(violatedFields.contains("currentMarketPrice"));
+        assertTrue(violatedFields.contains("curMarketPrice"));
     }
 
     @Test
@@ -74,7 +68,7 @@ class FinanceFoundationTest {
         );
         var priceViolations = validator.validate(negativePrice);
         assertFalse(priceViolations.isEmpty());
-        assertTrue(priceViolations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("estimatedUnitPrice")));
+        assertTrue(priceViolations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("estUnitPrice")));
     }
 
     @Test
@@ -113,7 +107,7 @@ class FinanceFoundationTest {
         var bmResp = financeMapper.toResponse(benchmark);
         assertEquals(bmId, bmResp.id());
         assertEquals("Nước suối Aquafina 500ml", bmResp.itemName());
-        assertEquals(new BigDecimal("95000"), bmResp.currentMarketPrice());
+        assertEquals(new BigDecimal("95000"), bmResp.curMarketPrice());
     }
 
     @Test

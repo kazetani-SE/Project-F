@@ -31,8 +31,7 @@ public record UpdateBudgetItemRequest(
 
     @NotNull(message = "Đơn giá dự kiến là bắt buộc")
     @PositiveOrZero(message = "Đơn giá dự kiến phải lớn hơn hoặc bằng 0")
-    BigDecimal estimatedUnitPrice,
+    BigDecimal estUnitPrice,
 
     String notes
 ) {}
-

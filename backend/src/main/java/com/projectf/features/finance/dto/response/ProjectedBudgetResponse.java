@@ -4,16 +4,15 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record ProjectedBudgetResponse(
-    UUID previousBudgetItemId,
+    UUID prevBudgetItemId,
     UUID previousEventId,
     UUID categoryId,
     UUID benchmarkId,
     String itemName,
     String unit,
-    BigDecimal previousPlannedQty,
-    BigDecimal baseQuantityForProjection,
+    BigDecimal prevPlannedQty,
+    BigDecimal baseProjectionQty,
     BigDecimal previousUnitPrice,
-    BigDecimal currentAdjustedUnitPrice,
-    BigDecimal projectedCurrentCost
+    BigDecimal adjustedUnitPrice,
+    BigDecimal projectedCost
 ) {}
-

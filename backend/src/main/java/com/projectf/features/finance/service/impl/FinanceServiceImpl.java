@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,14 +21,42 @@ import java.util.UUID;
 @Transactional
 public class FinanceServiceImpl implements FinanceService {
 
-    private final BudgetCategoryRepository categoryRepository;
-    private final ItemPriceBenchmarkRepository benchmarkRepository;
-    private final BudgetItemRepository budgetItemRepository;
+    private static final String CATEGORY = "danh mục kinh phí";
+    private static final String BENCHMARK = "đơn giá tham chiếu";
+    private static final String BUDGET_ITEM = "hạng mục dự trù";
+    private static final String EXPENSE = "khoản chi";
+    private static final String RECEIPT = "chứng từ";
+
+    private final BudgetCategoryRepository categoryRepo;
+    private final ItemPriceBenchmarkRepository benchmarkRepo;
+    private final BudgetItemRepository budgetItemRepo;
     private final ExpenseRepository expenseRepository;
-    private final ExpenseReceiptRepository expenseReceiptRepository;
-    private final EventBudgetSummaryViewRepository summaryViewRepository;
-    private final ProjectedBudgetViewRepository projectedViewRepository;
+    private final ExpenseReceiptRepository expReceiptRepo;
+    private final EventBudgetSummaryViewRepository summaryViewRepo;
+    private final ProjectedBudgetViewRepository projectedViewRepo;
     private final FinanceMapper mapper;
+
+    // ========================================================================
+    // HELPERS
+    // ========================================================================
+
+    private static IllegalArgumentException notFound(String entity, UUID id) {
+        return new IllegalArgumentException("Không tìm thấy " + entity + " với ID: " + id);
+    }
+
+    private static IllegalArgumentException alreadyExists(String detail) {
+        return new IllegalArgumentException(detail + " đã tồn tại.");
+    }
+
+    private static IllegalArgumentException linkedNotExist(String entity, UUID id) {
+        return new IllegalArgumentException(entity + " không tồn tại: " + id);
+    }
+
+    private List<ExpenseReceiptResponse> loadReceipts(UUID expenseId) {
+        return expReceiptRepo.findByExpenseId(expenseId).stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
 
     // ========================================================================
     // 1. DANH MỤC KINH PHÍ (BUDGET CATEGORIES)
@@ -38,46 +65,48 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional(readOnly = true)
     public List<BudgetCategoryResponse> getAllCategories() {
-        return categoryRepository.findAll().stream()
-            .map(mapper::toResponse)
-            .toList();
+        return categoryRepo.findAll().stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public BudgetCategoryResponse getCategoryById(UUID id) {
-        return categoryRepository.findById(id)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy danh mục kinh phí với ID: " + id));
+        return categoryRepo.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> notFound(CATEGORY, id));
     }
 
     @Override
     public BudgetCategoryResponse createCategory(CreateBudgetCategoryRequest request) {
-        if (categoryRepository.existsByNameIgnoreCase(request.name().trim())) {
-            throw new IllegalArgumentException("Danh mục kinh phí với tên '" + request.name().trim() + "' đã tồn tại.");
+        String name = request.name().trim();
+        if (categoryRepo.existsByNameIgnoreCase(name)) {
+            throw alreadyExists("Danh mục kinh phí với tên '" + name + "'");
         }
         BudgetCategory entity = mapper.toEntity(request);
-        return mapper.toResponse(categoryRepository.save(entity));
+        return mapper.toResponse(categoryRepo.save(entity));
     }
 
     @Override
     public BudgetCategoryResponse updateCategory(UUID id, UpdateBudgetCategoryRequest request) {
-        BudgetCategory entity = categoryRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy danh mục kinh phí với ID: " + id));
+        BudgetCategory entity = categoryRepo.findById(id)
+                .orElseThrow(() -> notFound(CATEGORY, id));
 
-        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(request.name().trim(), id)) {
-            throw new IllegalArgumentException("Danh mục kinh phí khác với tên '" + request.name().trim() + "' đã tồn tại.");
+        String name = request.name().trim();
+        if (categoryRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw alreadyExists("Danh mục kinh phí khác với tên '" + name + "'");
         }
         mapper.updateEntity(entity, request);
-        return mapper.toResponse(categoryRepository.save(entity));
+        return mapper.toResponse(categoryRepo.save(entity));
     }
 
     @Override
     public void deleteCategory(UUID id) {
-        if (!categoryRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy danh mục kinh phí với ID: " + id);
+        if (!categoryRepo.existsById(id)) {
+            throw notFound(CATEGORY, id);
         }
-        categoryRepository.deleteById(id);
+        categoryRepo.deleteById(id);
     }
 
     // ========================================================================
@@ -89,11 +118,11 @@ public class FinanceServiceImpl implements FinanceService {
     public List<BenchmarkResponse> getAllBenchmarks(UUID categoryId, String keyword) {
         List<ItemPriceBenchmark> list;
         if (categoryId != null) {
-            list = benchmarkRepository.findByCategoryId(categoryId);
+            list = benchmarkRepo.findByCategoryId(categoryId);
         } else if (keyword != null && !keyword.isBlank()) {
-            list = benchmarkRepository.findByItemNameContainingIgnoreCase(keyword.trim());
+            list = benchmarkRepo.findByItemNameContainingIgnoreCase(keyword.trim());
         } else {
-            list = benchmarkRepository.findAll();
+            list = benchmarkRepo.findAll();
         }
         return list.stream().map(mapper::toResponse).toList();
     }
@@ -101,44 +130,48 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional(readOnly = true)
     public BenchmarkResponse getBenchmarkById(UUID id) {
-        return benchmarkRepository.findById(id)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn giá tham chiếu với ID: " + id));
+        return benchmarkRepo.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> notFound(BENCHMARK, id));
     }
 
     @Override
     public BenchmarkResponse createBenchmark(CreateBenchmarkRequest request) {
-        if (!categoryRepository.existsById(request.categoryId())) {
-            throw new IllegalArgumentException("Danh mục kinh phí liên kết không tồn tại: " + request.categoryId());
+        if (!categoryRepo.existsById(request.categoryId())) {
+            throw linkedNotExist("Danh mục kinh phí liên kết", request.categoryId());
         }
-        if (benchmarkRepository.existsByItemNameIgnoreCaseAndUnitIgnoreCase(request.itemName().trim(), request.unit().trim())) {
-            throw new IllegalArgumentException("Đơn giá benchmark cho '" + request.itemName().trim() + "' với đơn vị '" + request.unit().trim() + "' đã tồn tại.");
+        String itemName = request.itemName().trim();
+        String unit = request.unit().trim();
+        if (benchmarkRepo.existsByItemNameIgnoreCaseAndUnitIgnoreCase(itemName, unit)) {
+            throw alreadyExists("Đơn giá benchmark cho '" + itemName + "' với đơn vị '" + unit + "'");
         }
         ItemPriceBenchmark entity = mapper.toEntity(request);
-        return mapper.toResponse(benchmarkRepository.save(entity));
+        return mapper.toResponse(benchmarkRepo.save(entity));
     }
 
     @Override
     public BenchmarkResponse updateBenchmark(UUID id, UpdateBenchmarkRequest request) {
-        ItemPriceBenchmark entity = benchmarkRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn giá tham chiếu với ID: " + id));
+        ItemPriceBenchmark entity = benchmarkRepo.findById(id)
+                .orElseThrow(() -> notFound(BENCHMARK, id));
 
-        if (!categoryRepository.existsById(request.categoryId())) {
-            throw new IllegalArgumentException("Danh mục kinh phí liên kết không tồn tại: " + request.categoryId());
+        if (!categoryRepo.existsById(request.categoryId())) {
+            throw linkedNotExist("Danh mục kinh phí liên kết", request.categoryId());
         }
-        if (benchmarkRepository.existsByItemNameIgnoreCaseAndUnitIgnoreCaseAndIdNot(request.itemName().trim(), request.unit().trim(), id)) {
-            throw new IllegalArgumentException("Đơn giá benchmark khác cho '" + request.itemName().trim() + "' với đơn vị '" + request.unit().trim() + "' đã tồn tại.");
+        String itemName = request.itemName().trim();
+        String unit = request.unit().trim();
+        if (benchmarkRepo.existsByItemNameIgnoreCaseAndUnitIgnoreCaseAndIdNot(itemName, unit, id)) {
+            throw alreadyExists("Đơn giá benchmark khác cho '" + itemName + "' với đơn vị '" + unit + "'");
         }
         mapper.updateEntity(entity, request);
-        return mapper.toResponse(benchmarkRepository.save(entity));
+        return mapper.toResponse(benchmarkRepo.save(entity));
     }
 
     @Override
     public void deleteBenchmark(UUID id) {
-        if (!benchmarkRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy đơn giá tham chiếu với ID: " + id);
+        if (!benchmarkRepo.existsById(id)) {
+            throw notFound(BENCHMARK, id);
         }
-        benchmarkRepository.deleteById(id);
+        benchmarkRepo.deleteById(id);
     }
 
     // ========================================================================
@@ -149,44 +182,44 @@ public class FinanceServiceImpl implements FinanceService {
     @Transactional(readOnly = true)
     public List<BudgetItemResponse> getBudgetItemsByEvent(UUID eventId, ApprovalStatus status) {
         List<BudgetItem> list = (status != null)
-            ? budgetItemRepository.findByEventIdAndApprovalStatus(eventId, status)
-            : budgetItemRepository.findByEventId(eventId);
+                ? budgetItemRepo.findByEventIdAndApprovalStatus(eventId, status)
+                : budgetItemRepo.findByEventId(eventId);
         return list.stream().map(mapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public BudgetItemResponse getBudgetItemById(UUID id) {
-        return budgetItemRepository.findById(id)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hạng mục dự trù với ID: " + id));
+        return budgetItemRepo.findById(id)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> notFound(BUDGET_ITEM, id));
     }
 
     @Override
     public BudgetItemResponse createBudgetItem(CreateBudgetItemRequest request) {
-        if (!categoryRepository.existsById(request.categoryId())) {
-            throw new IllegalArgumentException("Danh mục kinh phí không tồn tại: " + request.categoryId());
+        if (!categoryRepo.existsById(request.categoryId())) {
+            throw linkedNotExist("Danh mục kinh phí", request.categoryId());
         }
         BudgetItem entity = mapper.toEntity(request);
-        return mapper.toResponse(budgetItemRepository.save(entity));
+        return mapper.toResponse(budgetItemRepo.save(entity));
     }
 
     @Override
     public BudgetItemResponse updateBudgetItem(UUID id, UpdateBudgetItemRequest request) {
-        BudgetItem entity = budgetItemRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hạng mục dự trù với ID: " + id));
+        BudgetItem entity = budgetItemRepo.findById(id)
+                .orElseThrow(() -> notFound(BUDGET_ITEM, id));
 
-        if (!categoryRepository.existsById(request.categoryId())) {
-            throw new IllegalArgumentException("Danh mục kinh phí không tồn tại: " + request.categoryId());
+        if (!categoryRepo.existsById(request.categoryId())) {
+            throw linkedNotExist("Danh mục kinh phí", request.categoryId());
         }
         mapper.updateEntity(entity, request);
-        return mapper.toResponse(budgetItemRepository.save(entity));
+        return mapper.toResponse(budgetItemRepo.save(entity));
     }
 
     @Override
     public BudgetItemResponse reviewBudgetItem(UUID id, ReviewBudgetItemRequest request) {
-        BudgetItem entity = budgetItemRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hạng mục dự trù với ID: " + id));
+        BudgetItem entity = budgetItemRepo.findById(id)
+                .orElseThrow(() -> notFound(BUDGET_ITEM, id));
 
         entity.setApprovalStatus(request.status());
         if (request.status() == ApprovalStatus.APPROVED) {
@@ -198,15 +231,15 @@ public class FinanceServiceImpl implements FinanceService {
             entity.setApprovedAt(OffsetDateTime.now());
             entity.setRejectionReason(request.rejectionReason());
         }
-        return mapper.toResponse(budgetItemRepository.save(entity));
+        return mapper.toResponse(budgetItemRepo.save(entity));
     }
 
     @Override
     public void deleteBudgetItem(UUID id) {
-        if (!budgetItemRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy hạng mục dự trù với ID: " + id);
+        if (!budgetItemRepo.existsById(id)) {
+            throw notFound(BUDGET_ITEM, id);
         }
-        budgetItemRepository.deleteById(id);
+        budgetItemRepo.deleteById(id);
     }
 
     // ========================================================================
@@ -216,35 +249,39 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional(readOnly = true)
     public List<ProjectedBudgetResponse> getProjectedBudgetPreview(UUID previousEventId) {
-        return projectedViewRepository.findByPreviousEventId(previousEventId).stream()
-            .map(mapper::toResponse)
-            .toList();
+        return projectedViewRepo.findByPreviousEventId(previousEventId).stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 
     @Override
     public List<BudgetItemResponse> autoProjectFromPreviousSeason(AutoProjectBudgetRequest request) {
-        List<ProjectedBudgetView> projections = projectedViewRepository.findByPreviousEventId(request.previousEventId());
+        List<ProjectedBudgetView> projections = projectedViewRepo.findByPreviousEventId(request.previousEventId());
         if (projections.isEmpty()) {
-            throw new IllegalArgumentException("Không tìm thấy dữ liệu dự trù/thực chi đã duyệt ở mùa trước với ID: " + request.previousEventId());
+            throw notFound("dữ liệu dự trù/thực chi đã duyệt ở mùa trước", request.previousEventId());
         }
 
-        List<BudgetItem> itemsToSave = new ArrayList<>();
-        for (ProjectedBudgetView p : projections) {
-            BudgetItem item = new BudgetItem();
-            item.setEventId(request.targetEventId());
-            item.setCategoryId(p.getCategoryId());
-            item.setBenchmarkId(p.getBenchmarkId());
-            item.setItemName(p.getItemName());
-            item.setUnit(p.getUnit());
-            item.setQuantity(p.getBaseQuantityForProjection() != null ? p.getBaseQuantityForProjection() : BigDecimal.ONE);
-            item.setEstimatedUnitPrice(p.getCurrentAdjustedUnitPrice() != null ? p.getCurrentAdjustedUnitPrice() : BigDecimal.ZERO);
-            item.setNotes("Dự toán tự động kế thừa từ mùa trước (Sự kiện ID: " + request.previousEventId() + ")");
-            item.setApprovalStatus(ApprovalStatus.PENDING);
-            itemsToSave.add(item);
-        }
+        List<BudgetItem> itemsToSave = projections.stream()
+                .map(p -> buildProjectedItem(p, request))
+                .toList();
 
-        List<BudgetItem> saved = budgetItemRepository.saveAll(itemsToSave);
-        return saved.stream().map(mapper::toResponse).toList();
+        return budgetItemRepo.saveAll(itemsToSave).stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
+    private BudgetItem buildProjectedItem(ProjectedBudgetView budgetView, AutoProjectBudgetRequest request) {
+        BudgetItem item = new BudgetItem();
+        item.setEventId(request.targetEventId());
+        item.setCategoryId(budgetView.getCategoryId());
+        item.setBenchmarkId(budgetView.getBenchmarkId());
+        item.setItemName(budgetView.getItemName());
+        item.setUnit(budgetView.getUnit());
+        item.setQuantity(budgetView.getBaseProjectionQty() != null ? budgetView.getBaseProjectionQty() : BigDecimal.ONE);
+        item.setEstUnitPrice(budgetView.getAdjustedUnitPrice() != null ? budgetView.getAdjustedUnitPrice() : BigDecimal.ZERO);
+        item.setNotes("Dự toán tự động kế thừa từ mùa trước (Sự kiện ID: " + request.previousEventId() + ")");
+        item.setApprovalStatus(ApprovalStatus.PENDING);
+        return item;
     }
 
     // ========================================================================
@@ -255,68 +292,54 @@ public class FinanceServiceImpl implements FinanceService {
     @Transactional(readOnly = true)
     public List<ExpenseResponse> getExpensesByEvent(UUID eventId, ApprovalStatus status) {
         List<Expense> expenses = (status != null)
-            ? expenseRepository.findByEventIdAndStatus(eventId, status)
-            : expenseRepository.findByEventId(eventId);
+                ? expenseRepository.findByEventIdAndStatus(eventId, status)
+                : expenseRepository.findByEventId(eventId);
 
-        return expenses.stream().map(exp -> {
-            List<ExpenseReceiptResponse> receipts = expenseReceiptRepository.findByExpenseId(exp.getId()).stream()
-                .map(mapper::toResponse)
+        return expenses.stream()
+                .map(exp -> mapper.toResponse(exp, loadReceipts(exp.getId())))
                 .toList();
-            return mapper.toResponse(exp, receipts);
-        }).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public ExpenseResponse getExpenseById(UUID id) {
         Expense expense = expenseRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản chi với ID: " + id));
-        List<ExpenseReceiptResponse> receipts = expenseReceiptRepository.findByExpenseId(expense.getId()).stream()
-            .map(mapper::toResponse)
-            .toList();
-        return mapper.toResponse(expense, receipts);
+                .orElseThrow(() -> notFound(EXPENSE, id));
+        return mapper.toResponse(expense, loadReceipts(expense.getId()));
     }
 
     @Override
     public ExpenseResponse createExpense(CreateExpenseRequest request) {
-        Expense expense = mapper.toEntity(request);
-        Expense savedExpense = expenseRepository.save(expense);
+        Expense savedExpense = expenseRepository.save(mapper.toEntity(request));
 
-        List<ExpenseReceiptResponse> receiptResponses = new ArrayList<>();
-        if (request.receipts() != null && !request.receipts().isEmpty()) {
-            for (CreateReceiptRequest r : request.receipts()) {
-                ExpenseReceipt receipt = mapper.toEntity(savedExpense.getId(), r);
-                receiptResponses.add(mapper.toResponse(expenseReceiptRepository.save(receipt)));
-            }
-        }
+        List<ExpenseReceiptResponse> receiptResponses = (request.receipts() == null)
+                ? List.of()
+                : request.receipts().stream()
+                .map(r -> mapper.toResponse(expReceiptRepo.save(mapper.toEntity(savedExpense.getId(), r))))
+                .toList();
+
         return mapper.toResponse(savedExpense, receiptResponses);
     }
 
     @Override
     public ExpenseResponse updateExpense(UUID id, UpdateExpenseRequest request) {
         Expense expense = expenseRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản chi với ID: " + id));
+                .orElseThrow(() -> notFound(EXPENSE, id));
 
         mapper.updateEntity(expense, request);
         Expense saved = expenseRepository.save(expense);
-        List<ExpenseReceiptResponse> receipts = expenseReceiptRepository.findByExpenseId(id).stream()
-            .map(mapper::toResponse)
-            .toList();
-        return mapper.toResponse(saved, receipts);
+        return mapper.toResponse(saved, loadReceipts(id));
     }
 
     @Override
     public ExpenseResponse reviewExpense(UUID id, ReviewExpenseRequest request) {
         Expense expense = expenseRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản chi với ID: " + id));
+                .orElseThrow(() -> notFound(EXPENSE, id));
 
         // RÀNG BUỘC NGHIỆP VỤ BẮT BUỘC:
         // Khoản chi (expenses) bắt buộc có ít nhất 1 chứng từ (expense_receipts) trước khi chuyển sang APPROVED.
-        if (request.status() == ApprovalStatus.APPROVED) {
-            long receiptCount = expenseReceiptRepository.countByExpenseId(id);
-            if (receiptCount == 0) {
-                throw new IllegalArgumentException("Khoản chi bắt buộc phải có ít nhất 1 chứng từ/hóa đơn trước khi phê duyệt (APPROVED).");
-            }
+        if (request.status() == ApprovalStatus.APPROVED && expReceiptRepo.countByExpenseId(id) == 0) {
+            throw new IllegalArgumentException("Khoản chi bắt buộc phải có ít nhất 1 chứng từ/hóa đơn trước khi phê duyệt (APPROVED).");
         }
 
         expense.setStatus(request.status());
@@ -331,18 +354,15 @@ public class FinanceServiceImpl implements FinanceService {
         }
 
         Expense saved = expenseRepository.save(expense);
-        List<ExpenseReceiptResponse> receipts = expenseReceiptRepository.findByExpenseId(id).stream()
-            .map(mapper::toResponse)
-            .toList();
-        return mapper.toResponse(saved, receipts);
+        return mapper.toResponse(saved, loadReceipts(id));
     }
 
     @Override
     public void deleteExpense(UUID id) {
         if (!expenseRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy khoản chi với ID: " + id);
+            throw notFound(EXPENSE, id);
         }
-        expenseReceiptRepository.deleteByExpenseId(id);
+        expReceiptRepo.deleteByExpenseId(id);
         expenseRepository.deleteById(id);
     }
 
@@ -353,21 +373,21 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     public ExpenseReceiptResponse addReceipt(UUID expenseId, CreateReceiptRequest request) {
         if (!expenseRepository.existsById(expenseId)) {
-            throw new IllegalArgumentException("Không tìm thấy khoản chi liên kết với ID: " + expenseId);
+            throw notFound(EXPENSE + " liên kết", expenseId);
         }
         ExpenseReceipt receipt = mapper.toEntity(expenseId, request);
-        return mapper.toResponse(expenseReceiptRepository.save(receipt));
+        return mapper.toResponse(expReceiptRepo.save(receipt));
     }
 
     @Override
     public void deleteReceipt(UUID expenseId, UUID receiptId) {
-        ExpenseReceipt receipt = expenseReceiptRepository.findById(receiptId)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chứng từ với ID: " + receiptId));
+        ExpenseReceipt receipt = expReceiptRepo.findById(receiptId)
+                .orElseThrow(() -> notFound(RECEIPT, receiptId));
 
         if (!receipt.getExpenseId().equals(expenseId)) {
             throw new IllegalArgumentException("Chứng từ không thuộc về khoản chi ID: " + expenseId);
         }
-        expenseReceiptRepository.deleteById(receiptId);
+        expReceiptRepo.deleteById(receiptId);
     }
 
     // ========================================================================
@@ -377,9 +397,8 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional(readOnly = true)
     public EventBudgetSummaryResponse getBudgetSummary(UUID eventId) {
-        return summaryViewRepository.findById(eventId)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy dữ liệu tổng hợp ngân sách cho sự kiện ID: " + eventId));
+        return summaryViewRepo.findById(eventId)
+                .map(mapper::toResponse)
+                .orElseThrow(() -> notFound("dữ liệu tổng hợp ngân sách cho sự kiện", eventId));
     }
 }
-

@@ -20,7 +20,7 @@ public class ProjectedBudgetView {
 
     @Id
     @Column(name = "previous_budget_item_id")
-    private UUID previousBudgetItemId;
+    private UUID prevBudgetItemId;
 
     @Column(name = "previous_event_id")
     private UUID previousEventId;
@@ -38,18 +38,17 @@ public class ProjectedBudgetView {
     private String unit;
 
     @Column(name = "previous_planned_qty")
-    private BigDecimal previousPlannedQty;
+    private BigDecimal prevPlannedQty;
 
     @Column(name = "base_quantity_for_projection")
-    private BigDecimal baseQuantityForProjection;
+    private BigDecimal baseProjectionQty;
 
     @Column(name = "previous_unit_price")
     private BigDecimal previousUnitPrice;
 
     @Column(name = "current_adjusted_unit_price")
-    private BigDecimal currentAdjustedUnitPrice;
+    private BigDecimal adjustedUnitPrice;
 
     @Column(name = "projected_current_cost")
-    private BigDecimal projectedCurrentCost;
+    private BigDecimal projectedCost;
 }
-

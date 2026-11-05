@@ -47,11 +47,11 @@ public class BudgetItem {
     private String unit;
 
     @Column(name = "estimated_unit_price", nullable = false, precision = 15, scale = 2)
-    private BigDecimal estimatedUnitPrice;
+    private BigDecimal estUnitPrice;
 
     /** Cột GENERATED ALWAYS AS (quantity * estimated_unit_price) STORED trong PostgreSQL */
     @Column(name = "total_estimated_amount", insertable = false, updatable = false, precision = 15, scale = 2)
-    private BigDecimal totalEstimatedAmount;
+    private BigDecimal totalEstAmount;
 
     @Column(columnDefinition = "text")
     private String notes;
@@ -73,4 +73,3 @@ public class BudgetItem {
     @Column(name = "created_at", nullable = false, insertable = false)
     private OffsetDateTime createdAt;
 }
-
