@@ -64,10 +64,14 @@ export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
         'application/pdf',
     ],
     FEEDBACK: [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+        'text/csv',
+        'application/csv',
+        'application/pdf',
+        'text/plain',
         'image/jpeg',
         'image/png',
         'image/webp',
-        'application/pdf',
-        'text/plain',
     ],
 };

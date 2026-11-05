@@ -27,9 +27,15 @@ export function validateUploadFile(file: File, category: StorageCategory): void 
     // 2. Kiểm tra định dạng MIME
     const allowed = ALLOWED_MIME_TYPES[category];
     if (allowed && allowed.length > 0 && file.type && !allowed.includes(file.type)) {
-        throw new Error(
-            `Định dạng tệp "${file.type}" không được hỗ trợ cho danh mục ${category}`
-        );
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        const isExcelOrCsv =
+            (ext === 'xlsx' || ext === 'xls' || ext === 'csv') &&
+            (category === 'FEEDBACK' || category === 'DOCUMENT');
+        if (!isExcelOrCsv) {
+            throw new Error(
+                `Định dạng tệp "${file.type}" không được hỗ trợ cho danh mục ${category}`
+            );
+        }
     }
 }
 

@@ -157,6 +157,24 @@ class StorageServiceTest {
     }
 
     @Test
+    void allowsExcelSpreadsheetUploadForFeedbackCategory() throws Exception {
+        PresignedPutObjectRequest mockPresigned = Mockito.mock(PresignedPutObjectRequest.class);
+        when(mockPresigned.url()).thenReturn(URI.create("https://test-bucket.s3.ap-southeast-1.amazonaws.com/feedbacks/khao_sat.xlsx?signed=true").toURL());
+        when(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).thenReturn(mockPresigned);
+
+        PresignedUploadRequest request = new PresignedUploadRequest(
+                "khao_sat_google_forms.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                2L * 1024 * 1024,
+                StorageCategory.FEEDBACK
+        );
+
+        PresignedUploadResponse response = storageService.generatePresignedUploadUrl(request);
+        assertNotNull(response);
+        assertEquals("feedbacks/khao_sat_google_forms.xlsx", response.objectKey());
+    }
+
+    @Test
     void generatePresignedDownloadUrlSuccess() throws Exception {
         PresignedGetObjectRequest mockPresigned = Mockito.mock(PresignedGetObjectRequest.class);
         when(mockPresigned.url()).thenReturn(URI.create("https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/test.pdf?signed=true").toURL());
