@@ -16,9 +16,6 @@ Project-F/
         └── 20241025131200_init_schema.sql       # Lược đồ khởi tạo Phase 0
 ```
 
-* **Quy ước đặt tên file:** `<YYYYMMDDHHmmss>_<ten_mo_ta>.sql` (14 chữ số timestamp theo giờ UTC).
-
----
 
 ## 2. Tạo Migration Mới
 
