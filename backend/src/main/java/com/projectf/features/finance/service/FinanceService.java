@@ -1,8 +1,25 @@
 package com.projectf.features.finance.service;
 
 import com.projectf.common.enums.ApprovalStatus;
-import com.projectf.features.finance.dto.request.*;
-import com.projectf.features.finance.dto.response.*;
+import com.projectf.features.finance.dto.request.AutoProjectBudgetRequest;
+import com.projectf.features.finance.dto.request.CreateBenchmarkRequest;
+import com.projectf.features.finance.dto.request.CreateBudgetCategoryRequest;
+import com.projectf.features.finance.dto.request.CreateBudgetItemRequest;
+import com.projectf.features.finance.dto.request.CreateExpenseRequest;
+import com.projectf.features.finance.dto.request.CreateReceiptRequest;
+import com.projectf.features.finance.dto.request.ReviewBudgetItemRequest;
+import com.projectf.features.finance.dto.request.ReviewExpenseRequest;
+import com.projectf.features.finance.dto.request.UpdateBenchmarkRequest;
+import com.projectf.features.finance.dto.request.UpdateBudgetCategoryRequest;
+import com.projectf.features.finance.dto.request.UpdateBudgetItemRequest;
+import com.projectf.features.finance.dto.request.UpdateExpenseRequest;
+import com.projectf.features.finance.dto.response.BenchmarkResponse;
+import com.projectf.features.finance.dto.response.BudgetCategoryResponse;
+import com.projectf.features.finance.dto.response.BudgetItemResponse;
+import com.projectf.features.finance.dto.response.EventBudgetSummaryResponse;
+import com.projectf.features.finance.dto.response.ExpenseReceiptResponse;
+import com.projectf.features.finance.dto.response.ExpenseResponse;
+import com.projectf.features.finance.dto.response.ProjectedBudgetResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,4 +67,3 @@ public interface FinanceService {
     // --- Dashboard & Tóm tắt ngân sách ---
     EventBudgetSummaryResponse getBudgetSummary(UUID eventId);
 }
-
