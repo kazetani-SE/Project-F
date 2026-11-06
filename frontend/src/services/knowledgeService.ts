@@ -95,3 +95,14 @@ export async function submitFeedback(
     );
     return res.data.data;
 }
+
+export async function submitFeedbacksBatch(
+    eventId: string,
+    data: CreateFeedbackRequest[],
+): Promise<FeedbackResponse[]> {
+    const res = await apiClient.post<ApiResponse<FeedbackResponse[]>>(
+        `/events/${eventId}/feedbacks/batch`,
+        data,
+    );
+    return res.data.data;
+}

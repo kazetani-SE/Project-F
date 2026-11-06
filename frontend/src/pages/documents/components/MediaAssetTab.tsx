@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    Image,
+    Image as ImageIcon,
     Printer,
     Plus,
     ExternalLink,
@@ -47,7 +47,10 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
     const [resolvedPreviews, setResolvedPreviews] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Filters
     const [selectedType, setSelectedType] = useState<string>('ALL');
+    const [printFilter, setPrintFilter] = useState<'ALL' | 'PRINTED' | 'NOT_PRINTED'>('ALL');
 
     // Create modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -189,35 +192,93 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
         }
     };
 
+    const filteredAssets = assets.filter((asset) => {
+        if (printFilter === 'PRINTED' && !asset.isPrinted) return false;
+        if (printFilter === 'NOT_PRINTED' && asset.isPrinted) return false;
+        return true;
+    });
+
     return (
         <div className="space-y-6">
             {/* Toolbar */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Lọc theo loại:
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-[11px]">
+                        Loại ấn phẩm:
                     </span>
-                    <select
-                        value={selectedType}
-                        onChange={(e) => setSelectedType(e.target.value)}
-                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-hidden"
-                    >
-                        <option value="ALL">Tất cả ấn phẩm</option>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                            onClick={() => setSelectedType('ALL')}
+                            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                selectedType === 'ALL'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            Tất cả ({assets.length})
+                        </button>
                         {Object.entries(MEDIA_ASSET_TYPE_LABELS).map(([k, v]) => (
-                            <option key={k} value={k}>
+                            <button
+                                key={k}
+                                onClick={() => setSelectedType(k)}
+                                className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                    selectedType === k
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                            >
                                 {v}
-                            </option>
+                            </button>
                         ))}
-                    </select>
+                    </div>
                 </div>
 
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
                 >
                     <Plus className="h-4 w-4" />
                     <span>Thêm ấn phẩm mới</span>
                 </button>
+            </div>
+
+            {/* Print Status Filter Pills */}
+            <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px]">
+                    In ấn:
+                </span>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={() => setPrintFilter('ALL')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            printFilter === 'ALL'
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        Tất cả
+                    </button>
+                    <button
+                        onClick={() => setPrintFilter('PRINTED')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            printFilter === 'PRINTED'
+                                ? 'bg-emerald-100 text-emerald-800 font-semibold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        • Đã gửi in ({assets.filter((a) => a.isPrinted).length})
+                    </button>
+                    <button
+                        onClick={() => setPrintFilter('NOT_PRINTED')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                            printFilter === 'NOT_PRINTED'
+                                ? 'bg-amber-100 text-amber-800 font-semibold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        • Chưa in ấn ({assets.filter((a) => !a.isPrinted).length})
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -233,9 +294,9 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
                     <p className="text-sm">Đang tải danh sách ấn phẩm thiết kế…</p>
                 </div>
-            ) : assets.length === 0 ? (
+            ) : filteredAssets.length === 0 ? (
                 <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-                    <Image className="h-10 w-10 text-slate-400" />
+                    <ImageIcon className="h-10 w-10 text-slate-400" />
                     <h3 className="mt-3 text-sm font-semibold text-slate-700">Chưa có ấn phẩm nào</h3>
                     <p className="mt-1 text-xs text-slate-400">
                         Đăng tải poster, standee, hoặc backdrop để theo dõi tiến độ thiết kế và in ấn.
@@ -243,142 +304,139 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {assets.map((asset) => (
-                        <div
-                            key={asset.id}
-                            className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:border-slate-300 hover:shadow-md"
-                        >
-                            {/* Preview Thumbnail */}
-                            <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
-                                {asset.previewImageUrl ? (
-                                    <img
-                                        src={resolvedPreviews[asset.id] || asset.previewImageUrl}
-                                        alt={asset.title}
-                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                        <Image className="h-10 w-10 stroke-1" />
+                    {filteredAssets.map((asset) => {
+                        const previewSrc = resolvedPreviews[asset.id] || asset.previewImageUrl;
+                        return (
+                            <div
+                                key={asset.id}
+                                className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:border-slate-300 hover:shadow-md"
+                            >
+                                <div>
+                                    {/* Preview container */}
+                                    <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+                                        {previewSrc ? (
+                                            <img
+                                                src={previewSrc}
+                                                alt={asset.title}
+                                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full flex-col items-center justify-center text-slate-400">
+                                                <ImageIcon className="h-10 w-10" />
+                                                <span className="mt-1 text-xs">Chưa có ảnh preview</span>
+                                            </div>
+                                        )}
+
+                                        {/* Badges on preview */}
+                                        <div className="absolute top-3 left-3">
+                                            <span className="rounded-lg bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
+                                                {MEDIA_ASSET_TYPE_LABELS[asset.assetType]}
+                                            </span>
+                                        </div>
+
+                                        <div className="absolute top-3 right-3">
+                                            {asset.approvalStatus === 'APPROVED' && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-xs">
+                                                    <CheckCircle2 className="h-3 w-3" /> Đã duyệt
+                                                </span>
+                                            )}
+                                            {asset.approvalStatus === 'PENDING' && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-xs">
+                                                    <Clock className="h-3 w-3" /> Chờ duyệt
+                                                </span>
+                                            )}
+                                            {asset.approvalStatus === 'REJECTED' && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/90 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-xs">
+                                                    <XCircle className="h-3 w-3" /> Từ chối
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-                                <span className="absolute left-3 top-3 rounded-lg bg-slate-900/70 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-xs">
-                                    {MEDIA_ASSET_TYPE_LABELS[asset.assetType]}
-                                </span>
-                            </div>
 
-                            {/* Card Content */}
-                            <div className="flex flex-1 flex-col p-4">
-                                <h4 className="font-semibold text-slate-900 line-clamp-1">{asset.title}</h4>
+                                    {/* Content info */}
+                                    <div className="p-4">
+                                        <h4 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                                            {asset.title}
+                                        </h4>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            {asset.specifications || 'Chưa cập nhật quy cách in'}
+                                        </p>
 
-                                {asset.specifications ? (
-                                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                                        Quy cách: {asset.specifications}
-                                    </p>
-                                ) : (
-                                    <p className="mt-1 text-xs text-slate-400 italic">Chưa có thông số kích thước</p>
-                                )}
+                                        {asset.designFileUrl && (
+                                            <a
+                                                href={asset.designFileUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                <span>Xem tệp thiết kế gốc (Figma/Drive)</span>
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
 
-                                {asset.designFileUrl && (
-                                    <a
-                                        href={asset.designFileUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        <span>Xem file thiết kế gốc (Figma/Drive)</span>
-                                    </a>
-                                )}
-
-                                {/* Card Footer: In ấn & Phê duyệt */}
-                                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-                                    {/* Nút toggle in ấn */}
+                                {/* Footer actions */}
+                                <div className="border-t border-slate-100 bg-slate-50/70 p-3.5 flex items-center justify-between gap-2">
+                                    {/* Print Toggle */}
                                     <button
                                         onClick={() => handleTogglePrint(asset)}
-                                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
                                             asset.isPrinted
-                                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
                                         }`}
                                     >
                                         <Printer className="h-3.5 w-3.5" />
-                                        <span>{asset.isPrinted ? 'Đã in hoàn tất' : 'Chưa in ấn'}</span>
+                                        <span>{asset.isPrinted ? 'Đã gửi in' : 'Chưa in'}</span>
                                     </button>
 
-                                    {/* Trạng thái duyệt */}
-                                    <div className="flex items-center gap-1.5">
-                                        <span
-                                            className={`flex items-center gap-1 text-xs font-medium ${
-                                                asset.approvalStatus === 'APPROVED'
-                                                    ? 'text-emerald-600'
-                                                    : asset.approvalStatus === 'REJECTED'
-                                                      ? 'text-rose-600'
-                                                      : 'text-amber-600'
-                                            }`}
-                                        >
-                                            {asset.approvalStatus === 'APPROVED' ? (
-                                                <>
-                                                    <CheckCircle2 className="h-3.5 w-3.5" /> Đã duyệt
-                                                </>
-                                            ) : asset.approvalStatus === 'REJECTED' ? (
-                                                <>
-                                                    <XCircle className="h-3.5 w-3.5" /> Từ chối
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Clock className="h-3.5 w-3.5" /> Chờ duyệt
-                                                </>
-                                            )}
-                                        </span>
-                                        {isLeader &&
-                                            (asset.approvalStatus === 'PENDING' ||
-                                                asset.approvalStatus === 'DRAFT') && (
-                                                <div className="flex items-center gap-1 ml-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleApproveAsset(asset, 'APPROVED')
-                                                        }
-                                                        className="rounded-md bg-emerald-50 p-1 text-emerald-600 hover:bg-emerald-100 transition-colors"
-                                                        title="Phê duyệt ấn phẩm"
-                                                    >
-                                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleApproveAsset(asset, 'REJECTED')
-                                                        }
-                                                        className="rounded-md bg-rose-50 p-1 text-rose-600 hover:bg-rose-100 transition-colors"
-                                                        title="Từ chối ấn phẩm"
-                                                    >
-                                                        <XCircle className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                    </div>
+                                    {/* Leader Approval Actions */}
+                                    {isLeader && asset.approvalStatus === 'PENDING' && (
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => handleApproveAsset(asset, 'REJECTED')}
+                                                className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 transition-colors"
+                                                title="Từ chối ấn phẩm"
+                                            >
+                                                <XCircle className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleApproveAsset(asset, 'APPROVED')}
+                                                className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                                title="Phê duyệt ấn phẩm"
+                                            >
+                                                <CheckCircle2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
             {/* Modal tạo ấn phẩm mới */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h3 className="text-base font-bold text-slate-900">Thêm ấn phẩm truyền thông</h3>
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Thêm ấn phẩm thiết kế</h3>
+                                <p className="text-xs text-slate-500">
+                                    Đăng tải thông tin ấn phẩm và ảnh preview trực tiếp lên Amazon S3
+                                </p>
+                            </div>
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 text-slate-600"
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
                             >
-                                ✕
+                                <XCircle className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateAsset} className="mt-4 space-y-4">
+                        <form onSubmit={handleCreateAsset} className="mt-5 space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700">Tên ấn phẩm *</label>
                                 <input
@@ -386,14 +444,14 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                     required
                                     value={formTitle}
                                     onChange={(e) => setFormTitle(e.target.value)}
-                                    placeholder="Ví dụ: Standee hướng dẫn check-in QR"
+                                    placeholder="Ví dụ: Standee hướng dẫn check-in"
                                     className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700">Loại ấn phẩm *</label>
+                                    <label className="block text-xs font-semibold text-slate-700">Phân loại *</label>
                                     <select
                                         value={formAssetType}
                                         onChange={(e) => setFormAssetType(e.target.value as MediaAssetType)}
@@ -412,7 +470,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                         type="text"
                                         value={formSpecs}
                                         onChange={(e) => setFormSpecs(e.target.value)}
-                                        placeholder="0.8m x 1.8m, Hiflex..."
+                                        placeholder="Ví dụ: Khổ A1, cán mờ 150gsm"
                                         className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
                                     />
                                 </div>
@@ -420,7 +478,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700">
-                                    Đường dẫn file thiết kế gốc (Figma / Google Drive)
+                                    Đường dẫn file thiết kế (Figma / Google Drive URL)
                                 </label>
                                 <input
                                     type="url"
@@ -433,7 +491,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                    Ảnh xem trước (Tải lên Amazon S3)
+                                    Ảnh xem trước (Preview Image - Upload S3)
                                 </label>
                                 <FileUploader
                                     category="MEDIA"
@@ -442,7 +500,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                     isUploading={isUploading}
                                     progress={progress}
                                     error={uploadError}
-                                    description="Tải lên ảnh PNG, JPG hoặc SVG để làm thumbnail"
+                                    description="Hỗ trợ JPG, PNG, WEBP (Tối đa 15MB)"
                                 />
                             </div>
 
@@ -457,7 +515,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!formTitle.trim() || isSubmitting || isUploading}
+                                    disabled={isSubmitting || isUploading}
                                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
                                     {(isSubmitting || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -466,7 +524,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                             ? `Đang đẩy lên S3 (${progress}%)...`
                                             : isSubmitting
                                               ? 'Đang lưu CSDL...'
-                                              : 'Tạo ấn phẩm'}
+                                              : 'Lưu ấn phẩm'}
                                     </span>
                                 </button>
                             </div>

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     AlertTriangle,
     Plus,
-    Filter,
     Clock,
     AlertCircle,
     Loader2,
     Users,
+    XCircle,
+    Search,
 } from 'lucide-react';
 import {
     getIncidentsByEvent,
@@ -33,6 +34,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
     const [error, setError] = useState<string | null>(null);
 
     // Filters
+    const [searchQuery, setSearchQuery] = useState('');
     const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
 
@@ -102,62 +104,102 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
     };
 
     const filteredIncidents = incidents.filter((inc) => {
+        const matchQuery =
+            inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            inc.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            inc.rootCause.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (inc.lessonLearned && inc.lessonLearned.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchSev = selectedSeverity === 'ALL' || inc.severity === selectedSeverity;
         const matchDept =
             selectedDept === 'ALL' || inc.departments.includes(selectedDept as Department);
-        return matchSev && matchDept;
+        return matchQuery && matchSev && matchDept;
     });
 
     return (
         <div className="space-y-6">
             {/* Toolbar */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-slate-400" />
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Mức độ:
-                        </span>
-                        <select
-                            value={selectedSeverity}
-                            onChange={(e) => setSelectedSeverity(e.target.value)}
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-hidden"
-                        >
-                            <option value="ALL">Tất cả mức độ</option>
-                            {Object.entries(INCIDENT_SEVERITY_CONFIG).map(([k, v]) => (
-                                <option key={k} value={k}>
-                                    {v.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Ban liên quan:
-                        </span>
-                        <select
-                            value={selectedDept}
-                            onChange={(e) => setSelectedDept(e.target.value)}
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-emerald-500 focus:outline-hidden"
-                        >
-                            <option value="ALL">Tất cả các ban</option>
-                            {Object.entries(DEPARTMENT_LABELS).map(([k, v]) => (
-                                <option key={k} value={k}>
-                                    {v}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="relative min-w-[260px] flex-1 max-w-md">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm sự cố, nguyên nhân, bài học..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden"
+                    />
                 </div>
 
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
                 >
                     <Plus className="h-4 w-4" />
                     <span>Ghi nhận sự cố (Post-Mortem)</span>
                 </button>
+            </div>
+
+            {/* Filter Pills: Severity & Departments */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs">
+                {/* Severity Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px] mr-1">
+                        Mức độ:
+                    </span>
+                    <button
+                        onClick={() => setSelectedSeverity('ALL')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                            selectedSeverity === 'ALL'
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        Tất cả ({incidents.length})
+                    </button>
+                    {Object.entries(INCIDENT_SEVERITY_CONFIG).map(([k, v]) => (
+                        <button
+                            key={k}
+                            onClick={() => setSelectedSeverity(k)}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                selectedSeverity === k
+                                    ? `${v.bg} ${v.color} font-bold ring-1 ring-inset ${v.border}`
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            {v.label} ({incidents.filter((i) => i.severity === k).length})
+                        </button>
+                    ))}
+                </div>
+
+                {/* Department Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px] mr-1">
+                        Ban:
+                    </span>
+                    <button
+                        onClick={() => setSelectedDept('ALL')}
+                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                            selectedDept === 'ALL'
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                        Tất cả ban
+                    </button>
+                    {Object.entries(DEPARTMENT_LABELS).map(([k, v]) => (
+                        <button
+                            key={k}
+                            onClick={() => setSelectedDept(k)}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                selectedDept === k
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                            {v}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {error && (
@@ -167,7 +209,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                 </div>
             )}
 
-            {/* Danh sách sự cố Timeline */}
+            {/* Danh sách sự cố */}
             {isLoading ? (
                 <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-500">
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
@@ -248,9 +290,11 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                                     </div>
                                     <div className="rounded-lg bg-emerald-50/80 p-2.5 border border-emerald-200">
                                         <span className="font-bold text-emerald-800 uppercase tracking-wider block mb-1">
-                                            ★ Bài học kinh nghiệm
+                                            4. Bài học kế thừa đa mùa
                                         </span>
-                                        <p className="text-emerald-900 leading-relaxed">{incident.lessonLearned}</p>
+                                        <p className="text-emerald-900 leading-relaxed font-medium">
+                                            {incident.lessonLearned || 'Chưa ghi nhận'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -259,42 +303,47 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                 </div>
             )}
 
-            {/* Modal Ghi Nhận Sự Cố Mới */}
+            {/* Modal Ghi nhận sự cố */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h3 className="text-base font-bold text-slate-900">
-                                Lập biên bản sự cố Post-Mortem
-                            </h3>
+                    <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">
+                                    Ghi nhận sự cố & Phân tích Post-Mortem
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Lưu vết sự cố để làm bài học kinh nghiệm kế thừa cho các mùa sau
+                                </p>
+                            </div>
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
                             >
-                                ✕
+                                <XCircle className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateIncident} className="mt-4 space-y-4">
+                        <form onSubmit={handleCreateIncident} className="mt-5 space-y-4 text-xs">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700">Tên sự cố *</label>
+                                <label className="block font-semibold text-slate-700">Tiêu đề sự cố *</label>
                                 <input
                                     type="text"
                                     required
                                     value={formTitle}
                                     onChange={(e) => setFormTitle(e.target.value)}
-                                    placeholder="Ví dụ: Nghẽn mạng phòng máy lúc 14:00"
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Ví dụ: Thiếu 30 suất ăn trưa cho tình nguyện viên"
+                                    className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700">Mức độ nghiêm trọng *</label>
+                                    <label className="block font-semibold text-slate-700">Mức độ nghiêm trọng *</label>
                                     <select
                                         value={formSeverity}
                                         onChange={(e) => setFormSeverity(e.target.value as IncidentSeverity)}
-                                        className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
                                     >
                                         {Object.entries(INCIDENT_SEVERITY_CONFIG).map(([k, v]) => (
                                             <option key={k} value={k}>
@@ -305,8 +354,8 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700">Ban phụ trách liên quan *</label>
-                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    <label className="block font-semibold text-slate-700 mb-1">Ban liên quan *</label>
+                                    <div className="flex flex-wrap gap-1.5">
                                         {(Object.keys(DEPARTMENT_LABELS) as Department[]).map((dept) => {
                                             const active = formDepts.includes(dept);
                                             return (
@@ -314,7 +363,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                                                     key={dept}
                                                     type="button"
                                                     onClick={() => toggleDept(dept)}
-                                                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                                                    className={`rounded-lg px-2 py-1 text-xs font-semibold transition-colors ${
                                                         active
                                                             ? 'bg-emerald-600 text-white'
                                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -329,50 +378,48 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700">1. Mô tả chi tiết sự cố *</label>
+                                <label className="block font-semibold text-slate-700">Mô tả chi tiết sự cố *</label>
                                 <textarea
                                     required
                                     rows={2}
                                     value={formDesc}
                                     onChange={(e) => setFormDesc(e.target.value)}
-                                    placeholder="Hiện tượng xảy ra khi nào, ảnh hưởng ra sao..."
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Diễn biến sự việc, thời điểm xảy ra..."
+                                    className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700">2. Nguyên nhân cốt lõi (Root Cause) *</label>
+                                <label className="block font-semibold text-slate-700">Nguyên nhân cốt lõi (Root Cause) *</label>
                                 <textarea
                                     required
                                     rows={2}
                                     value={formRootCause}
                                     onChange={(e) => setFormRootCause(e.target.value)}
-                                    placeholder="Nguyên nhân sâu xa dẫn đến lỗi..."
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Tại sao sự cố xảy ra? Lỗ hổng trong quy trình hoặc phối hợp..."
+                                    className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700">3. Hướng xử lý tức thì (Immediate Solution) *</label>
+                                <label className="block font-semibold text-slate-700">Xử lý tức thì (Immediate Solution)</label>
                                 <textarea
-                                    required
                                     rows={2}
                                     value={formSolution}
                                     onChange={(e) => setFormSolution(e.target.value)}
-                                    placeholder="Các bước khắc phục ngay tại chỗ..."
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Biện pháp khắc phục tạm thời ngay tại hiện trường..."
+                                    className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-emerald-800">★ Bài học phòng tránh cho mùa sau (Lesson Learned) *</label>
+                                <label className="block font-semibold text-emerald-800">Bài học kế thừa cho mùa sau (Lesson Learned)</label>
                                 <textarea
-                                    required
                                     rows={2}
                                     value={formLesson}
                                     onChange={(e) => setFormLesson(e.target.value)}
-                                    placeholder="Quy trình, đối soát hoặc chuẩn bị cần cải thiện..."
-                                    className="mt-1.5 w-full rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 text-sm focus:border-emerald-500 focus:outline-hidden"
+                                    placeholder="Cần thay đổi điều gì trong checklist hoặc dự trù mùa tới?..."
+                                    className="mt-1 w-full rounded-xl border border-emerald-300 bg-emerald-50/30 p-2.5 text-sm focus:border-emerald-500 focus:outline-hidden"
                                 />
                             </div>
 
@@ -380,6 +427,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateModalOpen(false)}
+                                    disabled={isSubmitting}
                                     className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                                 >
                                     Hủy bỏ
@@ -387,10 +435,10 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                                    className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                                 >
                                     {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    <span>Lưu biên bản sự cố</span>
+                                    <span>Ghi nhận sự cố</span>
                                 </button>
                             </div>
                         </form>

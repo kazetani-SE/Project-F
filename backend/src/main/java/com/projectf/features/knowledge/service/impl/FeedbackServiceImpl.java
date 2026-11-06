@@ -9,6 +9,7 @@ import com.projectf.features.knowledge.repository.FeedbackRepository;
 import com.projectf.features.knowledge.service.FeedbackService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,5 +86,27 @@ public class FeedbackServiceImpl implements FeedbackService {
         EventFeedback entity = feedbackMapper.toEntity(eventId, request);
         EventFeedback saved = feedbackRepo.save(entity);
         return feedbackMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public List<FeedbackResponse> submitFeedbacksBatch(UUID eventId, List<CreateFeedbackRequest> requests) {
+        List<FeedbackResponse> responses = Collections.emptyList();
+        if (requests != null && !requests.isEmpty()) {
+            for (CreateFeedbackRequest request : requests) {
+                if (request.sourceType() != null && !request.sourceType().isBlank()
+                        && !VALID_SOURCES.contains(request.sourceType())) {
+                    throw new IllegalArgumentException("Nguồn đánh giá không hợp lệ: " + request.sourceType());
+                }
+            }
+            List<EventFeedback> entities = requests.stream()
+                    .map(req -> feedbackMapper.toEntity(eventId, req))
+                    .toList();
+            List<EventFeedback> saved = feedbackRepo.saveAll(entities);
+            responses = saved.stream()
+                    .map(feedbackMapper::toResponse)
+                    .toList();
+        }
+        return responses;
     }
 }
