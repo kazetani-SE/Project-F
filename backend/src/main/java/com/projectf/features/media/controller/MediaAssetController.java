@@ -6,6 +6,7 @@ import com.projectf.features.media.dto.request.MediaApprovalRequest;
 import com.projectf.features.media.dto.request.UpdatePrintStatusRequest;
 import com.projectf.features.media.dto.response.MediaAssetResponse;
 import com.projectf.features.media.service.MediaAssetService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Media Assets", description = "Quản lý ấn phẩm truyền thông, thiết kế và trạng thái in ấn")
 @RestController
 @RequestMapping("/v1")
 public class MediaAssetController {

@@ -5,6 +5,7 @@ import com.projectf.features.knowledge.dto.request.CreateFaqRequest;
 import com.projectf.features.knowledge.dto.request.UpdateFaqPinRequest;
 import com.projectf.features.knowledge.dto.response.FaqResponse;
 import com.projectf.features.knowledge.service.FaqService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Knowledge - FAQs", description = "Quản lý câu hỏi thường gặp cho chuỗi sự kiện")
 @RestController
 @RequestMapping("/v1")
 public class FaqController {

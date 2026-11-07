@@ -22,6 +22,7 @@ import com.projectf.features.finance.dto.response.ExpenseReceiptResponse;
 import com.projectf.features.finance.dto.response.ExpenseResponse;
 import com.projectf.features.finance.dto.response.ProjectedBudgetResponse;
 import com.projectf.features.finance.service.FinanceService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Finance", description = "Quản lý danh mục, định mức, dự toán, phát sinh và báo cáo ngân sách")
 @RestController
 @RequestMapping("/v1/finance")
 @RequiredArgsConstructor

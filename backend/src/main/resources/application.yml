@@ -45,6 +45,20 @@ aws:
     bucket-name: ${AWS_S3_BUCKET:project-f-media-storage}
     presigned-url-expiration-minutes: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:10}
 
+# SpringDoc OpenAPI 3.0 & Swagger UI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: method
+    display-request-duration: true
+    try-it-out-enabled: true
+    filter: true
+
 logging:
   level:
     root: INFO

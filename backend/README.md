@@ -107,3 +107,14 @@ Sử dụng Maven Wrapper có sẵn trong thư mục `backend/`:
   ```powershell
   .\mvnw.cmd test
   ```
+
+---
+
+## 📖 Tài Liệu API (OpenAPI 3.0 / Swagger UI)
+
+Hệ thống tích hợp sẵn **SpringDoc OpenAPI 3.0** (`springdoc-openapi-starter-webmvc-ui`):
+
+- **Swagger UI (Giao diện thử nghiệm API tương tác)**: `http://localhost:8080/api/swagger-ui.html` (tự động điều hướng đến `http://localhost:8080/api/swagger-ui/index.html`)
+- **OpenAPI JSON Spec**: `http://localhost:8080/api/v3/api-docs`
+- **OpenAPI YAML Spec**: `http://localhost:8080/api/v3/api-docs.yaml`
+- **Xác thực**: Hỗ trợ Bearer Token (Supabase JWT) thông qua nút **Authorize** trên Swagger UI.

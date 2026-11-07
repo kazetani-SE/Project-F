@@ -5,6 +5,7 @@ import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import com.projectf.features.document.service.DocumentService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Document", description = "Quản lý hồ sơ, tài liệu sự kiện và luồng duyệt")
 @RestController
 @RequestMapping("/v1")
 public class DocumentController {

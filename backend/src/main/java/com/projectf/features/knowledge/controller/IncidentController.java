@@ -4,6 +4,7 @@ import com.projectf.common.response.ApiResponse;
 import com.projectf.features.knowledge.dto.request.CreateIncidentRequest;
 import com.projectf.features.knowledge.dto.response.IncidentResponse;
 import com.projectf.features.knowledge.service.IncidentService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Knowledge - Incidents", description = "Ghi nhận và xử lý sự cố trong sự kiện")
 @RestController
 @RequestMapping("/v1")
 public class IncidentController {
