@@ -1,2 +1,5 @@
 /.idea/
 /migration/target/
+/plan
+.postman
+postman

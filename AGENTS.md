@@ -19,7 +19,7 @@ Trước khi thiết kế hoặc viết code cho bất kỳ phân hệ nào, hã
 
 1. **Backend (`backend/`)**:
    - Tuân thủ kiến trúc **Package-by-Feature (Vertical Slice)** trong `com.projectf.features.<feature_name>` (`controller`, `service`, `repository`, `entity`, `dto`, `mapper`).
-   - Lược đồ CSDL PostgreSQL 15+ được quản lý qua các file SQL có phiên bản và `MigrationTool` theo `docs/DATABASE_MIGRATIONS.md` cho cả Supabase dev và RDS production. Không tự ý sửa đổi cấu trúc bảng trái với `docs/SYSTEM_SPECIFICATION.md`.
+   - Lược đồ CSDL PostgreSQL 15+ được quản lý qua Supabase Migration theo `docs/DATABASE_MIGRATIONS.md`. Không tự ý sửa đổi cấu trúc bảng trái với `docs/SYSTEM_SPECIFICATION.md`.
    - Các cột `GENERATED ALWAYS AS (...) STORED` (`total_estimated_amount`, `total_amount`) phải đặt `@Column(..., insertable = false, updatable = false)`.
    - Các SQL Views (`v_event_budget_summary`, `v_projected_budget_from_previous_season`) ánh xạ bằng Read-only Entity (`@Immutable`).
    - Tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`) trong DB; mọi tệp đính kèm (`expense_receipts`, `event_documents`, `event_media_assets`, `event_feedbacks`) lưu qua **Amazon S3 Pre-signed URL** (giới hạn 15MB cho hóa đơn, 50MB cho tài liệu).
@@ -46,7 +46,7 @@ Trước khi thiết kế hoặc viết code cho bất kỳ phân hệ nào, hã
 
 ### Thay đổi migration
 
-- Trước khi sửa runner hoặc SQL, đọc `docs/DATABASE_MIGRATIONS.md` và ADR-0004. Giữ tên/vị trí V1; bổ sung migration mới cho thay đổi schema đã triển khai, không sửa migration cũ hay tự ghi đè checksum trong database.
+- Trước khi sửa SQL migration, đọc `docs/DATABASE_MIGRATIONS.md` và ADR-0005. Giữ lịch sử migration đã áp dụng; bổ sung migration mới cho thay đổi schema.
 - Kiểm thử checksum với CRLF/LF, thay đổi nội dung SQL và lịch sử bị thiếu/sai thứ tự. Khi đổi thuật toán checksum, tài liệu phải nêu cách xử lý lịch sử đã có.
 - Kiểm thử đường dẫn từ root repo và module; cung cấp cấu hình đường dẫn cho môi trường đóng gói. Các điều kiện baseline theo dự án phải được cấu hình rõ, không gán cứng tên bảng trong runner dùng chung.
 - Chỉ chạy baseline/migration trên database chung khi người dùng đã xác định môi trường đích và cho phép thao tác đó. Baseline cần đối chiếu schema thực tế trước; unit test của runner không chứng minh schema Supabase/RDS tương đương V1.

@@ -72,7 +72,7 @@ Project-F/
 5. **[Đặc Tả Kiến Trúc Frontend](./docs/FRONTEND_SPECIFICATION.md)**:
    - Sơ đồ điều hướng React Router, quản lý State, Hook tải tệp S3 (`useS3Upload`) và quy chuẩn 4 trạng thái giao diện (Loading, Empty, Error, Toast).
 6. **[Bản Ghi Quyết Định Kiến Trúc (ADRs)](./docs/adr/)**:
-   - Lưu trữ các quyết định kiến trúc quan trọng (`0001-package-by-feature-vertical-slices.md`, `0002-s3-presigned-url-upload.md`, `0003-use-supabase-migrations-instead-of-flyway.md`, `0004-standalone-migration-runner.md`). Quy trình migration hiện hành theo ADR-0004.
+   - Lưu trữ các quyết định kiến trúc quan trọng. Quy trình migration hiện hành theo ADR-0005 và [hướng dẫn Supabase Migration](./docs/DATABASE_MIGRATIONS.md).
 7. **[Tài Liệu Backend (`backend/README.md`)](./backend/README.md)** & **[Cấu trúc Feature (`features/README.md`)](./backend/src/main/java/com/projectf/features/README.md)**.
 8. **[Tài Liệu Frontend (`frontend/README.md`)](./frontend/README.md)**.
 

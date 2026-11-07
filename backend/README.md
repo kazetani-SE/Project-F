@@ -9,7 +9,7 @@ Dịch vụ Backend RESTful API cho **Hệ thống Quản lý Tổ chức Sự k
 - **Ngôn ngữ**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `spring-boot-starter-validation`, `spring-boot-starter-security`)
 - **Cơ sở dữ liệu**: PostgreSQL 15+ (Amazon RDS for PostgreSQL trên Production / PostgreSQL Local hoặc Cloud ở môi trường Dev)
-- **Database Migration**: PostgreSQL SQL runner (`src/main/resources/db/migration/V1__init_schema.sql`); xem [quy trình migration](../docs/DATABASE_MIGRATIONS.md).
+- **Database Migration**: Supabase CLI và các file trong `supabase/migrations/`; xem [quy trình migration](../docs/DATABASE_MIGRATIONS.md).
 - **Lưu trữ đối tượng**: AWS SDK for Java v2 — Amazon S3 (Pre-signed PUT/GET URL)
 - **Build Tool**: Apache Maven (kèm sẵn Maven Wrapper `mvnw`, `mvnw.cmd`)
 
@@ -56,7 +56,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate # Schema được áp dụng riêng bằng MigrationTool
+      ddl-auto: validate # Schema được áp dụng riêng qua Supabase Migration
     show-sql: false
     properties:
       hibernate:
