@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useMemo } from 'react';
 import {
     FileSpreadsheet,
     XCircle,
@@ -8,20 +8,27 @@ import {
     ArrowRight,
     ArrowLeft,
     Sparkles,
-    Eye,
+    Star,
+    MessageSquareText,
+    Tag,
+    EyeOff,
+    BarChart3,
 } from 'lucide-react';
 import { useS3Upload } from '../../../hooks/useS3Upload';
 import { FileUploader } from '../../../components/common/FileUploader';
 import { submitFeedbacksBatch } from '../../../services/knowledgeService';
 import {
     parseExcelFile,
-    autoDetectFeedbackMapping,
-    transformRowsToFeedbackRequests,
+    autoClassifyColumns,
+    transformRowsWithQuestionConfigs,
+    parseNumericScore,
+    isTrivialSuggestionAnswer,
     type ParsedSheetData,
-    type FeedbackColumnMapping,
+    type QuestionColumnConfig,
 } from '../../../utils/excelParser';
 import {
     FEEDBACK_SOURCE_LABELS,
+    type FeedbackQuestionRole,
     type FeedbackSourceType,
 } from '../../../types/models/knowledge';
 
@@ -32,6 +39,32 @@ interface Props {
     onSuccess: () => Promise<void>;
 }
 
+const ROLE_CONFIG: Record<
+    FeedbackQuestionRole,
+    { label: string; badgeClass: string; icon: React.ReactNode }
+> = {
+    RATING: {
+        label: 'Câu hỏi chấm điểm (Rating)',
+        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+        icon: <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />,
+    },
+    SUGGESTION: {
+        label: 'Câu hỏi đề xuất / góp ý (Tự luận)',
+        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        icon: <MessageSquareText className="h-3.5 w-3.5 text-emerald-600" />,
+    },
+    METADATA: {
+        label: 'Thông tin / Phân loại (Họ tên, Bảng thi, Vị trí...)',
+        badgeClass: 'bg-blue-50 text-blue-800 border-blue-200',
+        icon: <Tag className="h-3.5 w-3.5 text-blue-600" />,
+    },
+    IGNORE: {
+        label: 'Bỏ qua (Dấu thời gian / Cột trống)',
+        badgeClass: 'bg-slate-100 text-slate-500 border-slate-200',
+        icon: <EyeOff className="h-3.5 w-3.5 text-slate-400" />,
+    },
+};
+
 export const FeedbackImportModal: React.FC<Props> = ({
     eventId,
     isOpen,
@@ -40,10 +73,7 @@ export const FeedbackImportModal: React.FC<Props> = ({
 }) => {
     const sheetSelectId = useId();
     const sourceSelectId = useId();
-    const ratingSelectId = useId();
-    const highlightSelectId = useId();
-    const improvementSelectId = useId();
-    const sourceColSelectId = useId();
+    const globalScaleSelectId = useId();
 
     const [step, setStep] = useState<1 | 2>(1);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,8 +84,8 @@ export const FeedbackImportModal: React.FC<Props> = ({
     const [parsedData, setParsedData] = useState<ParsedSheetData | null>(null);
     const [selectedSheet, setSelectedSheet] = useState<string>('');
 
-    // Mapping columns
-    const [mapping, setMapping] = useState<FeedbackColumnMapping>({});
+    // Question column configurations
+    const [columnConfigs, setColumnConfigs] = useState<QuestionColumnConfig[]>([]);
 
     // Processing & upload
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,7 +99,7 @@ export const FeedbackImportModal: React.FC<Props> = ({
             setSelectedFile(null);
             setParsedData(null);
             setSelectedSheet('');
-            setMapping({});
+            setColumnConfigs([]);
             setErrorMessage(null);
             setIsSubmitting(false);
         }
@@ -81,6 +111,7 @@ export const FeedbackImportModal: React.FC<Props> = ({
         setErrorMessage(null);
         if (!file) {
             setParsedData(null);
+            setColumnConfigs([]);
             return;
         }
 
@@ -89,11 +120,12 @@ export const FeedbackImportModal: React.FC<Props> = ({
             const data = await parseExcelFile(file);
             setParsedData(data);
             setSelectedSheet(data.currentSheet);
-            const detected = autoDetectFeedbackMapping(data.headers);
-            setMapping(detected);
+            const classified = autoClassifyColumns(data.headers, data.rawRows);
+            setColumnConfigs(classified);
         } catch (err: unknown) {
             setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc tệp Excel/CSV');
             setParsedData(null);
+            setColumnConfigs([]);
         } finally {
             setIsParsing(false);
         }
@@ -107,14 +139,88 @@ export const FeedbackImportModal: React.FC<Props> = ({
         try {
             const data = await parseExcelFile(selectedFile, sheetName);
             setParsedData(data);
-            const detected = autoDetectFeedbackMapping(data.headers);
-            setMapping(detected);
+            const classified = autoClassifyColumns(data.headers, data.rawRows);
+            setColumnConfigs(classified);
         } catch (err: unknown) {
             setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc sheet đã chọn');
         } finally {
             setIsParsing(false);
         }
     };
+
+    const handleRoleChange = (rawHeader: string, newRole: FeedbackQuestionRole) => {
+        setColumnConfigs((prev) =>
+            prev.map((c) => (c.rawHeader === rawHeader ? { ...c, role: newRole } : c)),
+        );
+    };
+
+    const handleScaleChange = (rawHeader: string, newScale: number) => {
+        setColumnConfigs((prev) =>
+            prev.map((c) => (c.rawHeader === rawHeader ? { ...c, scaleMax: newScale } : c)),
+        );
+    };
+
+    const handleApplyGlobalScale = (newScale: number) => {
+        setColumnConfigs((prev) =>
+            prev.map((c) => (c.role === 'RATING' ? { ...c, scaleMax: newScale } : c)),
+        );
+    };
+
+    // Live preview stats for Step 2
+    const previewStats = useMemo(() => {
+        if (!parsedData) {
+            return {
+                ratingPreview: [],
+                suggestionCount: 0,
+                meaningfulSuggestionAnswers: 0,
+                metadataCount: 0,
+            };
+        }
+
+        const ratingCols = columnConfigs.filter((c) => c.role === 'RATING');
+        const suggestionCols = columnConfigs.filter((c) => c.role === 'SUGGESTION');
+        const metadataCols = columnConfigs.filter((c) => c.role === 'METADATA');
+
+        const ratingPreview = ratingCols.map((col) => {
+            const scores: number[] = [];
+            for (const row of parsedData.rawRows) {
+                const s = parseNumericScore(row[col.rawHeader], col.scaleMax);
+                if (s !== null) scores.push(s);
+            }
+            const avg =
+                scores.length > 0
+                    ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2))
+                    : 0;
+            return {
+                rawHeader: col.rawHeader,
+                questionLabel: col.questionLabel,
+                scaleMax: col.scaleMax,
+                avg,
+                count: scores.length,
+            };
+        });
+
+        let meaningfulSuggestionAnswers = 0;
+        const uniqueSuggestionQuestions = new Set(suggestionCols.map((c) => c.questionLabel));
+        for (const row of parsedData.rawRows) {
+            for (const col of suggestionCols) {
+                const val = row[col.rawHeader];
+                if (val !== '' && val !== null && val !== undefined) {
+                    const str = String(val).trim();
+                    if (str && !isTrivialSuggestionAnswer(str)) {
+                        meaningfulSuggestionAnswers += 1;
+                    }
+                }
+            }
+        }
+
+        return {
+            ratingPreview,
+            suggestionCount: uniqueSuggestionQuestions.size,
+            meaningfulSuggestionAnswers,
+            metadataCount: metadataCols.length,
+        };
+    }, [parsedData, columnConfigs]);
 
     // Step 1 to Step 2 validation
     const handleProceedToStep2 = () => {
@@ -123,7 +229,7 @@ export const FeedbackImportModal: React.FC<Props> = ({
             return;
         }
         if (parsedData.rawRows.length === 0) {
-            setErrorMessage('Tệp Excel được chọn không chứa dữ liệu dòng nào.');
+            setErrorMessage('Tệp Excel được chọn không chứa dòng phản hồi hợp lệ nào.');
             return;
         }
         setErrorMessage(null);
@@ -133,8 +239,10 @@ export const FeedbackImportModal: React.FC<Props> = ({
     // Execute upload to S3 and batch save to database
     const handleImportSubmit = async () => {
         if (!selectedFile || !parsedData) return;
-        if (!mapping.ratingScoreColumn) {
-            setErrorMessage('Vui lòng chọn cột chứa Điểm đánh giá (1-5 sao)');
+
+        const activeCols = columnConfigs.filter((c) => c.role !== 'IGNORE');
+        if (activeCols.length === 0) {
+            setErrorMessage('Vui lòng giữ lại ít nhất 1 câu hỏi chấm điểm hoặc câu hỏi đề xuất.');
             return;
         }
 
@@ -146,10 +254,10 @@ export const FeedbackImportModal: React.FC<Props> = ({
             const uploadRes = await uploadFile(selectedFile, 'FEEDBACK');
             const fileUrl = uploadRes.fileUrl;
 
-            // 2. Transform rows to batch requests
-            const requests = transformRowsToFeedbackRequests(
+            // 2. Transform rows to batch requests with structured questions & ratings
+            const requests = transformRowsWithQuestionConfigs(
                 parsedData.rawRows,
-                mapping,
+                columnConfigs,
                 fileUrl,
                 defaultSource,
             );
@@ -165,7 +273,9 @@ export const FeedbackImportModal: React.FC<Props> = ({
             await onSuccess();
             onClose();
         } catch (err: unknown) {
-            setErrorMessage(err instanceof Error ? err.message : 'Lỗi trong quá trình import dữ liệu');
+            setErrorMessage(
+                err instanceof Error ? err.message : 'Lỗi trong quá trình import dữ liệu',
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -173,12 +283,13 @@ export const FeedbackImportModal: React.FC<Props> = ({
 
     if (!isOpen) return null;
 
-    // Preview rows for step 2
-    const previewRows = parsedData ? parsedData.rawRows.slice(0, 4) : [];
+    const ratingColCount = columnConfigs.filter((c) => c.role === 'RATING').length;
+    const dominantScale =
+        columnConfigs.find((c) => c.role === 'RATING')?.scaleMax || 5;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-            <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
+            <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -187,10 +298,13 @@ export const FeedbackImportModal: React.FC<Props> = ({
                         </div>
                         <div>
                             <h3 className="text-base font-bold text-slate-900">
-                                Import Khảo Sát Từ Tệp Form (Excel / CSV)
+                                Import Khảo Sát Theo Câu Hỏi & Thang Điểm (Excel / CSV)
                             </h3>
                             <p className="text-xs text-slate-500">
-                                Bước {step}/2: {step === 1 ? 'Chọn tệp & bảng tính khảo sát' : 'Ghép cột dữ liệu & Xác nhận import'}
+                                Bước {step}/2:{' '}
+                                {step === 1
+                                    ? 'Chọn tệp & bảng tính khảo sát'
+                                    : 'Cấu hình danh sách câu hỏi, thang điểm & xem trước thống kê'}
                             </p>
                         </div>
                     </div>
@@ -232,25 +346,37 @@ export const FeedbackImportModal: React.FC<Props> = ({
                             {isParsing && (
                                 <div className="flex items-center justify-center gap-2 py-4 text-xs font-semibold text-emerald-700">
                                     <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-                                    <span>Đang đọc cấu trúc bảng tính và phân tích tiêu đề cột...</span>
+                                    <span>
+                                        Đang đọc bảng tính, phân loại câu hỏi và nhận diện thang điểm...
+                                    </span>
                                 </div>
                             )}
 
                             {parsedData && (
                                 <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
                                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                            <span>Đã đọc thành công tệp: {parsedData.totalRows} dòng phản hồi</span>
+                                            <span>
+                                                Đã đọc thành công: {parsedData.totalRows} phiếu phản hồi hợp lệ
+                                            </span>
                                         </div>
-                                        <span className="text-[11px] font-semibold text-slate-500">
-                                            {parsedData.headers.length} cột phát hiện
-                                        </span>
+                                        <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+                                            <span>{parsedData.headers.length} cột câu hỏi</span>
+                                            {parsedData.skippedSummaryRows > 0 && (
+                                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-amber-800">
+                                                    Đã tự động lọc bỏ {parsedData.skippedSummaryRows} dòng công thức tổng kết (AVERAGE/SUM)
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {parsedData.sheetNames.length > 1 && (
                                         <div>
-                                            <label htmlFor={sheetSelectId} className="block text-xs font-medium text-slate-700 mb-1">
+                                            <label
+                                                htmlFor={sheetSelectId}
+                                                className="block text-xs font-medium text-slate-700 mb-1"
+                                            >
                                                 Chọn Sheet chứa dữ liệu khảo sát:
                                             </label>
                                             <select
@@ -269,13 +395,18 @@ export const FeedbackImportModal: React.FC<Props> = ({
                                     )}
 
                                     <div>
-                                        <label htmlFor={sourceSelectId} className="block text-xs font-medium text-slate-700 mb-1">
-                                            Nhóm đối tượng khảo sát mặc định:
+                                        <label
+                                            htmlFor={sourceSelectId}
+                                            className="block text-xs font-medium text-slate-700 mb-1"
+                                        >
+                                            Nhóm đối tượng khảo sát:
                                         </label>
                                         <select
                                             id={sourceSelectId}
                                             value={defaultSource}
-                                            onChange={(e) => setDefaultSource(e.target.value as FeedbackSourceType)}
+                                            onChange={(e) =>
+                                                setDefaultSource(e.target.value as FeedbackSourceType)
+                                            }
                                             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
                                         >
                                             {Object.entries(FEEDBACK_SOURCE_LABELS).map(([k, v]) => (
@@ -284,9 +415,6 @@ export const FeedbackImportModal: React.FC<Props> = ({
                                                 </option>
                                             ))}
                                         </select>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            (Được áp dụng cho các dòng không có cột phân loại riêng trong bảng tính)
-                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -295,146 +423,201 @@ export const FeedbackImportModal: React.FC<Props> = ({
 
                     {step === 2 && parsedData && (
                         <div className="space-y-5">
-                            {/* Auto Detect Notice */}
-                            <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 border border-slate-200">
-                                <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
-                                <span>
-                                    Hệ thống đã tự động đối chiếu các câu hỏi phổ biến từ Form khảo sát. Bạn có thể thay đổi lại nếu cần:
-                                </span>
+                            {/* Top Banner & Global Scale Quick Switcher */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-slate-50 p-3.5 text-xs text-slate-700 border border-slate-200">
+                                <div className="flex items-start gap-2.5">
+                                    <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold text-slate-800">
+                                            Đã tự động phân loại { ratingColCount } câu hỏi chấm điểm &{' '}
+                                            { previewStats.suggestionCount } câu hỏi đề xuất/góp ý
+                                        </p>
+                                        <p className="text-[11px] text-slate-500 mt-0.5">
+                                            Các câu hỏi trùng tên do rẽ nhánh trong Google Form (như hậu tố &quot; 2&quot;) sẽ tự động được gộp chung.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {ratingColCount > 0 && (
+                                    <div className="flex items-center gap-2 shrink-0 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                                        <label
+                                            htmlFor={globalScaleSelectId}
+                                            className="text-[11px] font-semibold text-slate-600"
+                                        >
+                                            Thang điểm chung:
+                                        </label>
+                                        <select
+                                            id={globalScaleSelectId}
+                                            value={dominantScale}
+                                            onChange={(e) =>
+                                                handleApplyGlobalScale(Number(e.target.value))
+                                            }
+                                            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-amber-700 focus:border-emerald-500 focus:outline-hidden"
+                                        >
+                                            <option value={5}>Thang 5 điểm (1 - 5)</option>
+                                            <option value={10}>Thang 10 điểm (1 - 10)</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Column Mapping Selectors */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                                <div className="rounded-xl border border-slate-200 p-3.5 bg-white space-y-1">
-                                    <label htmlFor={ratingSelectId} className="block text-xs font-bold text-slate-800">
-                                        Cột Điểm Đánh Giá (Rating 1-5★) <span className="text-rose-500">*</span>
-                                    </label>
-                                    <p className="text-[11px] text-slate-500">
-                                        Thang điểm số (1-5), số sao hoặc mức độ hài lòng
-                                    </p>
-                                    <select
-                                        id={ratingSelectId}
-                                        value={mapping.ratingScoreColumn || ''}
-                                        onChange={(e) => setMapping((prev) => ({ ...prev, ratingScoreColumn: e.target.value }))}
-                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-hidden"
-                                    >
-                                        <option value="">-- Chọn cột điểm đánh giá --</option>
-                                        {parsedData.headers.map((h) => (
-                                            <option key={h} value={h}>
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                            {/* Live Preview of Rating Questions */}
+                            {previewStats.ratingPreview.length > 0 && (
+                                <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                                            <BarChart3 className="h-4 w-4 text-amber-600" />
+                                            <span>
+                                                Xem trước Điểm Trung Bình Từng Câu Hỏi ({previewStats.ratingPreview.length} tiêu chí)
+                                            </span>
+                                        </div>
+                                        <span className="text-[11px] text-amber-700 font-medium">
+                                            {previewStats.meaningfulSuggestionAnswers} ý kiến đề xuất chi tiết được ghi nhận
+                                        </span>
+                                    </div>
 
-                                <div className="rounded-xl border border-slate-200 p-3.5 bg-white space-y-1">
-                                    <label htmlFor={highlightSelectId} className="block text-xs font-bold text-slate-800">
-                                        Cột Điểm Sáng Nổi Bật (Highlight)
-                                    </label>
-                                    <p className="text-[11px] text-slate-500">
-                                        Điều hài lòng nhất, khen ngợi, điểm cộng của sự kiện
-                                    </p>
-                                    <select
-                                        id={highlightSelectId}
-                                        value={mapping.highlightContentColumn || ''}
-                                        onChange={(e) => setMapping((prev) => ({ ...prev, highlightContentColumn: e.target.value }))}
-                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-hidden"
-                                    >
-                                        <option value="">-- Không ánh xạ / Bỏ qua --</option>
-                                        {parsedData.headers.map((h) => (
-                                            <option key={h} value={h}>
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                        {previewStats.ratingPreview.map((item) => {
+                                            const pct = Math.min(
+                                                100,
+                                                Math.round((item.avg / item.scaleMax) * 100),
+                                            );
+                                            return (
+                                                <div
+                                                    key={item.rawHeader}
+                                                    className="rounded-xl bg-white p-3 border border-amber-100 shadow-2xs flex flex-col justify-between gap-2"
+                                                >
+                                                    <p className="text-xs font-semibold text-slate-800 line-clamp-2">
+                                                        {item.questionLabel}
+                                                    </p>
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-[11px] text-slate-400">
+                                                                {item.count} lượt chấm
+                                                            </span>
+                                                            <span className="font-extrabold text-amber-700">
+                                                                {item.avg.toFixed(2)} / {item.scaleMax} điểm
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full bg-amber-400"
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
+                            )}
 
-                                <div className="rounded-xl border border-slate-200 p-3.5 bg-white space-y-1">
-                                    <label htmlFor={improvementSelectId} className="block text-xs font-bold text-slate-800">
-                                        Cột Đề Xuất Cải Tiến (Improvement)
-                                    </label>
-                                    <p className="text-[11px] text-slate-500">
-                                        Góp ý, vấn đề cần khắc phục cho các mùa sau
-                                    </p>
-                                    <select
-                                        id={improvementSelectId}
-                                        value={mapping.improvementContentColumn || ''}
-                                        onChange={(e) => setMapping((prev) => ({ ...prev, improvementContentColumn: e.target.value }))}
-                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-hidden"
-                                    >
-                                        <option value="">-- Không ánh xạ / Bỏ qua --</option>
-                                        {parsedData.headers.map((h) => (
-                                            <option key={h} value={h}>
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="rounded-xl border border-slate-200 p-3.5 bg-white space-y-1">
-                                    <label htmlFor={sourceColSelectId} className="block text-xs font-bold text-slate-800">
-                                        Cột Phân Nhóm Đối Tượng (Tùy chọn)
-                                    </label>
-                                    <p className="text-[11px] text-slate-500">
-                                        Cột &quot;Bạn tham gia với vai trò nào?&quot; (mặc định: {FEEDBACK_SOURCE_LABELS[defaultSource]})
-                                    </p>
-                                    <select
-                                        id={sourceColSelectId}
-                                        value={mapping.sourceTypeColumn || ''}
-                                        onChange={(e) => setMapping((prev) => ({ ...prev, sourceTypeColumn: e.target.value }))}
-                                        className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-hidden"
-                                    >
-                                        <option value="">-- Áp dụng nhóm mặc định ({FEEDBACK_SOURCE_LABELS[defaultSource]}) --</option>
-                                        {parsedData.headers.map((h) => (
-                                            <option key={h} value={h}>
-                                                {h}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Data Preview Table */}
+                            {/* Question Columns Configuration Table */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                                    <span className="flex items-center gap-1.5">
-                                        <Eye className="h-4 w-4 text-slate-500" />
-                                        Xem trước dữ liệu ({previewRows.length}/{parsedData.totalRows} dòng):
+                                    <span>
+                                        Danh sách các cột câu hỏi trong tệp ({columnConfigs.length} cột):
                                     </span>
                                     <span className="text-[11px] text-slate-400">
-                                        Các cột câu hỏi phụ còn lại sẽ tự động lưu vào PostgreSQL JSONB
+                                        Bạn có thể đổi vai trò câu hỏi hoặc thang điểm nếu muốn
                                     </span>
                                 </div>
 
-                                <div className="max-h-48 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 text-[11px]">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="sticky top-0 bg-slate-100 text-slate-600 border-b border-slate-200">
-                                            <tr>
-                                                <th className="p-2 font-bold w-12">#</th>
-                                                <th className="p-2 font-bold text-emerald-800">Điểm (Rating)</th>
-                                                <th className="p-2 font-bold">Điểm sáng</th>
-                                                <th className="p-2 font-bold">Cải tiến</th>
-                                                <th className="p-2 font-bold">Đối tượng</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-200 bg-white">
-                                            {previewRows.map((row, idx) => {
-                                                const ratingRaw = mapping.ratingScoreColumn ? row[mapping.ratingScoreColumn] : '-';
-                                                const hlRaw = mapping.highlightContentColumn ? row[mapping.highlightContentColumn] : '-';
-                                                const impRaw = mapping.improvementContentColumn ? row[mapping.improvementContentColumn] : '-';
-                                                const srcRaw = mapping.sourceTypeColumn ? row[mapping.sourceTypeColumn] : FEEDBACK_SOURCE_LABELS[defaultSource];
-                                                return (
-                                                    <tr key={idx} className="hover:bg-slate-50">
-                                                        <td className="p-2 text-slate-400 font-mono">{idx + 1}</td>
-                                                        <td className="p-2 font-bold text-emerald-700">{String(ratingRaw || '-')}</td>
-                                                        <td className="p-2 text-slate-700 max-w-xs truncate">{String(hlRaw || '-')}</td>
-                                                        <td className="p-2 text-slate-700 max-w-xs truncate">{String(impRaw || '-')}</td>
-                                                        <td className="p-2 text-slate-500">{String(srcRaw || '-')}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+                                    {columnConfigs.map((col, idx) => {
+                                        const cfg = ROLE_CONFIG[col.role];
+                                        const isMergedBranch = col.rawHeader.trim() !== col.questionLabel;
+                                        return (
+                                            <div
+                                                key={col.rawHeader}
+                                                className={`p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors ${
+                                                    col.role === 'IGNORE'
+                                                        ? 'bg-slate-50/60 opacity-60'
+                                                        : 'hover:bg-slate-50/80'
+                                                }`}
+                                            >
+                                                <div className="space-y-1 flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-[11px] font-mono text-slate-400">
+                                                            #{idx + 1}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-slate-800 break-words">
+                                                            {col.questionLabel}
+                                                        </span>
+                                                        {isMergedBranch && (
+                                                            <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-200">
+                                                                Gộp nhánh từ: &quot;{col.rawHeader.trim()}&quot;
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {col.sampleValues.length > 0 ? (
+                                                        <p className="text-[11px] text-slate-500 truncate">
+                                                            Mẫu trả lời:{' '}
+                                                            <span className="italic text-slate-600">
+                                                                {col.sampleValues.join(' • ')}
+                                                            </span>
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-[11px] text-slate-400 italic">
+                                                            (Cột không có dữ liệu)
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Controls for Role & Scale */}
+                                                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                                    <div
+                                                        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${cfg.badgeClass}`}
+                                                    >
+                                                        {cfg.icon}
+                                                        <select
+                                                            aria-label={`Vai trò cho câu hỏi ${col.questionLabel}`}
+                                                            value={col.role}
+                                                            onChange={(e) =>
+                                                                handleRoleChange(
+                                                                    col.rawHeader,
+                                                                    e.target.value as FeedbackQuestionRole,
+                                                                )
+                                                            }
+                                                            className="bg-transparent font-semibold focus:outline-hidden cursor-pointer"
+                                                        >
+                                                            <option value="RATING">
+                                                                Câu hỏi Chấm điểm (Rating)
+                                                            </option>
+                                                            <option value="SUGGESTION">
+                                                                Đề xuất / Góp ý (Tự luận)
+                                                            </option>
+                                                            <option value="METADATA">
+                                                                Thông tin / Phân loại
+                                                            </option>
+                                                            <option value="IGNORE">
+                                                                Bỏ qua cột này
+                                                            </option>
+                                                        </select>
+                                                    </div>
+
+                                                    {col.role === 'RATING' && (
+                                                        <select
+                                                            aria-label={`Thang điểm cho câu hỏi ${col.questionLabel}`}
+                                                            value={col.scaleMax}
+                                                            onChange={(e) =>
+                                                                handleScaleChange(
+                                                                    col.rawHeader,
+                                                                    Number(e.target.value),
+                                                                )
+                                                            }
+                                                            className="rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-xs font-bold text-amber-800 focus:border-emerald-500 focus:outline-hidden"
+                                                        >
+                                                            <option value={5}>Thang 5</option>
+                                                            <option value={10}>Thang 10</option>
+                                                        </select>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -458,7 +641,9 @@ export const FeedbackImportModal: React.FC<Props> = ({
                                 disabled={!selectedFile || !parsedData || isParsing}
                                 className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
                             >
-                                <span>Tiếp tục: Ghép cột ({parsedData?.totalRows || 0} dòng)</span>
+                                <span>
+                                    Tiếp tục: Xem câu hỏi & thang điểm ({parsedData?.totalRows || 0} phiếu)
+                                </span>
                                 <ArrowRight className="h-4 w-4" />
                             </button>
                         </>
@@ -476,16 +661,18 @@ export const FeedbackImportModal: React.FC<Props> = ({
                             <button
                                 type="button"
                                 onClick={handleImportSubmit}
-                                disabled={!mapping.ratingScoreColumn || isSubmitting || isUploading}
+                                disabled={isSubmitting || isUploading}
                                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-xs"
                             >
-                                {(isSubmitting || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {(isSubmitting || isUploading) && (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
                                 <span>
                                     {isUploading
                                         ? `Đang đẩy tệp lên Amazon S3 (${progress}%)...`
                                         : isSubmitting
                                           ? 'Đang lưu vào CSDL...'
-                                          : `Xác nhận import (${parsedData?.totalRows} dòng)`}
+                                          : `Xác nhận Import (${parsedData?.totalRows} phiếu phản hồi)`}
                                 </span>
                             </button>
                         </>

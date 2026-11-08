@@ -50,6 +50,29 @@ export interface UpdateFaqPinRequest {
 
 export type FeedbackSourceType = 'ATTENDEE' | 'ORGANIZER' | 'SPONSOR' | 'SPEAKER';
 
+export type FeedbackQuestionRole = 'RATING' | 'SUGGESTION' | 'METADATA' | 'IGNORE';
+
+export interface FeedbackRatingItem {
+    question: string;
+    score: number;
+    scaleMax: number;
+}
+
+export interface FeedbackSuggestionItem {
+    question: string;
+    answer: string;
+}
+
+export interface StructuredCustomResponses {
+    _schemaVersion?: number;
+    _overallRawScore?: number;
+    _overallScaleMax?: number;
+    metadata?: Record<string, string>;
+    ratings?: FeedbackRatingItem[];
+    suggestions?: FeedbackSuggestionItem[];
+    [key: string]: unknown;
+}
+
 export interface FeedbackResponse {
     id: string;
     eventId: string;
@@ -58,7 +81,7 @@ export interface FeedbackResponse {
     ratingScore: number;
     highlightContent: string | null;
     improvementContent: string | null;
-    customResponses: Record<string, unknown>;
+    customResponses: StructuredCustomResponses;
     submittedAt: string;
 }
 
@@ -68,7 +91,7 @@ export interface CreateFeedbackRequest {
     ratingScore: number;
     highlightContent?: string | null;
     improvementContent?: string | null;
-    customResponses?: Record<string, unknown>;
+    customResponses?: StructuredCustomResponses;
 }
 
 export interface FeedbackSummaryResponse {
