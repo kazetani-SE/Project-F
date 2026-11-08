@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    autoDetectFeedbackMapping,
+    autoClassifyColumns,
     normalizeRatingScore,
     normalizeSourceType,
-    transformRowsToFeedbackRequests,
+    transformRowsWithQuestionConfigs,
+    parseNumericScore,
+    isTrivialSuggestionAnswer,
+    type QuestionColumnConfig,
 } from '../src/utils/excelParser.ts';
 
-test('autoDetectFeedbackMapping detects columns accurately from typical form headers', () => {
+test('autoClassifyColumns classifies columns accurately from typical form headers and rows', () => {
     const headers = [
         'Dấu thời gian',
         'Email',
@@ -17,12 +20,28 @@ test('autoDetectFeedbackMapping detects columns accurately from typical form hea
         'Góp ý cải thiện cho ban tổ chức?',
     ];
 
-    const mapping = autoDetectFeedbackMapping(headers);
+    const rawRows = [
+        {
+            'Dấu thời gian': '2026-10-05 10:00:00',
+            'Email': 'student1@fpt.edu.vn',
+            'Bạn tham gia với vai trò nào?': 'Người tham dự',
+            'Bạn đánh giá mức độ hài lòng về sự kiện (1-5 sao)?': 5,
+            'Điều bạn thích nhất tại sự kiện?': 'Workshop CI/CD rất hay',
+            'Góp ý cải thiện cho ban tổ chức?': 'Bổ sung thêm ổ cắm điện',
+        },
+    ];
 
-    assert.equal(mapping.sourceTypeColumn, 'Bạn tham gia với vai trò nào?');
-    assert.equal(mapping.ratingScoreColumn, 'Bạn đánh giá mức độ hài lòng về sự kiện (1-5 sao)?');
-    assert.equal(mapping.highlightContentColumn, 'Điều bạn thích nhất tại sự kiện?');
-    assert.equal(mapping.improvementContentColumn, 'Góp ý cải thiện cho ban tổ chức?');
+    const configs = autoClassifyColumns(headers, rawRows);
+
+    const timeCol = configs.find((c) => c.rawHeader === 'Dấu thời gian');
+    const roleCol = configs.find((c) => c.rawHeader === 'Bạn tham gia với vai trò nào?');
+    const ratingCol = configs.find((c) => c.rawHeader === 'Bạn đánh giá mức độ hài lòng về sự kiện (1-5 sao)?');
+    const suggestionCol = configs.find((c) => c.rawHeader === 'Góp ý cải thiện cho ban tổ chức?');
+
+    assert.equal(timeCol?.role, 'IGNORE');
+    assert.equal(roleCol?.role, 'METADATA');
+    assert.equal(ratingCol?.role, 'RATING');
+    assert.equal(suggestionCol?.role, 'SUGGESTION');
 });
 
 test('normalizeRatingScore handles numbers, stars, text and limits to 1..5', () => {
@@ -40,6 +59,20 @@ test('normalizeRatingScore handles numbers, stars, text and limits to 1..5', () 
     assert.equal(normalizeRatingScore('Rất không hài lòng'), 1);
 });
 
+test('parseNumericScore extracts scores correctly', () => {
+    assert.equal(parseNumericScore(5, 5), 5);
+    assert.equal(parseNumericScore('4/5', 5), 4);
+    assert.equal(parseNumericScore('10', 10), 10);
+    assert.equal(parseNumericScore(null, 5), null);
+});
+
+test('isTrivialSuggestionAnswer identifies non-informative answers', () => {
+    assert.equal(isTrivialSuggestionAnswer('Không có'), true);
+    assert.equal(isTrivialSuggestionAnswer('không'), true);
+    assert.equal(isTrivialSuggestionAnswer('none'), true);
+    assert.equal(isTrivialSuggestionAnswer('Nên thêm bánh ngọt trong giờ giải lao'), false);
+});
+
 test('normalizeSourceType maps organizer, sponsor, speaker and attendee correctly', () => {
     assert.equal(normalizeSourceType('Ban tổ chức'), 'ORGANIZER');
     assert.equal(normalizeSourceType('BTC nội bộ'), 'ORGANIZER');
@@ -49,63 +82,72 @@ test('normalizeSourceType maps organizer, sponsor, speaker and attendee correctl
     assert.equal(normalizeSourceType(null), 'ATTENDEE');
 });
 
-test('transformRowsToFeedbackRequests transforms rows and packs non-mapped columns into customResponses', () => {
+test('transformRowsWithQuestionConfigs transforms rows and packs questions into customResponses', () => {
     const rawRows = [
         {
             'Email': 'student1@fpt.edu.vn',
             'Vai trò': 'Người tham dự',
-            'Đánh giá': 5,
-            'Điểm sáng': 'Workshop AI rất bổ ích',
-            'Cần cải thiện': 'Hội trường hơi lạnh',
-            'Số điện thoại': '0912345678',
-            'Bạn biết sự kiện qua đâu': 'Fanpage CLB',
+            'Đánh giá chung': 5,
+            'Góp ý': 'Hội trường hơi lạnh',
         },
         {
             'Email': 'sponsor@partner.com',
             'Vai trò': 'Nhà tài trợ',
-            'Đánh giá': '4 sao',
-            'Điểm sáng': 'Hỗ trợ chu đáo',
-            'Cần cải thiện': 'Cần thời lượng kết nối doanh nghiệp dài hơn',
-            'Số điện thoại': '0987654321',
-            'Bạn biết sự kiện qua đâu': 'Thư mời',
+            'Đánh giá chung': '4 sao',
+            'Góp ý': 'Cần thêm thời gian giao lưu',
         },
         {
             // Empty row that should be ignored
             'Email': '',
             'Vai trò': '',
-            'Đánh giá': '',
-            'Điểm sáng': '',
-            'Cần cải thiện': '',
+            'Đánh giá chung': '',
+            'Góp ý': '',
         },
     ];
 
-    const mapping = {
-        sourceTypeColumn: 'Vai trò',
-        ratingScoreColumn: 'Đánh giá',
-        highlightContentColumn: 'Điểm sáng',
-        improvementContentColumn: 'Cần cải thiện',
-    };
+    const columnConfigs: QuestionColumnConfig[] = [
+        {
+            rawHeader: 'Email',
+            questionLabel: 'Email',
+            role: 'METADATA',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+        {
+            rawHeader: 'Vai trò',
+            questionLabel: 'Vai trò',
+            role: 'METADATA',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+        {
+            rawHeader: 'Đánh giá chung',
+            questionLabel: 'Đánh giá chung',
+            role: 'RATING',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+        {
+            rawHeader: 'Góp ý',
+            questionLabel: 'Góp ý',
+            role: 'SUGGESTION',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+    ];
 
     const s3Url = 'https://bucket.s3.amazonaws.com/feedbacks/khao_sat.xlsx';
-    const result = transformRowsToFeedbackRequests(rawRows, mapping, s3Url);
+    const result = transformRowsWithQuestionConfigs(rawRows, columnConfigs, s3Url, 'ATTENDEE');
 
     assert.equal(result.length, 2);
 
     // Row 1
     assert.equal(result[0].sourceType, 'ATTENDEE');
     assert.equal(result[0].ratingScore, 5);
-    assert.equal(result[0].highlightContent, 'Workshop AI rất bổ ích');
-    assert.equal(result[0].improvementContent, 'Hội trường hơi lạnh');
     assert.equal(result[0].fileUrl, s3Url);
-    assert.equal(result[0].customResponses?.['Email'], 'student1@fpt.edu.vn');
-    assert.equal(result[0].customResponses?.['Số điện thoại'], '0912345678');
-    assert.equal(result[0].customResponses?.['Bạn biết sự kiện qua đâu'], 'Fanpage CLB');
 
     // Row 2
-    assert.equal(result[1].sourceType, 'SPONSOR');
+    assert.equal(result[1].sourceType, 'ATTENDEE');
     assert.equal(result[1].ratingScore, 4);
-    assert.equal(result[1].highlightContent, 'Hỗ trợ chu đáo');
-    assert.equal(result[1].improvementContent, 'Cần thời lượng kết nối doanh nghiệp dài hơn');
     assert.equal(result[1].fileUrl, s3Url);
-    assert.equal(result[1].customResponses?.['Email'], 'sponsor@partner.com');
 });
