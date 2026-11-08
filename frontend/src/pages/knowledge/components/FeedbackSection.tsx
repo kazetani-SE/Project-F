@@ -458,10 +458,10 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                             type="button"
                             onClick={() => handleOpenAttachment(uploadedSourceFiles[0].fileUrl)}
                             className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-                            title="Tải tệp Excel khảo sát gốc từ Amazon S3"
+                            title="Tải tệp feedback gốc"
                         >
-                            <Download className="h-4 w-4 text-slate-500" />
-                            <span>Tệp Excel gốc ({uploadedSourceFiles[0].fileName})</span>
+                            <Download className="h-4 w-4 text-emerald-600" />
+                            <span>Tải file feedback</span>
                         </button>
                     )}
 
@@ -1177,18 +1177,6 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {fb.fileUrl && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenAttachment(fb.fileUrl)}
-                                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
-                                            title="Tải tệp Excel gốc từ S3"
-                                        >
-                                            <Download className="h-3.5 w-3.5 text-slate-500" />
-                                            <span>Tệp Form gốc (S3)</span>
-                                        </button>
-                                    )}
                                 </div>
 
                                 {/* Individual Question Ratings Grid */}
