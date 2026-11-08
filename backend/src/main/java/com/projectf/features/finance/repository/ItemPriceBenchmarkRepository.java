@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -14,6 +13,5 @@ public interface ItemPriceBenchmarkRepository extends JpaRepository<ItemPriceBen
     List<ItemPriceBenchmark> findByItemNameContainingIgnoreCase(String keyword);
     boolean existsByItemNameIgnoreCaseAndUnitIgnoreCase(String itemName, String unit);
     boolean existsByItemNameIgnoreCaseAndUnitIgnoreCaseAndIdNot(String itemName, String unit, UUID id);
-    Optional<ItemPriceBenchmark> findByItemNameIgnoreCaseAndUnitIgnoreCase(String itemName, String unit);
+    boolean existsByCategoryId(UUID categoryId);
 }
-

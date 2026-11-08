@@ -11,7 +11,7 @@ import com.projectf.features.finance.entity.ItemPriceBenchmark;
 import com.projectf.features.finance.mapper.FinanceMapper;
 import com.projectf.features.finance.repository.ExpenseReceiptRepository;
 import com.projectf.features.finance.repository.ExpenseRepository;
-import com.projectf.features.finance.service.impl.FinanceServiceImpl;
+import com.projectf.features.finance.service.impl.ExpenseServiceImpl;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,7 +136,7 @@ class FinanceFoundationTest {
             }
         );
 
-        var service = new FinanceServiceImpl(null, null, null, expenseRepo, receiptRepo, null, null, financeMapper);
+        var service = new ExpenseServiceImpl(expenseRepo, receiptRepo, financeMapper);
         var approveRequest = new ReviewExpenseRequest(ApprovalStatus.APPROVED, UUID.randomUUID(), null);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
@@ -173,7 +173,7 @@ class FinanceFoundationTest {
             }
         );
 
-        var service = new FinanceServiceImpl(null, null, null, expenseRepo, receiptRepo, null, null, financeMapper);
+        var service = new ExpenseServiceImpl(expenseRepo, receiptRepo, financeMapper);
         var approveRequest = new ReviewExpenseRequest(ApprovalStatus.APPROVED, UUID.randomUUID(), null);
 
         var response = service.reviewExpense(expenseId, approveRequest);
