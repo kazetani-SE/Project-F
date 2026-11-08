@@ -176,7 +176,8 @@ public class S3StorageServiceImpl implements StorageService {
                     if (eqIdx > 0) {
                         String key = pair.substring(0, eqIdx);
                         if ("versionId".equalsIgnoreCase(key) && eqIdx < pair.length() - 1) {
-                            result = pair.substring(eqIdx + 1);
+                            String encoded = pair.substring(eqIdx + 1);
+                            result = URLDecoder.decode(encoded.replace("+", "%2B"), StandardCharsets.UTF_8);
                             break;
                         }
                     }

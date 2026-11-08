@@ -1,4 +1,6 @@
 # Cấu hình kiểm thử (Unit / Integration Test)
+SUPABASE_AUTH_ISSUER: https://project-f.example/auth/v1
+SUPABASE_PUBLISHABLE_KEY: test-publishable-key
 spring:
   autoconfigure:
     exclude:

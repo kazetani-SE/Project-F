@@ -5,6 +5,7 @@ import com.projectf.features.storage.dto.request.PresignedUploadRequest;
 import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.dto.response.PresignedUploadResponse;
 import com.projectf.features.storage.service.StorageService;
+import com.projectf.features.storage.service.AttachmentAccess;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StorageController {
 
     private final StorageService storageService;
+    private final AttachmentAccess attachmentAccess;
 
-    public StorageController(StorageService storageService) {
+    public StorageController(StorageService storageService, AttachmentAccess attachmentAccess) {
         this.storageService = storageService;
+        this.attachmentAccess = attachmentAccess;
     }
 
     @Operation(summary = "Sinh Pre-signed URL tải lên S3", description = "Giới hạn 15MB cho hóa đơn và 50MB cho tài liệu/ấn phẩm.")
@@ -42,6 +45,7 @@ public class StorageController {
     public ResponseEntity<ApiResponse<PresignedDownloadResponse>> createPresignedDownload(
             @RequestParam("objectKey") String objectKey
     ) {
+        attachmentAccess.requireDownload(objectKey);
         PresignedDownloadResponse response = storageService.generatePresignedDownloadUrl(objectKey);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

@@ -1,14 +1,20 @@
+import { useMock } from './supabaseClient';
 import axios, { AxiosError } from 'axios';
 import type {ApiError} from "../types/common/api.ts";
 
 export const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
+    baseURL: useMock ? '/api/v1' : (import.meta.env.VITE_API_BASE_URL ?? '/api/v1'),
     timeout: 15000,
 });
 
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+    accessToken = token;
+}
+
 apiClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('pf.accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
 });
 

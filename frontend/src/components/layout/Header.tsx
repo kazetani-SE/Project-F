@@ -1,3 +1,4 @@
+import { LogoutButton } from '../../pages/auth/AuthPages';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, ChevronRight, Menu, Search } from 'lucide-react';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';
@@ -5,7 +6,7 @@ import {useActiveEvent} from "../../context/activeEventContext.ts";
 import {useAuth} from "../../context/authContext.ts";
 
 const LABELS: Record<string, string> = {
-    events: 'Sự kiện', budget: 'Budget', members: 'Thành viên',
+    events: 'Sự kiện', budget: 'Budget', members: 'Thành viên', series: 'Chuỗi sự kiện', new: 'Tạo mới',
     overview: 'Tổng quan', documents: 'Tài liệu & Ấn phẩm', finance: 'Tài chính',
     budgets: 'Dự toán ngân sách', expenses: 'Thực chi & Duyệt chi', benchmarks: 'Benchmark',
     organizers: 'Thành viên BTC', knowledge: 'Kho tri thức',
@@ -21,7 +22,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
     const segments = pathname.split('/').filter(Boolean);
     const crumbs = segments.map((seg, i) => ({
-        label: seg === currentEvent?.id ? currentEvent.name : (LABELS[seg] ?? seg),
+        label: seg === currentEvent?.id ? currentEvent.title : (LABELS[seg] ?? seg),
         to: '/' + segments.slice(0, i + 1).join('/'),
     }));
 
@@ -93,6 +94,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                         )}
                     </div>
                 </div>
+                <LogoutButton />
             </div>
         </header>
     );

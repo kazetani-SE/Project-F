@@ -1,3 +1,5 @@
+import { isClubAdmin, useAuth } from '../../../context/authContext';
+import { ErrorNotice } from '../../../components/ui/CrudUi';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Star,
@@ -126,6 +128,7 @@ const RESPONDENT_SORT_OPTIONS: {
 ];
 
 export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
+    const canWrite = isClubAdmin(useAuth().user?.clubRole);
     const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([]);
     const [summary, setSummary] = useState<FeedbackSummaryResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -218,12 +221,14 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
         fetchData();
     }, [fetchData]);
 
+    const [downloadError, setDownloadError] = useState<unknown>(null);
     const handleOpenAttachment = async (fileUrl: string) => {
+        setDownloadError(null);
         try {
             const res = await getPresignedDownloadUrl(fileUrl);
-            window.open(res.downloadUrl, '_blank');
-        } catch {
-            window.open(fileUrl, '_blank');
+            window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            setDownloadError(error);
         }
     };
 
@@ -438,6 +443,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
 
     return (
         <div className="space-y-6">
+            <ErrorNotice error={downloadError} />
             {/* Toolbar */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -465,13 +471,15 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                         </button>
                     )}
 
-                    <button
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                    >
-                        <FileUp className="h-4 w-4" />
-                        <span>Import File Excel Từ Form</span>
-                    </button>
+                    {canWrite && (
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                        >
+                            <FileUp className="h-4 w-4" />
+                            <span>Import File Excel Từ Form</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -1321,7 +1329,7 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
             {/* Feedback Import Modal */}
             <FeedbackImportModal
                 eventId={eventId}
-                isOpen={isImportModalOpen}
+                isOpen={canWrite && isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={fetchData}
             />

@@ -56,6 +56,10 @@ Khi người dùng tải lên ảnh hóa đơn (`<= 15MB`, định dạng `JPG/P
 
 ## 🚀 Hướng Dẫn Khởi Chạy
 
+Sao chép `.env.example` thành `.env.local` và điền URL cùng khóa publishable của Supabase. API mặc định đi qua Vite proxy đến backend trên cổng 8080. Thêm địa chỉ frontend với đường dẫn `/reset-password` vào danh sách Redirect URLs trong Supabase Auth để liên kết đặt lại mật khẩu hoạt động.
+
+Trong môi trường phát triển, đặt `VITE_USE_MOCK=true` để dùng dữ liệu MSW và hồ sơ quản trị mẫu. Dữ liệu mẫu tồn tại trong bộ nhớ cho tới khi tải lại trang.
+
 ```powershell
 # Cài đặt dependencies
 npm install
@@ -66,4 +70,5 @@ npm run dev
 # Kiểm tra lỗi lint & kiểu dữ liệu
 npm run lint
 npm run build
+npm test
 ```

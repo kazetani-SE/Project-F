@@ -78,6 +78,14 @@ interface PageResponse<T> {
 
 ## 2. Chi Tiết API Phân Hệ 1: Nhân Sự CLB & Ban Tổ Chức (Slice 1)
 
+### Xác thực và phạm vi truy cập
+
+- Mọi API nghiệp vụ nhận `Authorization: Bearer <access_token>` từ Supabase Auth. Token thiếu, sai chữ ký hoặc hết hạn trả `401 UNAUTHORIZED`.
+- `GET /api/v1/auth/me` trả `{id, fullName, email, clubRole}` với `id` là ID thành viên CLB. Lần đầu, backend xác minh email hiện hành đã xác nhận tại Supabase Auth rồi liên kết tài khoản vào hồ sơ đang hoạt động có email trùng khớp và chưa liên kết. Tài khoản không đủ điều kiện trả `403 FORBIDDEN`.
+- `PRESIDENT` và `VICEPRESIDENT` đọc/ghi mọi sự kiện. `MEMBER` chỉ đọc. Danh sách sự kiện và lịch sử mùa trong chi tiết chuỗi chỉ trả các mùa được phân công cho thành viên thường.
+- Tất cả nhãn `event_role_enum` xác nhận người đó thuộc BTC. Quyền đọc không phân biệt nhãn. Tài nguyên của các phân hệ khác dùng mùa sở hữu thực tế. Kho FAQ theo chuỗi yêu cầu ít nhất một mùa được phân công.
+- Với `MEMBER`, API cấp URL tải xuống chỉ chấp nhận URL phiên bản đã lưu trong bản ghi thuộc mùa được phân công.
+
 ### 2.1. Quản lý Thành viên CLB (`club_members`)
 
 - **`GET /api/v1/members`**
@@ -145,6 +153,7 @@ interface PageResponse<T> {
 - **`POST /api/v1/event-series`**: Tạo chuỗi sự kiện mới.
   - **Request Body**: `{ "name": "F-Code Hackathon", "description": "Cuộc thi lập trình thường niên" }`
 - **`GET /api/v1/event-series/{id}`**: Lấy chi tiết chuỗi sự kiện kèm danh sách các mùa đã tổ chức.
+- **`PUT /api/v1/event-series/{id}`** cập nhật `name` và `description`. Endpoint danh sách trả `PageResponse`. Chi tiết trả thêm mảng `events`.
 
 ### 3.2. Quản lý Mùa Sự kiện (`events`)
 
@@ -153,6 +162,8 @@ interface PageResponse<T> {
   - **Response 200**: `ApiResponse<PageResponse<EventSummaryDto>>`
 
 - **`GET /api/v1/events/{id}`**: Lấy thông tin chi tiết mùa sự kiện.
+- **`PUT /api/v1/events/{id}`** cập nhật thông tin và quỹ của mùa. Dùng endpoint status để chuyển trạng thái.
+- **`GET /api/v1/events/{id}/my-role`** trả `{role}`. Admin có thể nhận `role: null` khi chưa được phân công vào BTC.
 - **`POST /api/v1/events`**
   - **Request Body**:
     ```json
@@ -172,6 +183,8 @@ interface PageResponse<T> {
   - **Mô tả**: Cập nhật trạng thái vòng đời mùa sự kiện.
   - **Request Body**: `{ "status": "IN_PROGRESS", "actualStartDate": "2026-11-15" }`
   - **Response 200**: `ApiResponse<EventDetailDto>`
+
+Luồng trạng thái là `PLANNING → APPROVED → IN_PROGRESS → COMPLETED`. Ba trạng thái đầu có thể chuyển sang `CANCELLED`. Hai trạng thái kết thúc không mở lại. Khi bắt đầu phải gửi `actualStartDate`. Khi hoàn thành phải gửi `actualEndDate` bằng hoặc sau ngày bắt đầu. Chuyển trạng thái sai trả `400`.
 
 ---
 

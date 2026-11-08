@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    CalendarDays, Wallet, Users, X, Loader2, Lock,
-    LayoutDashboard, FileText, Calculator, Receipt, Scale, UserCog, BookOpen,
+    CalendarDays, Layers, Wallet, Users, X, Loader2, Lock,
+    LayoutDashboard, FileText, Calculator, Receipt, Scale, BookOpen,
     type LucideIcon,
 } from 'lucide-react';
 import RoleBadge from '../ui/RoleBadge';
@@ -14,7 +14,6 @@ const SUB_ITEMS = [
     { to: 'finance/budgets', label: 'Dự toán ngân sách', icon: Calculator },
     { to: 'finance/expenses', label: 'Thực chi & Duyệt chi', icon: Receipt },
     { to: 'finance/benchmarks', label: 'Benchmark', icon: Scale },
-    { to: 'organizers', label: 'Thành viên BTC', icon: UserCog },
     { to: 'knowledge', label: 'Kho tri thức', icon: BookOpen },
 ];
 
@@ -104,9 +103,9 @@ export default function Sidebar({ open, onClose }: Props) {
                             <div className="my-2 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-slate-900">{currentEvent.name}</p>
-                                        {currentEvent.seasonLabel && (
-                                            <p className="truncate text-xs text-slate-500">{currentEvent.seasonLabel}</p>
+                                        <p className="truncate text-sm font-semibold text-slate-900">{currentEvent.title}</p>
+                                        {currentEvent.seasonName && (
+                                            <p className="truncate text-xs text-slate-500">{currentEvent.seasonName}</p>
                                         )}
                                     </div>
                                     <button
@@ -150,6 +149,7 @@ export default function Sidebar({ open, onClose }: Props) {
                         </div>
                     )}
 
+                    <NavItem to="/series" icon={Layers} label="Chuỗi sự kiện" onClick={onClose} />
                     <NavItem to="/budget" icon={Wallet} label="Budget" onClick={onClose} />
                     <NavItem to="/members" icon={Users} label="Thành viên" onClick={onClose} />
                 </nav>

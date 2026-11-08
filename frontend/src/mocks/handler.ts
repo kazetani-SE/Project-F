@@ -1,8 +1,6 @@
 import { delay, http, HttpResponse, passthrough } from 'msw';
+import { managementHandlers } from './management';
 import {
-    MOCK_EVENTS,
-    MOCK_ROLES,
-    MOCK_USER,
     MOCK_DOCUMENTS,
     MOCK_MEDIA_ASSETS,
     MOCK_INCIDENTS,
@@ -38,19 +36,7 @@ let faqsState: FaqResponse[] = [...MOCK_FAQS];
 let feedbacksState: FeedbackResponse[] = [...MOCK_FEEDBACKS];
 
 export const handlers = [
-    // --- Auth & Events ---
-    http.get(`${BASE}/auth/me`, async () => {
-        await delay(200);
-        return ok(MOCK_USER);
-    }),
-    http.get(`${BASE}/events`, async () => {
-        await delay(300);
-        return ok(MOCK_EVENTS);
-    }),
-    http.get(`${BASE}/events/:eventId/my-role`, async ({ params }) => {
-        await delay(600);
-        return ok({ role: MOCK_ROLES[params.eventId as string] ?? null });
-    }),
+    ...managementHandlers,
 
     // --- Storage Service ---
     http.post(`${BASE}/storage/presigned-upload`, async ({ request }) => {

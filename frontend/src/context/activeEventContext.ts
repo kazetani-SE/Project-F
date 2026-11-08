@@ -1,17 +1,20 @@
 import { createContext, useContext } from 'react';
-import type {EventRole, EventSummary} from "../types/models/event.ts";
+import type { ApiError } from '../types/common/api';
+import type { EventRole, EventResponse } from '../types/models/event';
 
-export type RoleStatus = 'idle' | 'checking' | 'granted' | 'denied';
+export type RoleStatus = 'idle' | 'checking' | 'granted' | 'denied' | 'error';
 
 export interface ActiveEventState {
-    events: EventSummary[];
-    isLoading: boolean;
     currentEventId: string | null;
-    currentEvent: EventSummary | null;
+    currentEvent: EventResponse | null;
     role: EventRole | null;
     roleStatus: RoleStatus;
+    error?: ApiError;
     selectEvent: (id: string | null) => void;
+    replaceEvent: (event: EventResponse) => void;
+    retry: () => void;
 }
+
 export const ActiveEventContext = createContext<ActiveEventState | null>(null);
 
 export function useActiveEvent() {

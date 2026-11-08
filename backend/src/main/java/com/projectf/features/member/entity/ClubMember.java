@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Generated;
 import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,8 +21,8 @@ public class ClubMember {
  @Enumerated(EnumType.STRING) @JdbcTypeCode(SqlTypes.NAMED_ENUM) @Column(columnDefinition="department_enum") private Department department;
  @Enumerated(EnumType.STRING) @JdbcTypeCode(SqlTypes.NAMED_ENUM) @Column(name="club_role",columnDefinition="club_role_enum") private ClubRole clubRole;
  @Column(nullable=false,length=4) private String batch;
- /** PostgreSQL cấp giá trị mặc định; chưa tự gán trong Java để không lệch migration V1. */
- @Column(name="is_active",nullable=false,insertable=false) private Boolean active;
- @Column(name="created_at",nullable=false,insertable=false) private OffsetDateTime createdAt;
+ @Column(name="is_active",nullable=false) private Boolean active = true;
+ @Generated @Column(name="created_at",nullable=false,insertable=false,updatable=false) private OffsetDateTime createdAt;
  @Column(name="inactive_at") private OffsetDateTime inactiveAt;
+ @Column(name="auth_user_id", unique=true) private UUID authUserId;
 }

@@ -1,6 +1,7 @@
 package com.projectf.features.document.controller;
 
 import com.projectf.common.response.ApiResponse;
+import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
@@ -30,8 +31,11 @@ public class DocumentController {
 
     private final DocumentService documentService;
 
-    public DocumentController(DocumentService documentService) {
+    private final AccessPolicy access;
+
+    public DocumentController(DocumentService documentService, AccessPolicy access) {
         this.documentService = documentService;
+        this.access = access;
     }
 
     @GetMapping("/events/{eventId}/documents")
@@ -56,6 +60,7 @@ public class DocumentController {
             @PathVariable(DOCUMENT_ID) UUID documentId
     ) {
         DocumentResponse response = documentService.getDocumentById(documentId);
+        access.requireEvent(response.eventId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
