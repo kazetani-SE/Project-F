@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.DynamicInsert;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Getter
@@ -25,5 +26,7 @@ public class BudgetCategory {
 
     @Column(columnDefinition = "text")
     private String description;
-}
 
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+}
