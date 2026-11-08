@@ -12,6 +12,5 @@ import java.util.UUID;
 public interface BudgetItemRepository extends JpaRepository<BudgetItem, UUID> {
     List<BudgetItem> findByEventId(UUID eventId);
     List<BudgetItem> findByEventIdAndApprovalStatus(UUID eventId, ApprovalStatus status);
-    List<BudgetItem> findByEventIdAndCategoryId(UUID eventId, UUID categoryId);
+    boolean existsByCategoryId(UUID categoryId);
 }
-
