@@ -22,6 +22,7 @@ public interface ClubMemberRepository extends JpaRepository<ClubMember, UUID>, J
 
     @Transactional
     @Modifying
+    // Kiểm tra lại email, trạng thái xác nhận và hồ sơ chưa liên kết trong cùng câu lệnh cập nhật.
     @Query(value = """
             update public.club_members member set auth_user_id = :authUserId
             where lower(member.email) = lower(:email) and member.is_active and member.auth_user_id is null

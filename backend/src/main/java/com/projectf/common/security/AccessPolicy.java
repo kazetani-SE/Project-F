@@ -42,6 +42,7 @@ public class AccessPolicy {
     }
 
     public void requireEvent(UUID eventId) {
+        // Đặc tả hệ thống §5.1: quản trị cấp CLB xem mọi mùa. Thành viên thường phải có phân công BTC.
         if (!isAdmin() && !organizers.existsByEventIdAndMemberId(eventId, currentMemberId())) {
             throw forbidden();
         }
@@ -66,6 +67,7 @@ public class AccessPolicy {
     }
 
     private Optional<ClubMember> findActiveMember(Authentication authentication) {
+        // JWT xác thực danh tính. Vai trò và trạng thái hoạt động lấy từ hồ sơ CLB hiện hành.
         return authentication != null && authentication.getPrincipal() instanceof Jwt jwt
                 ? members.findByAuthUserId(UUID.fromString(jwt.getSubject()))
                         .filter(member -> Boolean.TRUE.equals(member.getActive()))

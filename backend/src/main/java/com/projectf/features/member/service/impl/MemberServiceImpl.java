@@ -66,6 +66,7 @@ public class MemberServiceImpl implements MemberService {
         return members.findAll((member, query, criteria) -> {
             List<Predicate> filters = new ArrayList<>();
             if (StringUtils.hasText(keyword)) {
+                // Giữ %, _ và ! trong từ khóa là ký tự nhập liệu thay vì mẫu tìm kiếm SQL.
                 String pattern = "%" + keyword.strip().toLowerCase(Locale.ROOT)
                         .replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
                 filters.add(criteria.or(

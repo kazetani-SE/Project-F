@@ -34,7 +34,7 @@ public class AttachmentAccess {
         if (access.isAdmin()) {
             return;
         }
-        // A legacy mutable key could point to a newer upload for another event.
+        // API §2: khóa S3 cũ thiếu phiên bản có thể trỏ tới bản tải lên mới của một mùa khác.
         if (!hasImmutableVersion(reference)) {
             throw AccessPolicy.forbidden();
         }
@@ -55,7 +55,7 @@ public class AttachmentAccess {
                 immutable = !version.isBlank() && !"null".equalsIgnoreCase(version.strip());
             }
         } catch (IllegalArgumentException ignored) {
-            // Invalid percent escapes cannot name a version.
+            // Chuỗi mã hóa URL không hợp lệ không xác định được phiên bản S3.
         }
         return immutable;
     }

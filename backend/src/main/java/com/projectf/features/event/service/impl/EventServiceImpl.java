@@ -127,6 +127,7 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventResponse updateStatus(UUID eventId, UpdateEventStatusRequest request) {
+        // API §3.2: khóa bản ghi để hai yêu cầu không thể chuyển trạng thái từ cùng một trạng thái cũ.
         Event event = findEventForUpdate(eventId);
         EventStatus next = request.status();
         boolean allowed = switch (event.getStatus()) {
@@ -193,6 +194,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private Specification<Event> eventFilter(UUID seriesId, EventStatus status) {
+        // Lọc mùa theo phân công ngay trong truy vấn để tổng số bản ghi và phân trang cùng phạm vi.
         UUID memberId = access.isAdmin() ? null : access.currentMemberId();
         return (event, query, criteria) -> {
             List<Predicate> filters = new ArrayList<>();

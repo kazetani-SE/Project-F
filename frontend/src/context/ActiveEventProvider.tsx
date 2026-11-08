@@ -33,6 +33,7 @@ export function ActiveEventProvider({ children }: { children: ReactNode }) {
     if (currentEventId) {
         if (resource.isLoading) roleStatus = 'checking';
         else if (resource.error) roleStatus = resource.error.status === 403 ? 'denied' : 'error';
+        // /my-role có thể trả null cho quản trị viên chưa được phân công vào mùa.
         else roleStatus = role || isClubAdmin(user?.clubRole) ? 'granted' : 'denied';
     }
 

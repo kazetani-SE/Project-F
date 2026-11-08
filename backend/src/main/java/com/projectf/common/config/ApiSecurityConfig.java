@@ -29,6 +29,7 @@ public class ApiSecurityConfig {
                                 writeError(response, json, 403, "FORBIDDEN", "Access denied")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // API §2: cho phép tài khoản có JWT hợp lệ gọi /auth/me để liên kết hồ sơ lần đầu.
                         .requestMatchers(HttpMethod.GET, "/v1/auth/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/**")
                         .access((authentication, context) -> new AuthorizationDecision(access.isActiveMember(authentication.get())))

@@ -1,6 +1,6 @@
-# Ghi chú cho team: feature event (Phase 0)
+# Quản lý chuỗi, mùa sự kiện và Ban tổ chức
 
-- `EventSeries`, `Event`, `EventOrganizer` bám bốn bảng thuộc phạm vi Thành viên 1 trong `V1__init_schema.sql` (bao gồm `club_members` ở feature member). Khóa ngoại giữ dưới dạng `UUID` ở bước khung; khi viết service cần kiểm tra bản ghi được tham chiếu tồn tại và quy tắc xóa.
-- `event_role_enum` trong V1 đang chứa `MASTER_PLAN`, `RUNNING_ORDER`... (tên loại tài liệu), chưa phải vai trò ban tổ chức. **Không dùng enum này cho RBAC.** Cần migration có phiên bản và thống nhất dữ liệu trước khi triển khai phân công BTC.
-- Ngày kết thúc, quỹ không âm và cặp `(event_id, member_id)` còn được database kiểm tra bằng constraint. Service/API sau này cần báo lỗi dễ hiểu trước khi lưu.
-- Các package `controller` và `service/impl` hiện chỉ là vị trí chuẩn bị. Chưa có endpoint hay CRUD; interface service mô tả hợp đồng sẽ triển khai trong phase sau.
+- [Đặc tả API §2.2 và §3](../../../../../../../../docs/API_SPECIFICATION.md) quy định API chuỗi, mùa sự kiện và phân công BTC. Chi tiết chuỗi và danh sách mùa áp dụng cùng phạm vi truy cập.
+- Sáu giá trị `event_role_enum` là nhãn trách nhiệm trong một mùa. Mọi nhãn đều xác nhận tư cách BTC. Quyền ghi lấy từ `club_role_enum`.
+- Trạng thái đi theo `PLANNING → APPROVED → IN_PROGRESS → COMPLETED`. Ba trạng thái đầu có thể hủy. Service khóa bản ghi khi chuyển trạng thái và kiểm tra ngày thực tế.
+- Mỗi thành viên đang hoạt động chỉ có một phân công trong một mùa. API dùng `eventId` trên đường dẫn và trả `409 DUPLICATE_RESOURCE` khi phân công trùng. Giao diện phân công nằm trong trang tổng quan mùa.

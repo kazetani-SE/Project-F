@@ -15,7 +15,7 @@ import org.hibernate.type.SqlTypes;
 @Getter @Setter @NoArgsConstructor @Entity @Table(name="events")
 public class Event {
  @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
- /** Giữ UUID ở bộ khung này để feature event chưa phụ thuộc vòng đời entity khác. */
+ /** Giữ khóa ngoại dưới dạng UUID theo quy ước phối hợp giữa các slice trong tài liệu phân công. */
  @Column(name="series_id") private UUID seriesId;
  @Column(name="season_name",nullable=false,length=50) private String seasonName;
  @Column(nullable=false,length=255) private String title;

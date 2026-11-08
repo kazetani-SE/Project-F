@@ -31,13 +31,14 @@ public class AccountService {
     }
 
     private ClubMember claim(Jwt jwt, UUID authUserId) {
+        // API §2: đối chiếu email đã xác nhận trước khi thực hiện liên kết có điều kiện trong CSDL.
         String email = verifiedEmail.forToken(jwt);
         Optional<ClubMember> linked;
         try {
             members.claimAccount(authUserId, email);
             linked = members.findByAuthUserId(authUserId);
         } catch (DataIntegrityViolationException conflict) {
-            // A concurrent bootstrap may have already claimed the unique subject.
+            // Một yêu cầu đăng nhập đồng thời có thể đã liên kết cùng tài khoản.
             linked = Optional.of(members.findByAuthUserId(authUserId)
                     .orElseThrow(() -> AccessPolicy.forbidden(conflict)));
         }

@@ -119,16 +119,18 @@ interface PageResponse<T> {
 - **`PATCH /api/v1/members/{id}/status`**
   - **Mô tả**: Chuyển trạng thái hoạt động / ngừng hoạt động (`isActive: false`, ghi nhận `inactiveAt`).
   - **Request Body**: `{ "isActive": false }`
-  - **Response 200**: `ApiResponse<MemberResponseDto>`
+  - **Response 200**: `ApiResponse<MemberResponseDto>` với trạng thái ở trường `active`. Kích hoạt lại xóa `inactiveAt`.
 
 ### 2.2. Quản lý Ban Tổ Chức Sự Kiện (`event_organizers`)
 
 - **`GET /api/v1/events/{eventId}/organizers`**
   - **Mô tả**: Lấy danh sách thành viên BTC của một mùa sự kiện.
   - **Response 200**: `ApiResponse<List<OrganizerResponseDto>>`
+  - Mỗi bản ghi có `memberName` để hiển thị tên thành viên trong danh sách BTC.
 
 - **`POST /api/v1/events/{eventId}/organizers`**
   - **Mô tả**: Phân công thành viên CLB vào Ban Tổ Chức sự kiện.
+  - Thành viên phải đang hoạt động. Nếu đã được phân công vào mùa này, API trả `409 DUPLICATE_RESOURCE`.
   - **Request Body**:
     ```json
     {
@@ -184,7 +186,7 @@ interface PageResponse<T> {
   - **Request Body**: `{ "status": "IN_PROGRESS", "actualStartDate": "2026-11-15" }`
   - **Response 200**: `ApiResponse<EventDetailDto>`
 
-Luồng trạng thái là `PLANNING → APPROVED → IN_PROGRESS → COMPLETED`. Ba trạng thái đầu có thể chuyển sang `CANCELLED`. Hai trạng thái kết thúc không mở lại. Khi bắt đầu phải gửi `actualStartDate`. Khi hoàn thành phải gửi `actualEndDate` bằng hoặc sau ngày bắt đầu. Chuyển trạng thái sai trả `400`.
+Luồng trạng thái là `PLANNING → APPROVED → IN_PROGRESS → COMPLETED`. Ba trạng thái đầu có thể chuyển sang `CANCELLED`. Hai trạng thái kết thúc không mở lại. Khi bắt đầu phải gửi `actualStartDate`. Khi hoàn thành phải gửi `actualEndDate` bằng hoặc sau ngày bắt đầu. Với mùa cũ chưa có ngày bắt đầu thực tế, gửi thêm `actualStartDate` khi hoàn thành. Chuyển trạng thái sai trả `400`.
 
 ---
 

@@ -18,6 +18,7 @@ export function EventStatusForm({ event, onSaved }: { event: EventResponse; onSa
     const [target, setTarget] = useState<EventStatus | ''>('');
     const { busy, error, mutate } = useMutation();
     if (!options.length) return null;
+    // Mùa cũ thiếu ngày bắt đầu cần bổ sung ngày này cùng ngày kết thúc khi hoàn thành.
     const needsStart = target === 'IN_PROGRESS' || (target === 'COMPLETED' && !event.actualStartDate);
 
     return <form className={`${panel} space-y-3`} onSubmit={(form) => {

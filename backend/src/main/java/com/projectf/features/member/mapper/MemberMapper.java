@@ -27,6 +27,7 @@ public class MemberMapper {
  }
 
  public void updateStatus(ClubMember member, boolean active) {
+  // API §2.1: lưu mốc ngừng hoạt động và xóa mốc đó khi kích hoạt lại.
   member.setActive(active);
   if (active) {
    member.setInactiveAt(null);

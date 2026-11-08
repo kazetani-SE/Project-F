@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!supabase) return;
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            // Dùng token mới nhất khi Supabase khôi phục hoặc làm mới phiên.
             const id = session?.user.id ?? null;
             setAccessToken(session?.access_token ?? null);
             if (event === 'PASSWORD_RECOVERY' && id) sessionStorage.setItem(RECOVERY_USER, id);
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!currentAccount || recovery) return;
         let current = true;
+        // Đặc tả frontend §2: chỉ mở màn hình nghiệp vụ sau khi Spring xác nhận hồ sơ CLB.
         shellService.getMe()
             .then((user) => { if (current) setProfile({ account: currentAccount, user }); })
             .catch((error: ApiError) => { if (current) setProfile({ account: currentAccount, error }); });

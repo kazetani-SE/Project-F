@@ -1,8 +1,8 @@
--- Business data is served by Spring, never by the browser's Data API roles.
+-- Đặc tả hệ thống §5.1: trình duyệt truy cập dữ liệu nghiệp vụ qua Spring.
 ALTER TABLE public.club_members
     ADD COLUMN auth_user_id UUID UNIQUE REFERENCES auth.users (id) ON DELETE SET NULL;
 
--- Fail the migration if existing rows would make an identity ambiguous.
+-- Dừng migration nếu email hoặc MSSV hiện có bị trùng khi so sánh không phân biệt hoa thường.
 CREATE UNIQUE INDEX uq_club_members_email_ci ON public.club_members (lower(email));
 CREATE UNIQUE INDEX uq_club_members_student_id_ci ON public.club_members (lower(student_id));
 
