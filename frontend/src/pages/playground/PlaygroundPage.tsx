@@ -107,11 +107,10 @@ export default function PlaygroundPage() {
             <div className="flex border-b border-slate-200">
                 <button
                     onClick={() => setActiveTab('ALL')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                        activeTab === 'ALL'
-                            ? 'border-emerald-600 text-emerald-700'
-                            : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                    }`}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === 'ALL'
+                        ? 'border-emerald-600 text-emerald-700'
+                        : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                        }`}
                 >
                     <CalendarDays className="h-4 w-4" />
                     <span>Mọi sự kiện</span>
@@ -122,11 +121,10 @@ export default function PlaygroundPage() {
 
                 <button
                     onClick={() => setActiveTab('MULTI_SEASON')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                        activeTab === 'MULTI_SEASON'
-                            ? 'border-emerald-600 text-emerald-700'
-                            : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                    }`}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === 'MULTI_SEASON'
+                        ? 'border-emerald-600 text-emerald-700'
+                        : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                        }`}
                 >
                     <Layers className="h-4 w-4" />
                     <span>Sự kiện đa mùa</span>
@@ -153,61 +151,55 @@ export default function PlaygroundPage() {
                 <div className="flex flex-wrap items-center gap-1.5">
                     <button
                         onClick={() => setStatusFilter('ALL')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'ALL'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'ALL'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Tất cả
                     </button>
                     <button
                         onClick={() => setStatusFilter('PLANNING')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'PLANNING'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'PLANNING'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Lên kế hoạch
                     </button>
                     <button
                         onClick={() => setStatusFilter('APPROVED')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'APPROVED'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'APPROVED'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Đã duyệt
                     </button>
                     <button
                         onClick={() => setStatusFilter('IN_PROGRESS')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'IN_PROGRESS'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'IN_PROGRESS'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Đang diễn ra
                     </button>
                     <button
                         onClick={() => setStatusFilter('COMPLETED')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'COMPLETED'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'COMPLETED'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Hoàn thành
                     </button>
                     <button
                         onClick={() => setStatusFilter('CANCELLED')}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            statusFilter === 'CANCELLED'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${statusFilter === 'CANCELLED'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
                     >
                         Đã hủy
                     </button>
@@ -260,22 +252,22 @@ export default function PlaygroundPage() {
                                             return (
                                                 <tr
                                                     key={ev.id}
-                                                    className={`border-b border-slate-100 transition-colors ${
-                                                        isSelected
+                                                    className={`border-b border-slate-100 transition-colors cursor-pointer 
+                                                        ${isSelected
                                                             ? 'bg-emerald-50/60'
                                                             : 'hover:bg-slate-50/80'
-                                                    }`}
+                                                        }`}
+                                                    onClick={() => handleSelectAndOpen(ev)}
                                                 >
                                                     {/* SỰ KIỆN */}
                                                     <td className="py-4 px-5">
                                                         <div className="flex items-center gap-2">
                                                             <div>
                                                                 <p
-                                                                    className={`font-semibold ${
-                                                                        ev.status === 'CANCELLED'
-                                                                            ? 'line-through text-slate-400'
-                                                                            : 'text-slate-900'
-                                                                    }`}
+                                                                    className={`font-semibold ${ev.status === 'CANCELLED'
+                                                                        ? 'line-through text-slate-400'
+                                                                        : 'text-slate-900'
+                                                                        }`}
                                                                 >
                                                                     {ev.name}
                                                                 </p>
