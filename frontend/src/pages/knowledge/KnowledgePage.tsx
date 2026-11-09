@@ -12,8 +12,8 @@ export const KnowledgePage: React.FC = () => {
     const { currentEvent } = useActiveEvent();
     const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'FAQS' | 'FEEDBACKS'>('INCIDENTS');
 
-    const eventId = paramEventId ?? '';
-    const seriesId = currentEvent?.seriesId;
+    const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
+    const seriesId = currentEvent?.seriesId || '22222222-2222-4222-8222-222222222201';
 
     const [incidentCount, setIncidentCount] = useState<number | null>(null);
     const [faqCount, setFaqCount] = useState<number | null>(null);
@@ -25,7 +25,7 @@ export const KnowledgePage: React.FC = () => {
             try {
                 const [incidents, faqs, feedbacks] = await Promise.allSettled([
                     getIncidentsByEvent(eventId),
-                    seriesId ? getFaqsBySeries(seriesId) : Promise.resolve([]),
+                    getFaqsBySeries(seriesId),
                     getFeedbacksByEvent(eventId),
                 ]);
                 if (isMounted) {
@@ -53,7 +53,7 @@ export const KnowledgePage: React.FC = () => {
                     </Link>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="text-slate-600 font-medium">
-                        {currentEvent?.title || 'Chi tiết sự kiện'}
+                        {currentEvent?.name || 'Chi tiết sự kiện'}
                     </span>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="font-semibold text-emerald-600">Kho tri thức</span>
@@ -107,7 +107,6 @@ export const KnowledgePage: React.FC = () => {
                 </button>
 
                 <button
-                    disabled={!seriesId}
                     onClick={() => setActiveTab('FAQS')}
                     className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
                         activeTab === 'FAQS'
@@ -157,7 +156,7 @@ export const KnowledgePage: React.FC = () => {
             {/* Tab Contents */}
             <div>
                 {activeTab === 'INCIDENTS' && <IncidentSection eventId={eventId} />}
-                {activeTab === 'FAQS' && seriesId && <FaqSection seriesId={seriesId} />}
+                {activeTab === 'FAQS' && <FaqSection seriesId={seriesId} />}
                 {activeTab === 'FEEDBACKS' && <FeedbackSection eventId={eventId} />}
             </div>
         </div>

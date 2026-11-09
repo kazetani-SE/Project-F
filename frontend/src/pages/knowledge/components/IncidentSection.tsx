@@ -13,7 +13,7 @@ import {
     getIncidentsByEvent,
     createIncident,
 } from '../../../services/knowledgeService';
-import { isClubAdmin, useAuth } from '../../../context/authContext';
+import { useAuth } from '../../../context/authContext';
 import {
     type IncidentResponse,
     type IncidentSeverity,
@@ -29,7 +29,6 @@ interface Props {
 
 export const IncidentSection: React.FC<Props> = ({ eventId }) => {
     const { user } = useAuth();
-    const canWrite = isClubAdmin(user?.clubRole);
     const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -131,15 +130,13 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                     />
                 </div>
 
-                {canWrite && (
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                        <span>Ghi nhận sự cố (Post-Mortem)</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span>Ghi nhận sự cố (Post-Mortem)</span>
+                </button>
             </div>
 
             {/* Filter Pills: Severity & Departments */}
@@ -307,7 +304,7 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
             )}
 
             {/* Modal Ghi nhận sự cố */}
-            {canWrite && isCreateModalOpen && (
+            {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">

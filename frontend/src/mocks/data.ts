@@ -1,5 +1,5 @@
 import type { AuthUser } from '../types/models/auth.ts';
-import type { EventRole, EventResponse, EventStatus } from '../types/models/event.ts';
+import type { EventRole, EventSummary } from '../types/models/event.ts';
 import type { DocumentResponse } from '../types/models/document.ts';
 import type { MediaAssetResponse } from '../types/models/media.ts';
 import type {
@@ -18,7 +18,7 @@ export const MOCK_USER: AuthUser = {
 
 export const MOCK_SERIES_ID = '22222222-2222-4222-8222-222222222201';
 
-const eventFixtures = [
+export const MOCK_EVENTS: EventSummary[] = [
     {
         id: 'ev-tech-fall-2026',
         seriesId: MOCK_SERIES_ID,
@@ -115,32 +115,16 @@ const eventFixtures = [
         location: 'Nhà hàng Hoa Sen',
         allocatedBudget: 15000000,
     },
-] satisfies { id: string; seriesId: string | null; name: string; seasonLabel: string | null; status: EventStatus; year: number; startDate: string; endDate: string; location: string; allocatedBudget: number }[];
-
-export const MOCK_EVENTS: EventResponse[] = eventFixtures.map((item) => ({
-    id: item.id,
-    seriesId: item.seriesId,
-    title: item.name,
-    seasonName: item.seasonLabel ?? String(item.year),
-    description: item.location,
-    expectedStartDate: item.startDate,
-    expectedEndDate: item.endDate,
-    actualStartDate: item.status === 'IN_PROGRESS' || item.status === 'COMPLETED' ? item.startDate : null,
-    actualEndDate: item.status === 'COMPLETED' ? item.endDate : null,
-    status: item.status,
-    allocatedFund: item.allocatedBudget,
-    createdAt: item.startDate + 'T00:00:00Z',
-    updatedAt: item.startDate + 'T00:00:00Z',
-}));
+];
 
 // Muốn test vai trò nào thì sửa ở đây. null = "Không thuộc BTC"
 export const MOCK_ROLES: Record<string, EventRole | null> = {
-    'ev-tech-fall-2026': 'MASTER_PLAN',
-    'ev-git-101': 'RUNNING_ORDER',
-    'ev-codewars-2026': 'SPONSOR_PROPOSAL',
-    'ev-orientation-k21': 'RISK_PLAN',
+    'ev-tech-fall-2026': 'HEAD_ORGANIZER',
+    'ev-git-101': 'LEAD_CONTENT',
+    'ev-codewars-2026': 'LEAD_FINANCE',
+    'ev-orientation-k21': 'LEAD_LOGISTICS',
     'ev-ai-agents': null,
-    'ev-hackathon-2026': 'MASTER_PLAN',
+    'ev-hackathon-2026': 'HEAD_ORGANIZER',
     'ev-tech-spring-2026': 'MEMBER',
     'ev-yearend-2025': 'MEMBER',
 };

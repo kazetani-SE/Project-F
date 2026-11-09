@@ -63,17 +63,17 @@ class SupabaseMigrationTest {
     }
 
     @Test
-    void dataApiRolesCannotSelectTablesOrViews() throws SQLException {
+    void revokesOnlyTaskOneDataApiGrants() throws SQLException {
         try (Connection connection = connection(); Statement sql = connection.createStatement();
              var grants = sql.executeQuery("""
                      select has_table_privilege('anon', 'club_members', 'SELECT'),
-                            has_table_privilege('authenticated', 'event_documents', 'SELECT'),
-                            has_table_privilege('authenticated', 'v_event_budget_summary', 'SELECT')
+                            has_table_privilege('authenticated', 'event_organizers', 'SELECT'),
+                            has_table_privilege('authenticated', 'event_documents', 'SELECT')
                      """)) {
             assertTrue(grants.next());
             assertFalse(grants.getBoolean(1));
             assertFalse(grants.getBoolean(2));
-            assertFalse(grants.getBoolean(3));
+            assertTrue(grants.getBoolean(3));
         }
     }
 

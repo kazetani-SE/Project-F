@@ -14,7 +14,7 @@ export const DocumentsPage: React.FC = () => {
     const [docCount, setDocCount] = useState<number | null>(null);
     const [mediaCount, setMediaCount] = useState<number | null>(null);
 
-    const eventId = paramEventId ?? '';
+    const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
 
     useEffect(() => {
         let isMounted = true;
@@ -48,7 +48,7 @@ export const DocumentsPage: React.FC = () => {
                     </Link>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="text-slate-600 font-medium">
-                        {currentEvent?.title || 'Chi tiết sự kiện'}
+                        {currentEvent?.name || 'Chi tiết sự kiện'}
                     </span>
                     <ChevronRight className="h-3.5 w-3.5" />
                     <span className="font-semibold text-emerald-600">Tài liệu & Ấn phẩm</span>

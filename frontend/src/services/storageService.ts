@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { ApiError, ApiResponse } from '../types/common/api';
+import type { ApiResponse } from '../types/common/api';
 import type {
     PresignedDownloadResponse,
     PresignedUploadRequest,
@@ -19,22 +19,13 @@ export async function getPresignedUploadUrl(
 export async function getPresignedDownloadUrl(
     objectKey: string,
 ): Promise<PresignedDownloadResponse> {
-    try {
-        const res = await apiClient.get<ApiResponse<PresignedDownloadResponse>>(
-            '/storage/presigned-download',
-            { params: { objectKey } },
-        );
-        return res.data.data;
-    } catch (error) {
-        if ((error as ApiError).status === 403 && !objectKey.includes('?versionId=')) {
-            throw new Error('Tệp cũ chưa có mã phiên bản. Hãy liên hệ quản trị viên để tải tệp lên lại.');
-        }
-        throw error;
-    }
-}
-
-export function isS3Attachment(url: string) {
-    return URL.canParse(url) && new URL(url).hostname.endsWith('.amazonaws.com');
+    const res = await apiClient.get<ApiResponse<PresignedDownloadResponse>>(
+        '/storage/presigned-download',
+        {
+            params: { objectKey },
+        },
+    );
+    return res.data.data;
 }
 
 export async function deleteFileFromS3(objectKey: string): Promise<void> {

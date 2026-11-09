@@ -14,13 +14,19 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -61,6 +67,50 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
     }
 
     @Test
+    void memberSortKeepsAliasesAndAppendsAStableIdOrder() throws Exception {
+        var sort = Sort.by(Sort.Order.desc("active"), Sort.Order.asc("clubRole"), Sort.Order.asc("id"));
+        var page = PageRequest.of(1, 4, sort);
+        when(members.findAll(org.mockito.ArgumentMatchers.<Specification<ClubMember>>any(), eq(page)))
+                .thenReturn(Page.empty(page));
+
+        mvc.perform(get("/v1/members").with(adminToken()).param("page", "1").param("size", "4")
+                .param("sort", "isActive,desc", "role,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pageNumber").value(1))
+                .andExpect(jsonPath("$.data.pageSize").value(4));
+    }
+
+    @Test
+    void unsupportedSortIsRejectedAcrossDomainCollections() throws Exception {
+        var admin = adminToken();
+        for (String resource : new String[] {"members", "events", "event-series"}) {
+            mvc.perform(get("/v1/" + resource).with(admin).param("sort", "authUserId"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_SORT"));
+        }
+    }
+
+    @Test
+    void missingMemberEventAndSeriesUseTheSameNotFoundCode() throws Exception {
+        UUID id = UUID.randomUUID();
+        var admin = adminToken();
+        for (String resource : new String[] {"members", "events", "event-series"}) {
+            mvc.perform(get("/v1/" + resource + "/{id}", id).with(admin))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+        }
+    }
+
+    @Test
+    void invalidExpectedDateRangeUsesTheEventDateCode() throws Exception {
+        mvc.perform(post("/v1/events").with(adminToken()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"seasonName":"2026","title":"Season","expectedStartDate":"2026-11-11","expectedEndDate":"2026-11-10"}
+                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_EVENT_DATE_RANGE"));
+    }
+
+    @Test
     void anEventCannotSkipApproval() throws Exception {
         var event = new Event();
         event.setId(UUID.randomUUID());
@@ -87,7 +137,28 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
         mvc.perform(patch("/v1/events/{id}/status", event.getId()).with(adminToken())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"IN_PROGRESS\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("INVALID_EVENT_DATES"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_EVENT_DATE_RANGE"));
+    }
+
+    @Test
+    void actualDateOrderUsesTheSameCodeBeforeAndAfterMergingStoredDates() throws Exception {
+        var event = new Event();
+        event.setId(UUID.randomUUID());
+        event.setStatus(EventStatus.IN_PROGRESS);
+        event.setActualStartDate(LocalDate.of(2026, 11, 10));
+        when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
+        var admin = adminToken();
+        String fields = """
+                "seasonName":"2026","title":"Season","expectedStartDate":"2026-11-10",
+                "expectedEndDate":"2026-11-11","actualEndDate":"2026-11-09"
+                """;
+
+        for (String start : new String[] {"", ",\"actualStartDate\":\"2026-11-10\""}) {
+            mvc.perform(put("/v1/events/{id}", event.getId()).with(admin).contentType(MediaType.APPLICATION_JSON)
+                    .content("{" + fields + start + "}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_EVENT_DATE_RANGE"));
+        }
     }
 
     @Test

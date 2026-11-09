@@ -1,8 +1,8 @@
 package com.projectf.features.event.controller;
 
-import com.projectf.common.exception.ApiException;
 import com.projectf.common.response.ApiResponse;
 import com.projectf.common.response.PageResponse;
+import com.projectf.common.utils.Paging;
 import com.projectf.features.event.dto.request.AssignOrganizerRequest;
 import com.projectf.features.event.dto.request.CreateEventRequest;
 import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
@@ -18,9 +18,9 @@ import com.projectf.features.event.entity.EventStatus;
 import com.projectf.features.event.service.EventService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -51,7 +51,8 @@ public class EventController {
 
     @GetMapping("/event-series")
     public ApiResponse<PageResponse<EventSeriesResponse>> listSeries(@PageableDefault(sort = "name") Pageable pageable) {
-        return ApiResponse.ok(PageResponse.from(events.listSeries(orderedPage(pageable, SERIES_SORT))));
+        Pageable page = Paging.withStableSort(pageable, SERIES_SORT, Map.of());
+        return ApiResponse.ok(PageResponse.from(events.listSeries(page)));
     }
 
     @GetMapping("/event-series/{seriesId}")
@@ -77,7 +78,8 @@ public class EventController {
             @RequestParam(required = false) UUID seriesId,
             @RequestParam(required = false) EventStatus status,
             @PageableDefault(sort = "expectedStartDate", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.ok(PageResponse.from(events.list(seriesId, status, orderedPage(pageable, EVENT_SORT))));
+        Pageable page = Paging.withStableSort(pageable, EVENT_SORT, Map.of());
+        return ApiResponse.ok(PageResponse.from(events.list(seriesId, status, page)));
     }
 
     @GetMapping("/events/{eventId}")
@@ -123,16 +125,5 @@ public class EventController {
     public ApiResponse<Void> removeOrganizer(@PathVariable UUID eventId, @PathVariable UUID memberId) {
         events.removeOrganizer(eventId, memberId);
         return ApiResponse.ok(null);
-    }
-
-    private static Pageable orderedPage(Pageable pageable, Set<String> allowedFields) {
-        Sort sort = pageable.getSort();
-        if (sort.stream().anyMatch(order -> !allowedFields.contains(order.getProperty()))) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SORT", "Unsupported sort field");
-        }
-        if (sort.getOrderFor("id") == null) {
-            sort = sort.and(Sort.by("id"));
-        }
-        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
 }

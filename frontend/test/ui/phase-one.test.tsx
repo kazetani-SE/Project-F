@@ -4,7 +4,10 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthContext, type AuthState } from '../../src/context/authContext';
-import { LoginPage, RequireAuth, RequireAdmin, ResetPasswordPage } from '../../src/pages/auth/AuthPages';
+import { LoginPage } from '../../src/pages/auth/LoginPage';
+import { ResetPasswordPage } from '../../src/pages/auth/ResetPasswordPage';
+import { RequireAuth } from '../../src/components/layout/RequireAuth';
+import { RequireAdmin } from '../../src/components/layout/RequireAdmin';
 import { statusOptions } from '../../src/pages/events/statusOptions';
 
 afterEach(cleanup);

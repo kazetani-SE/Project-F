@@ -1,5 +1,22 @@
 export type EventStatus = 'PLANNING' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-export type EventRole = 'MASTER_PLAN' | 'RUNNING_ORDER' | 'SPONSOR_PROPOSAL' | 'MEETING_MINUTES' | 'RISK_PLAN' | 'MEMBER';
+export type EventRole =
+    | 'HEAD_ORGANIZER' | 'VICE_ORGANIZER'
+    | 'LEAD_FINANCE' | 'LEAD_LOGISTICS' | 'LEAD_MEDIA' | 'LEAD_CONTENT' | 'LEAD_EXTERNAL'
+    | 'MEMBER';
+export type OrganizerRole = 'MASTER_PLAN' | 'RUNNING_ORDER' | 'SPONSOR_PROPOSAL' | 'MEETING_MINUTES' | 'RISK_PLAN' | 'MEMBER';
+
+export interface EventSummary {
+    id: string;
+    seriesId?: string | null;
+    name: string;
+    seasonLabel: string | null;
+    status: EventStatus;
+    year?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    location?: string | null;
+    allocatedBudget?: number | null;
+}
 
 export interface EventFields {
     seriesId: string | null;
@@ -42,7 +59,7 @@ export interface EventSeriesDetail extends EventSeriesResponse {
 
 export interface OrganizerFields {
     memberId: string;
-    role: EventRole;
+    role: OrganizerRole;
     assignedTasks: string | null;
 }
 

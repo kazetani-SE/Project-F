@@ -1,8 +1,8 @@
 package com.projectf.features.auth.controller;
 
 import com.projectf.common.response.ApiResponse;
+import com.projectf.features.auth.dto.response.AccountResponse;
 import com.projectf.features.auth.service.AccountService;
-import com.projectf.features.auth.service.AccountService.Account;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,7 +21,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Account>> me(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<ApiResponse<AccountResponse>> me(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.ok(accounts.resolve(jwt)));
     }
 }

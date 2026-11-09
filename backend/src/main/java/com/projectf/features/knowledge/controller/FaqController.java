@@ -1,7 +1,6 @@
 package com.projectf.features.knowledge.controller;
 
 import com.projectf.common.response.ApiResponse;
-import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.knowledge.dto.request.CreateFaqRequest;
 import com.projectf.features.knowledge.dto.request.UpdateFaqPinRequest;
 import com.projectf.features.knowledge.dto.response.FaqResponse;
@@ -31,11 +30,9 @@ public class FaqController {
     private static final String FAQ_ID = "faqId";
 
     private final FaqService faqService;
-    private final AccessPolicy access;
 
-    public FaqController(FaqService faqService, AccessPolicy access) {
+    public FaqController(FaqService faqService) {
         this.faqService = faqService;
-        this.access = access;
     }
 
     @GetMapping("/event-series/{seriesId}/faqs")
@@ -43,7 +40,6 @@ public class FaqController {
             @PathVariable(SERIES_ID) UUID seriesId,
             @RequestParam(value = "category", required = false) String category
     ) {
-        access.requireSeries(seriesId);
         List<FaqResponse> response = faqService.getFaqsBySeries(seriesId, category);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -62,7 +58,6 @@ public class FaqController {
             @PathVariable(FAQ_ID) UUID faqId
     ) {
         FaqResponse response = faqService.getFaqById(faqId);
-        access.requireSeries(response.seriesId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

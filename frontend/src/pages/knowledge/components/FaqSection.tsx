@@ -1,4 +1,3 @@
-import { isClubAdmin, useAuth } from '../../../context/authContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     HelpCircle,
@@ -24,7 +23,6 @@ interface Props {
 }
 
 export const FaqSection: React.FC<Props> = ({ seriesId }) => {
-    const canWrite = isClubAdmin(useAuth().user?.clubRole);
     const [faqs, setFaqs] = useState<FaqResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -158,15 +156,13 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                     </div>
                 </div>
 
-                {canWrite && (
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                        <span>Thêm câu hỏi FAQ</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span>Thêm câu hỏi FAQ</span>
+                </button>
             </div>
 
             {error && (
@@ -216,19 +212,17 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                                     <h4 className="text-base font-bold text-slate-900">{faq.question}</h4>
                                 </div>
 
-                                {canWrite && (
-                                    <button
-                                        onClick={() => handleTogglePin(faq)}
-                                        className={`rounded-xl p-2 transition-colors ${
-                                            faq.isPinned
-                                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                                        }`}
-                                        title={faq.isPinned ? 'Bỏ ghim câu hỏi' : 'Ghim câu hỏi lên đầu'}
-                                    >
-                                        <Pin className={`h-4 w-4 ${faq.isPinned ? 'fill-current' : ''}`} />
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => handleTogglePin(faq)}
+                                    className={`rounded-xl p-2 transition-colors ${
+                                        faq.isPinned
+                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                    }`}
+                                    title={faq.isPinned ? 'Bỏ ghim câu hỏi' : 'Ghim câu hỏi lên đầu'}
+                                >
+                                    <Pin className={`h-4 w-4 ${faq.isPinned ? 'fill-current' : ''}`} />
+                                </button>
                             </div>
 
                             <p className="mt-3 text-sm leading-relaxed text-slate-600 pl-3 border-l-2 border-emerald-500">
@@ -240,7 +234,7 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
             )}
 
             {/* Modal Thêm câu hỏi FAQ */}
-            {canWrite && isCreateModalOpen && (
+            {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">

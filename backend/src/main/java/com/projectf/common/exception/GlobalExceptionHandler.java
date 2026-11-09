@@ -28,7 +28,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> validation(MethodArgumentNotValidException exception) {
         List<ErrorDetail> details = exception.getBindingResult().getFieldErrors().stream()
                 .map(field -> new ErrorDetail(field.getField(), null, field.getDefaultMessage())).toList();
-        return ResponseEntity.badRequest().body(ApiResponse.error("VALIDATION_FAILED", "Invalid request", details));
+        // API §1.3: dùng mã riêng cho khoảng ngày của mùa, giữ mã chung khi payload có lỗi khác.
+        boolean dateRangeOnly = !details.isEmpty() && details.size() == exception.getErrorCount()
+                && details.stream().allMatch(detail -> "expectedDateRangeValid".equals(detail.field())
+                        || "actualDateRangeValid".equals(detail.field()));
+        String code = dateRangeOnly ? "INVALID_EVENT_DATE_RANGE" : "VALIDATION_FAILED";
+        return ResponseEntity.badRequest().body(ApiResponse.error(code, "Invalid request", details));
     }
 
     @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class,

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AuthContext } from './authContext';
+import { ROUTE_PATHS } from '../app/router/route';
 import { setAccessToken } from '../services/apiClient';
 import { requireSupabase, supabase, useMock } from '../services/supabaseClient';
 import { shellService } from '../services/shellService';
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function sendReset(email: string) {
-        const redirectTo = new URL('/reset-password', window.location.origin).href;
+        const redirectTo = new URL(ROUTE_PATHS.RESET_PASSWORD, window.location.origin).href;
         const { error } = await requireSupabase().auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
     }

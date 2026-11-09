@@ -1,13 +1,6 @@
 import type { ClubRole } from './auth';
 
-export const departmentLabels = {
-    HR: 'Nhân sự',
-    PLAN: 'Kế hoạch',
-    MEDIA: 'Truyền thông',
-    ACADEMIC: 'Học thuật',
-} as const;
-
-export type Department = keyof typeof departmentLabels;
+export type Department = 'HR' | 'PLAN' | 'MEDIA' | 'ACADEMIC';
 
 export interface MemberFields {
     fullName: string;

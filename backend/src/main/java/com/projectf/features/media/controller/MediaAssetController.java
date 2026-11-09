@@ -1,7 +1,6 @@
 package com.projectf.features.media.controller;
 
 import com.projectf.common.response.ApiResponse;
-import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.media.dto.request.CreateMediaAssetRequest;
 import com.projectf.features.media.dto.request.MediaApprovalRequest;
 import com.projectf.features.media.dto.request.UpdatePrintStatusRequest;
@@ -33,11 +32,8 @@ public class MediaAssetController {
 
     private final MediaAssetService mediaAssetService;
 
-    private final AccessPolicy access;
-
-    public MediaAssetController(MediaAssetService mediaAssetService, AccessPolicy access) {
+    public MediaAssetController(MediaAssetService mediaAssetService) {
         this.mediaAssetService = mediaAssetService;
-        this.access = access;
     }
 
     @GetMapping("/events/{eventId}/media-assets")
@@ -63,7 +59,6 @@ public class MediaAssetController {
             @PathVariable(ASSET_ID) UUID assetId
     ) {
         MediaAssetResponse response = mediaAssetService.getMediaAssetById(assetId);
-        access.requireEvent(response.eventId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

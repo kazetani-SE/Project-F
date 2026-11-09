@@ -1,4 +1,3 @@
-import { ErrorNotice } from '../../../components/ui/CrudUi';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Image as ImageIcon,
@@ -17,11 +16,12 @@ import {
     updateMediaPrintStatus,
     updateMediaApproval,
 } from '../../../services/mediaService';
-import { getPresignedDownloadUrl, isS3Attachment } from '../../../services/storageService';
+import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
 import { executeStagedUploadAndSave } from '../../../services/uploadWorkflow';
 import { useS3Upload } from '../../../hooks/useS3Upload';
-import { isClubAdmin, useAuth } from '../../../context/authContext';
+import { useActiveEvent } from '../../../context/activeEventContext';
+import { useAuth } from '../../../context/authContext';
 import {
     type MediaAssetResponse,
     type MediaAssetType,
@@ -34,12 +34,16 @@ interface Props {
 }
 
 export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
+    const { role } = useActiveEvent();
     const { user } = useAuth();
     const currentMemberUuid = user?.id || '11111111-1111-4111-8111-111111111101';
-    const canWrite = isClubAdmin(user?.clubRole);
+    const isLeader =
+        role === 'HEAD_ORGANIZER' ||
+        role === 'VICE_ORGANIZER' ||
+        role === 'LEAD_MEDIA' ||
+        role === 'LEAD_CONTENT';
 
     const [assets, setAssets] = useState<MediaAssetResponse[]>([]);
-    const [downloadError, setDownloadError] = useState<unknown>(null);
     const [resolvedPreviews, setResolvedPreviews] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -86,13 +90,12 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                 assets.map(async (asset) => {
                     const rawUrl = asset.previewImageUrl;
                     if (!rawUrl) return [asset.id, ''] as const;
-                    if (isS3Attachment(rawUrl)) {
+                    if (rawUrl.includes('.amazonaws.com/')) {
                         try {
                             const signed = await getPresignedDownloadUrl(rawUrl);
                             return [asset.id, signed.downloadUrl] as const;
-                        } catch (error) {
-                            if (!cancelled) setDownloadError(error);
-                            return [asset.id, ''] as const;
+                        } catch {
+                            return [asset.id, rawUrl] as const;
                         }
                     }
                     return [asset.id, rawUrl] as const;
@@ -197,7 +200,6 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
 
     return (
         <div className="space-y-6">
-            <ErrorNotice error={downloadError} />
             {/* Toolbar */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
@@ -231,15 +233,13 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                     </div>
                 </div>
 
-                {canWrite && (
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                        <span>Thêm ấn phẩm mới</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span>Thêm ấn phẩm mới</span>
+                </button>
             </div>
 
             {/* Print Status Filter Pills */}
@@ -305,7 +305,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
             ) : (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredAssets.map((asset) => {
-                        const previewSrc = resolvedPreviews[asset.id];
+                        const previewSrc = resolvedPreviews[asset.id] || asset.previewImageUrl;
                         return (
                             <div
                                 key={asset.id}
@@ -364,19 +364,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
 
                                         {asset.designFileUrl && (
                                             <a
-                                                href={isS3Attachment(asset.designFileUrl) ? '#' : asset.designFileUrl}
-                                                onClick={async (event) => {
-                                                    const url = asset.designFileUrl;
-                                                    if (!url || !isS3Attachment(url)) return;
-                                                    event.preventDefault();
-                                                    setDownloadError(null);
-                                                    try {
-                                                        const { downloadUrl } = await getPresignedDownloadUrl(url);
-                                                        window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-                                                    } catch (error) {
-                                                        setDownloadError(error);
-                                                    }
-                                                }}
+                                                href={asset.designFileUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
@@ -391,22 +379,20 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
                                 {/* Footer actions */}
                                 <div className="border-t border-slate-100 bg-slate-50/70 p-3.5 flex items-center justify-between gap-2">
                                     {/* Print Toggle */}
-                                    {canWrite ? (
-                                        <button
-                                            onClick={() => handleTogglePrint(asset)}
-                                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                                asset.isPrinted
-                                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                                                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-                                            }`}
-                                        >
-                                            <Printer className="h-3.5 w-3.5" />
-                                            <span>{asset.isPrinted ? 'Đã gửi in' : 'Chưa in'}</span>
-                                        </button>
-                                    ) : <span className="text-xs text-slate-600">{asset.isPrinted ? 'Đã gửi in' : 'Chưa in'}</span>}
+                                    <button
+                                        onClick={() => handleTogglePrint(asset)}
+                                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                            asset.isPrinted
+                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <Printer className="h-3.5 w-3.5" />
+                                        <span>{asset.isPrinted ? 'Đã gửi in' : 'Chưa in'}</span>
+                                    </button>
 
                                     {/* Leader Approval Actions */}
-                                    {canWrite && asset.approvalStatus === 'PENDING' && (
+                                    {isLeader && asset.approvalStatus === 'PENDING' && (
                                         <div className="flex items-center gap-1.5">
                                             <button
                                                 onClick={() => handleApproveAsset(asset, 'REJECTED')}
@@ -432,7 +418,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
             )}
 
             {/* Modal tạo ấn phẩm mới */}
-            {canWrite && isCreateModalOpen && (
+            {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">

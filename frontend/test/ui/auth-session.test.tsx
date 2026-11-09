@@ -7,7 +7,8 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../../src/context/AuthProvider';
 import { apiClient, setAccessToken } from '../../src/services/apiClient';
-import { LogoutButton, RequireAuth } from '../../src/pages/auth/AuthPages';
+import { LogoutButton } from '../../src/components/layout/LogoutButton';
+import { RequireAuth } from '../../src/components/layout/RequireAuth';
 import type { AuthUser } from '../../src/types/models/auth';
 
 const mock = vi.hoisted(() => ({

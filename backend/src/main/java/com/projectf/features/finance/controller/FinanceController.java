@@ -2,7 +2,6 @@ package com.projectf.features.finance.controller;
 
 import com.projectf.common.enums.ApprovalStatus;
 import com.projectf.common.response.ApiResponse;
-import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.finance.dto.request.AutoProjectBudgetRequest;
 import com.projectf.features.finance.dto.request.CreateBenchmarkRequest;
 import com.projectf.features.finance.dto.request.CreateBudgetCategoryRequest;
@@ -52,7 +51,6 @@ public class FinanceController {
     private final BudgetItemService budgetItemService;
     private final BenchmarkService benchmarkService;
     private final ExpenseService expenseService;
-    private final AccessPolicy access;
 
     // ========================================================================
     // 1. DANH MỤC KINH PHÍ (BUDGET CATEGORIES)
@@ -138,15 +136,12 @@ public class FinanceController {
             @RequestParam UUID eventId,
             @RequestParam(required = false) ApprovalStatus status
     ) {
-        access.requireEvent(eventId);
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getBudgetItemsByEvent(eventId, status)));
     }
 
     @GetMapping("/budgets/{id}")
     public ResponseEntity<ApiResponse<BudgetItemResponse>> getBudgetItemById(@PathVariable UUID id) {
-        BudgetItemResponse item = budgetItemService.getBudgetItemById(id);
-        access.requireEvent(item.eventId());
-        return ResponseEntity.ok(ApiResponse.ok(item));
+        return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getBudgetItemById(id)));
     }
 
     @PostMapping("/budgets")
@@ -187,7 +182,6 @@ public class FinanceController {
     public ResponseEntity<ApiResponse<List<ProjectedBudgetResponse>>> getProjectedBudgetPreview(
             @RequestParam UUID previousEventId
     ) {
-        access.requireEvent(previousEventId);
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getProjectedBudgetPreview(previousEventId)));
     }
 
@@ -208,15 +202,12 @@ public class FinanceController {
             @RequestParam UUID eventId,
             @RequestParam(required = false) ApprovalStatus status
     ) {
-        access.requireEvent(eventId);
         return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpensesByEvent(eventId, status)));
     }
 
     @GetMapping("/expenses/{id}")
     public ResponseEntity<ApiResponse<ExpenseResponse>> getExpenseById(@PathVariable UUID id) {
-        ExpenseResponse expense = expenseService.getExpenseById(id);
-        access.requireEvent(expense.eventId());
-        return ResponseEntity.ok(ApiResponse.ok(expense));
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpenseById(id)));
     }
 
     @PostMapping("/expenses")

@@ -134,12 +134,12 @@ class StorageServiceTest {
         ArgumentCaptor<GetObjectPresignRequest> getCaptor = ArgumentCaptor.forClass(GetObjectPresignRequest.class);
         when(s3Presigner.presignGetObject(getCaptor.capture())).thenReturn(mockGet);
 
-        String encodedUrlWithVersion = "https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/%C3%94n%20t%E1%BA%ADp.%20B%C3%A0i%204.5%20JPD123.pdf?versionId=test%2Bver%2F123";
+        String encodedUrlWithVersion = "https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/%C3%94n%20t%E1%BA%ADp.%20B%C3%A0i%204.5%20JPD123.pdf?versionId=test-ver-123";
         PresignedDownloadResponse downloadRes = storageService.generatePresignedDownloadUrl(encodedUrlWithVersion);
 
         assertEquals("documents/Ôn tập. Bài 4.5 JPD123.pdf", downloadRes.objectKey());
         assertEquals("documents/Ôn tập. Bài 4.5 JPD123.pdf", getCaptor.getValue().getObjectRequest().key());
-        assertEquals("test+ver/123", getCaptor.getValue().getObjectRequest().versionId());
+        assertEquals("test-ver-123", getCaptor.getValue().getObjectRequest().versionId());
     }
 
     @Test

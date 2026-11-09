@@ -1,9 +1,8 @@
 package com.projectf.features.member.service.impl;
 
-import com.projectf.common.enums.ClubRole;
-import com.projectf.common.enums.Department;
 import com.projectf.common.exception.ApiException;
 import com.projectf.features.member.dto.request.CreateMemberRequest;
+import com.projectf.features.member.dto.request.MemberFilterRequest;
 import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.entity.ClubMember;
@@ -16,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -61,30 +62,30 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
-    public Page<MemberResponse> list(String keyword, Department department, ClubRole role, String batch,
-                                     Boolean active, Pageable pageable) {
+    public Page<MemberResponse> list(MemberFilterRequest request, Pageable pageable) {
         return members.findAll((member, query, criteria) -> {
             List<Predicate> filters = new ArrayList<>();
-            if (StringUtils.hasText(keyword)) {
+            if (StringUtils.hasText(request.keyword())) {
                 // Giữ %, _ và ! trong từ khóa là ký tự nhập liệu thay vì mẫu tìm kiếm SQL.
-                String pattern = "%" + keyword.strip().toLowerCase(Locale.ROOT)
+                String pattern = "%" + request.keyword().strip().toLowerCase(Locale.ROOT)
                         .replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
                 filters.add(criteria.or(
                         criteria.like(criteria.lower(member.get("fullName")), pattern, '!'),
                         criteria.like(criteria.lower(member.get("studentId")), pattern, '!'),
                         criteria.like(criteria.lower(member.get("email")), pattern, '!')));
             }
-            if (department != null) {
-                filters.add(criteria.equal(member.get("department"), department));
+            if (request.department() != null) {
+                filters.add(criteria.equal(member.get("department"), request.department()));
             }
-            if (role != null) {
-                filters.add(criteria.equal(member.get("clubRole"), role));
+            if (request.role() != null) {
+                filters.add(criteria.equal(member.get("clubRole"), request.role()));
             }
-            if (StringUtils.hasText(batch)) {
-                filters.add(criteria.equal(criteria.lower(member.get("batch")), batch.strip().toLowerCase(Locale.ROOT)));
+            if (StringUtils.hasText(request.batch())) {
+                filters.add(criteria.equal(criteria.lower(member.get("batch")),
+                        request.batch().strip().toLowerCase(Locale.ROOT)));
             }
-            if (active != null) {
-                filters.add(criteria.equal(member.get("active"), active));
+            if (request.isActive() != null) {
+                filters.add(criteria.equal(member.get("active"), request.isActive()));
             }
             return criteria.and(filters.toArray(Predicate[]::new));
         }, pageable).map(mapper::toResponse);
@@ -129,12 +130,34 @@ public class MemberServiceImpl implements MemberService {
                 .collect(Collectors.toMap(ClubMember::getId, ClubMember::getFullName));
     }
 
+    @Override
+    public Optional<MemberResponse> findByAuthUserId(UUID authUserId) {
+        return members.findByAuthUserId(authUserId).map(mapper::toResponse);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public Optional<MemberResponse> claimAccount(UUID authUserId, String verifiedEmail) {
+        DataIntegrityViolationException claimConflict = null;
+        try {
+            // Đọc lại sau khi giao dịch liên kết đã hoàn tất hoặc được hoàn tác.
+            members.claimAccount(authUserId, verifiedEmail);
+        } catch (DataIntegrityViolationException conflict) {
+            claimConflict = conflict;
+        }
+        Optional<MemberResponse> linked = findByAuthUserId(authUserId);
+        if (claimConflict != null && linked.isEmpty()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied", claimConflict);
+        }
+        return linked;
+    }
+
     private ClubMember getForUpdate(UUID memberId) {
         return members.findByIdForUpdate(memberId).orElseThrow(MemberServiceImpl::notFound);
     }
 
     private static ApiException notFound() {
-        return new ApiException(HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Member not found");
+        return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Member not found");
     }
 
     private static ApiException duplicateEmail(Throwable cause) {

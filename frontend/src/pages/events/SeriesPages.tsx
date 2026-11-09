@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, secondary } from '../../components/ui/CrudUi';
+import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, RetryNotice, secondary } from '../../components/ui/CrudUi';
+import { useSuccessToast } from '../../components/ui/toastContext';
+import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
 import { isClubAdmin, useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { useResource } from '../../hooks/useResource';
@@ -36,22 +38,24 @@ export function SeriesPage() {
     const navigate = useNavigate();
     const [page, setPage] = useState(0);
     const [creating, setCreating] = useState(false);
+    const notify = useSuccessToast();
     const resource = useResource(useCallback(() => seriesService.list({ page, size: 20 }), [page]));
     return <section className="space-y-5">
         <PageHeader title="Chuỗi sự kiện" action={admin && !creating && <button className={button} onClick={() => setCreating(true)}>Tạo chuỗi sự kiện</button>} />
         {admin && creating && <SeriesForm onCancel={() => setCreating(false)} onSave={async (data) => {
             const series = await seriesService.create(data);
-            navigate(`/series/${series.id}`);
+            notify('Đã tạo chuỗi sự kiện.');
+            navigate(ROUTES.series(series.id));
         }} />}
         {resource.isLoading && <Loading />}
-        <ErrorNotice error={resource.error} />
-        {resource.data && (resource.data.content.length ? <ul className="grid gap-4 lg:grid-cols-2">
-            {resource.data.content.map((series) => <li key={series.id} className={panel}>
-                <Link className={link} to={`/series/${series.id}`}>{series.name}</Link>
+        <RetryNotice error={resource.error} onRetry={resource.reload} />
+        {resource.data && (resource.data.items.length ? <ul className="grid gap-4 lg:grid-cols-2">
+            {resource.data.items.map((series) => <li key={series.id} className={panel}>
+                <Link className={link} to={ROUTES.series(series.id)}>{series.name}</Link>
                 {series.description && <p className="mt-2 line-clamp-3 text-sm text-slate-600">{series.description}</p>}
             </li>)}
         </ul> : <p>Chưa có chuỗi sự kiện.</p>)}
-        {resource.data && <Pagination page={page} totalPages={resource.data.totalPages} onChange={setPage} />}
+        {resource.data && <Pagination pageData={resource.data} onChange={setPage} />}
     </section>;
 }
 
@@ -64,22 +68,24 @@ function SeriesDetail({ id }: { id: string }) {
     const { user } = useAuth();
     const admin = isClubAdmin(user?.clubRole);
     const [editing, setEditing] = useState(false);
+    const notify = useSuccessToast();
     const resource = useResource(useCallback(() => seriesService.get(id), [id]));
     if (resource.isLoading) return <Loading />;
-    if (!resource.data) return <ErrorNotice error={resource.error} />;
+    if (!resource.data) return <RetryNotice error={resource.error} onRetry={resource.reload} />;
     const series = resource.data;
 
     return <section className="space-y-5">
-        <Link className={link} to="/series">Danh sách chuỗi sự kiện</Link>
+        <Link className={link} to={ROUTE_PATHS.SERIES}>Danh sách chuỗi sự kiện</Link>
         <PageHeader title={series.name} action={admin && !editing && <button className={button} onClick={() => setEditing(true)}>Chỉnh sửa</button>} />
         {admin && editing ? <SeriesForm series={series} onCancel={() => setEditing(false)} onSave={async (data) => {
             const updated = await seriesService.update(id, data);
             resource.replace({ ...series, ...updated });
             setEditing(false);
+            notify('Đã cập nhật chuỗi sự kiện.');
         }} /> : series.description && <p className={`${panel} whitespace-pre-line`}>{series.description}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Các mùa sự kiện</h2>
-            {admin && <Link className={secondary} to={`/events/new?seriesId=${encodeURIComponent(id)}`}>Thêm mùa sự kiện</Link>}
+            {admin && <Link className={secondary} to={`${ROUTE_PATHS.EVENT_NEW}?seriesId=${encodeURIComponent(id)}`}>Thêm mùa sự kiện</Link>}
         </div>
         <EventList events={series.events} />
     </section>;

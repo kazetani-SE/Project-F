@@ -2,9 +2,9 @@ package com.projectf.common.security;
 
 import com.projectf.common.enums.ClubRole;
 import com.projectf.common.exception.ApiException;
-import com.projectf.features.event.repository.EventOrganizerRepository;
-import com.projectf.features.member.entity.ClubMember;
-import com.projectf.features.member.repository.ClubMemberRepository;
+import com.projectf.features.event.service.EventMembership;
+import com.projectf.features.member.dto.response.MemberResponse;
+import com.projectf.features.member.service.MemberService;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -15,12 +15,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AccessPolicy {
-    private final ClubMemberRepository members;
-    private final EventOrganizerRepository organizers;
+    private final MemberService members;
+    private final EventMembership membership;
 
-    public AccessPolicy(ClubMemberRepository members, EventOrganizerRepository organizers) {
+    public AccessPolicy(MemberService members, EventMembership membership) {
         this.members = members;
-        this.organizers = organizers;
+        this.membership = membership;
     }
 
     public boolean isActiveMember(Authentication authentication) {
@@ -28,7 +28,7 @@ public class AccessPolicy {
     }
 
     public boolean isAdmin(Authentication authentication) {
-        return findActiveMember(authentication).map(ClubMember::getClubRole).map(AccessPolicy::hasAdminRole)
+        return findActiveMember(authentication).map(MemberResponse::clubRole).map(AccessPolicy::hasAdminRole)
                 .orElse(false);
     }
 
@@ -38,18 +38,12 @@ public class AccessPolicy {
 
     public UUID currentMemberId() {
         return findActiveMember(SecurityContextHolder.getContext().getAuthentication())
-                .orElseThrow(AccessPolicy::forbidden).getId();
+                .orElseThrow(AccessPolicy::forbidden).id();
     }
 
     public void requireEvent(UUID eventId) {
-        // Đặc tả hệ thống §5.1: quản trị cấp CLB xem mọi mùa. Thành viên thường phải có phân công BTC.
-        if (!isAdmin() && !organizers.existsByEventIdAndMemberId(eventId, currentMemberId())) {
-            throw forbidden();
-        }
-    }
-
-    public void requireSeries(UUID seriesId) {
-        if (!isAdmin() && !organizers.hasAssignmentInSeries(seriesId, currentMemberId())) {
+        // API §2: trong Slice 1, thành viên thường phải có phân công BTC để xem mùa.
+        if (!isAdmin() && !membership.hasAssignment(eventId, currentMemberId())) {
             throw forbidden();
         }
     }
@@ -66,11 +60,11 @@ public class AccessPolicy {
         return new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied", cause);
     }
 
-    private Optional<ClubMember> findActiveMember(Authentication authentication) {
+    private Optional<MemberResponse> findActiveMember(Authentication authentication) {
         // JWT xác thực danh tính. Vai trò và trạng thái hoạt động lấy từ hồ sơ CLB hiện hành.
         return authentication != null && authentication.getPrincipal() instanceof Jwt jwt
                 ? members.findByAuthUserId(UUID.fromString(jwt.getSubject()))
-                        .filter(member -> Boolean.TRUE.equals(member.getActive()))
+                        .filter(member -> Boolean.TRUE.equals(member.active()))
                 : Optional.empty();
     }
 }

@@ -21,10 +21,6 @@ Tài liệu này là quy chuẩn kỹ thuật cho toàn bộ tầng giao diện 
 
 ## 2. Sơ Đồ Định Tuyến Người Dùng (Routing Map)
 
-`/login`, `/forgot-password` và `/reset-password` xử lý phiên Supabase Auth. Các màn hình nghiệp vụ đợi xác nhận phiên và hồ sơ CLB qua `/auth/me`. `/403` hiển thị khi tài khoản hoặc tài nguyên không được cấp quyền.
-
-`/events/:eventId/overview` chứa phân công BTC và nhãn trách nhiệm. Chủ nhiệm và Phó chủ nhiệm thấy các thao tác ghi. Thành viên thường xem các mùa được phân công. React gọi Spring cho dữ liệu nghiệp vụ và dùng Supabase SDK để quản lý phiên.
-
 Tất cả các route yêu cầu thao tác trong một sự kiện cụ thể đều nằm dưới đường dẫn phụ thuộc `eventId` hoặc thông qua `ActiveEventContext`.
 
 ```text

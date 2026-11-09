@@ -1,17 +1,21 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, secondary } from '../../components/ui/CrudUi';
+import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, RetryNotice, secondary } from '../../components/ui/CrudUi';
+import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
+import { useSuccessToast } from '../../components/ui/toastContext';
+import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
+import { DEPARTMENT_LABEL } from '../../constants/enum/member';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';
 import { isClubAdmin, useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { useResource } from '../../hooks/useResource';
 import { memberService } from '../../services/memberService';
 import type { ClubRole } from '../../types/models/auth';
-import { departmentLabels, type Department, type MemberFields, type MemberQuery, type MemberResponse } from '../../types/models/member';
+import type { Department, MemberFields, MemberQuery, MemberResponse } from '../../types/models/member';
 
 const initialQuery: MemberQuery = { page: 0, size: 20, sort: 'fullName,asc' };
 const roleOptions = Object.entries(CLUB_ROLE_LABEL).map(([id, name]) => <option key={id} value={id}>{name}</option>);
-const departmentOptions = Object.entries(departmentLabels).map(([id, name]) => <option key={id} value={id}>{name}</option>);
+const departmentOptions = Object.entries(DEPARTMENT_LABEL).map(([id, name]) => <option key={id} value={id}>{name}</option>);
 
 export function MembersPage() {
     const { user } = useAuth();
@@ -33,7 +37,7 @@ export function MembersPage() {
     }
 
     return <section className="space-y-5">
-        <PageHeader title="Thành viên CLB" action={isClubAdmin(user?.clubRole) && <Link className={button} to="/members/new">Thêm thành viên</Link>} />
+        <PageHeader title="Thành viên CLB" action={isClubAdmin(user?.clubRole) && <Link className={button} to={ROUTE_PATHS.MEMBER_NEW}>Thêm thành viên</Link>} />
         <form className={`${panel} grid gap-3 sm:grid-cols-2 xl:grid-cols-4`} onSubmit={filter}>
             <label>Từ khóa<input className={field} name="keyword" placeholder="Tên, email hoặc MSSV" /></label>
             <label>Ban<select className={field} name="department"><option value="">Tất cả</option>{departmentOptions}</select></label>
@@ -51,21 +55,21 @@ export function MembersPage() {
             <div className="self-end"><button className={button}>Lọc danh sách</button></div>
         </form>
         {resource.isLoading && <Loading />}
-        <ErrorNotice error={resource.error} />
-        {resource.data && (resource.data.content.length ? <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <RetryNotice error={resource.error} onRetry={resource.reload} />
+        {resource.data && (resource.data.items.length ? <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50"><tr>{['Họ và tên', 'MSSV', 'Email', 'Ban', 'Vai trò', 'Khóa', 'Trạng thái'].map((header) =>
                     <th scope="col" className="px-4 py-3" key={header}>{header}</th>)}</tr></thead>
-                <tbody>{resource.data.content.map((member) => <tr className="border-t border-slate-100" key={member.id}>
-                    <td className="px-4 py-3"><Link className={link} to={`/members/${member.id}`}>{member.fullName}</Link></td>
+                <tbody>{resource.data.items.map((member) => <tr className="border-t border-slate-100" key={member.id}>
+                    <td className="px-4 py-3"><Link className={link} to={ROUTES.member(member.id)}>{member.fullName}</Link></td>
                     <td className="px-4 py-3">{member.studentId}</td><td className="px-4 py-3">{member.email}</td>
-                    <td className="px-4 py-3">{member.department ? departmentLabels[member.department] : '—'}</td>
+                    <td className="px-4 py-3">{member.department ? DEPARTMENT_LABEL[member.department] : '—'}</td>
                     <td className="px-4 py-3">{CLUB_ROLE_LABEL[member.clubRole]}</td><td className="px-4 py-3">{member.batch}</td>
                     <td className="px-4 py-3">{member.active ? 'Đang hoạt động' : 'Ngừng hoạt động'}</td>
                 </tr>)}</tbody>
             </table>
         </div> : <p>Không tìm thấy thành viên.</p>)}
-        {resource.data && <Pagination page={query.page} totalPages={resource.data.totalPages} onChange={(page) => setQuery({ ...query, page })} />}
+        {resource.data && <Pagination pageData={resource.data} onChange={(page) => setQuery({ ...query, page })} />}
     </section>;
 }
 
@@ -106,11 +110,13 @@ function MemberForm({ member, save, onCancel }: {
 
 export function NewMemberPage() {
     const navigate = useNavigate();
+    const notify = useSuccessToast();
     return <section className="space-y-5">
         <PageHeader title="Thêm thành viên" />
-        <MemberForm onCancel={() => navigate('/members')} save={async (fields, studentId) => {
+        <MemberForm onCancel={() => navigate(ROUTE_PATHS.MEMBERS)} save={async (fields, studentId) => {
             const member = await memberService.create({ ...fields, studentId });
-            navigate(`/members/${member.id}`);
+            notify('Đã thêm thành viên.');
+            navigate(ROUTES.member(member.id));
         }} />
     </section>;
 }
@@ -126,33 +132,45 @@ function MemberDetail({ id }: { id: string }) {
     const resource = useResource(useCallback(() => memberService.get(id), [id]));
     const status = useMutation();
     const [editing, setEditing] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const notify = useSuccessToast();
     if (resource.isLoading) return <Loading />;
-    if (!resource.data) return <ErrorNotice error={resource.error} />;
+    if (!resource.data) return <RetryNotice error={resource.error} onRetry={resource.reload} />;
 
     const member = resource.data;
     const facts = [
         ['MSSV', member.studentId], ['Email', member.email], ['Điện thoại', member.phone],
-        ['Ban', member.department && departmentLabels[member.department]], ['Vai trò', CLUB_ROLE_LABEL[member.clubRole]],
+        ['Ban', member.department && DEPARTMENT_LABEL[member.department]], ['Vai trò', CLUB_ROLE_LABEL[member.clubRole]],
         ['Khóa', member.batch], ['Trạng thái', member.active ? 'Đang hoạt động' : 'Ngừng hoạt động'],
     ];
 
     return <section className="space-y-5">
-        <Link className={link} to="/members">Danh sách thành viên</Link>
+        <Link className={link} to={ROUTE_PATHS.MEMBERS}>Danh sách thành viên</Link>
         <PageHeader title={member.fullName} action={admin && !editing && <button className={button} disabled={status.busy} onClick={() => setEditing(true)}>Chỉnh sửa</button>} />
         {editing && admin ? <MemberForm member={member} onCancel={() => setEditing(false)} save={async (data) => {
             const updated = await memberService.update(id, data);
             resource.replace(updated);
             setEditing(false);
+            notify('Đã cập nhật thành viên.');
             if (user?.id === id && user.clubRole !== updated.clubRole) retry();
         }} /> : <dl className={`${panel} grid gap-4 sm:grid-cols-2`}>
             {facts.map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd>{value ?? '—'}</dd></div>)}
         </dl>}
-        {admin && !editing && <div className="space-y-3">
-            <ErrorNotice error={status.error} />
-            <button className={secondary} disabled={status.busy} onClick={() => void status.mutate(async () => {
-                resource.replace(await memberService.updateStatus(id, !member.active));
-                if (user?.id === id) retry();
-            })}>{member.active ? 'Ngừng hoạt động' : 'Kích hoạt lại'}</button>
-        </div>}
+        {admin && !editing && <>
+            <button className={secondary} onClick={() => setConfirming(true)}>
+                {member.active ? 'Ngừng hoạt động' : 'Kích hoạt lại'}
+            </button>
+            {confirming && <ConfirmationDialog
+                title={member.active ? 'Ngừng hoạt động thành viên' : 'Kích hoạt lại thành viên'}
+                message={`Bạn có muốn ${member.active ? 'ngừng hoạt động' : 'kích hoạt lại'} thành viên ${member.fullName}?`}
+                busy={status.busy} error={status.error}
+                onCancel={() => setConfirming(false)} onConfirm={() => void status.mutate(async () => {
+                    resource.replace(await memberService.updateStatus(id, !member.active));
+                    setConfirming(false);
+                    notify(member.active ? 'Đã ngừng hoạt động thành viên.' : 'Đã kích hoạt lại thành viên.');
+                    if (user?.id === id) retry();
+                })}
+            />}
+        </>}
     </section>;
 }

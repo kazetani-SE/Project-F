@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { PageResponse } from '../../types/common/api';
 
 export const field = 'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900';
 export const button = 'inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50';
@@ -13,7 +14,19 @@ export function ErrorNotice({ error }: { error: unknown }) {
 }
 
 export function Loading() {
-    return <p role="status" className="text-sm text-slate-500">Đang tải…</p>;
+    return <div role="status" aria-label="Đang tải…" className={`${panel} space-y-3`}>
+        <div aria-hidden="true" className="h-4 w-2/5 animate-pulse rounded bg-slate-200 motion-reduce:animate-none" />
+        <div aria-hidden="true" className="h-3 w-4/5 animate-pulse rounded bg-slate-100 motion-reduce:animate-none" />
+        <div aria-hidden="true" className="h-3 w-3/5 animate-pulse rounded bg-slate-100 motion-reduce:animate-none" />
+    </div>;
+}
+
+export function RetryNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+    if (!error) return null;
+    return <div className="space-y-3">
+        <ErrorNotice error={error} />
+        {onRetry && <button type="button" className={secondary} onClick={onRetry}>Thử lại</button>}
+    </div>;
 }
 
 export function PageHeader({ title, action }: { title: string; action?: ReactNode }) {
@@ -23,13 +36,15 @@ export function PageHeader({ title, action }: { title: string; action?: ReactNod
     </div>;
 }
 
-export function Pagination({ page, totalPages, onChange }: {
-    page: number; totalPages: number; onChange: (page: number) => void;
+export function Pagination({ pageData, onChange }: {
+    pageData: Pick<PageResponse<unknown>, 'pageNumber' | 'totalPages' | 'isFirst' | 'hasNext'>;
+    onChange: (page: number) => void;
 }) {
+    const { pageNumber: page, totalPages, isFirst, hasNext } = pageData;
     if (totalPages <= 1 && page === 0) return null;
     return <nav className="flex flex-wrap items-center gap-3" aria-label="Phân trang">
-        <button className={secondary} disabled={page === 0} onClick={() => onChange(page - 1)}>Trang trước</button>
+        <button type="button" className={secondary} disabled={isFirst} onClick={() => onChange(page - 1)}>Trang trước</button>
         <span>Trang {page + 1} / {Math.max(totalPages, 1)}</span>
-        <button className={secondary} disabled={page + 1 >= totalPages} onClick={() => onChange(page + 1)}>Trang sau</button>
+        <button type="button" className={secondary} disabled={!hasNext} onClick={() => onChange(page + 1)}>Trang sau</button>
     </nav>;
 }

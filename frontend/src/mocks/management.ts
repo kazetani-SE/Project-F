@@ -1,31 +1,48 @@
 import { http, HttpResponse } from 'msw';
 import { MOCK_EVENTS, MOCK_ROLES, MOCK_SERIES_ID, MOCK_USER } from './data';
+import type { PageResponse } from '../types/common/api';
 import type { CreateMemberRequest, MemberFields, MemberResponse } from '../types/models/member';
 import type { EventFields, EventResponse, EventSeriesResponse, EventStatusRequest, OrganizerFields, OrganizerResponse, SeriesFields } from '../types/models/event';
 
 const base = '/api/v1';
 const ok = <T,>(data: T) => HttpResponse.json({ success: true, data });
-const missing = () => HttpResponse.json({ success: false, message: 'Không tìm thấy dữ liệu.' }, { status: 404 });
+const missing = () => HttpResponse.json({ success: false, errorCode: 'RESOURCE_NOT_FOUND', message: 'Không tìm thấy dữ liệu.' }, { status: 404 });
 const now = () => new Date().toISOString();
 const members: MemberResponse[] = [
     { ...MOCK_USER, studentId: 'SE000001', phone: null, department: 'PLAN', batch: 'K21', active: true, createdAt: now(), inactiveAt: null },
     { id: '11111111-1111-4111-8111-111111111102', fullName: 'Trần Bình', email: 'binh.tran@fcode.local', clubRole: 'MEMBER',
         studentId: 'SE000002', phone: null, department: 'MEDIA', batch: 'K22', active: true, createdAt: now(), inactiveAt: null },
 ];
-const events = [...MOCK_EVENTS];
+const events: EventResponse[] = MOCK_EVENTS.map((item) => {
+    const start = item.startDate ?? '';
+    const end = item.endDate ?? start;
+    return {
+        id: item.id, seriesId: item.seriesId ?? null, title: item.name, seasonName: item.seasonLabel ?? String(item.year),
+        description: null, expectedStartDate: start, expectedEndDate: end,
+        actualStartDate: ['IN_PROGRESS', 'COMPLETED'].includes(item.status) ? start : null,
+        actualEndDate: item.status === 'COMPLETED' ? end : null, status: item.status,
+        allocatedFund: item.allocatedBudget ?? 0, createdAt: start + 'T00:00:00Z', updatedAt: start + 'T00:00:00Z',
+    };
+});
 const series: EventSeriesResponse[] = [
     { id: MOCK_SERIES_ID, name: 'F-Code Tech', description: 'Chuỗi sự kiện công nghệ của CLB.', createdAt: now() },
 ];
-let organizers: OrganizerResponse[] = events.flatMap(({ id }) => MOCK_ROLES[id] ? [{
+let organizers: OrganizerResponse[] = events.flatMap(({ id }) => MOCK_ROLES[id] === 'MEMBER' ? [{
     id: crypto.randomUUID(), eventId: id, memberId: MOCK_USER.id, memberName: MOCK_USER.fullName,
-    role: MOCK_ROLES[id], assignedTasks: null, joinedAt: now(),
+    role: 'MEMBER', assignedTasks: null, joinedAt: now(),
 }] : []);
 
 function paginate<T>(items: T[], request: Request) {
     const query = new URL(request.url).searchParams;
-    const page = Number(query.get('page') ?? 0);
-    const size = Number(query.get('size') ?? 20);
-    return ok({ content: items.slice(page * size, (page + 1) * size), page, size, totalElements: items.length, totalPages: Math.ceil(items.length / size) });
+    const pageNumber = Number(query.get('page') ?? 0);
+    const pageSize = Number(query.get('size') ?? 20);
+    const totalPages = Math.ceil(items.length / pageSize);
+    const hasNext = pageNumber + 1 < totalPages;
+    return ok<PageResponse<T>>({
+        items: items.slice(pageNumber * pageSize, (pageNumber + 1) * pageSize),
+        pageNumber, pageSize, totalElements: items.length, totalPages,
+        isFirst: pageNumber === 0, isLast: !hasNext, hasNext,
+    });
 }
 
 export const managementHandlers = [
@@ -80,7 +97,13 @@ export const managementHandlers = [
         const item = series.find((entry) => entry.id === params.id);
         return item ? ok(Object.assign(item, await request.json() as SeriesFields)) : missing();
     }),
-    http.get(`${base}/events`, ({ request }) => paginate(events, request)),
+    http.get(`${base}/events`, ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        const seriesId = params.get('seriesId');
+        const status = params.get('status');
+        return paginate(events.filter((event) =>
+            (!seriesId || event.seriesId === seriesId) && (!status || event.status === status)), request);
+    }),
     http.get(`${base}/events/:eventId`, ({ params }) => {
         const event = events.find((item) => item.id === params.eventId);
         return event ? ok(event) : missing();
@@ -101,7 +124,8 @@ export const managementHandlers = [
         return event ? ok(Object.assign(event, await request.json() as EventStatusRequest, { updatedAt: now() })) : missing();
     }),
     http.get(`${base}/events/:eventId/my-role`, ({ params }) =>
-        ok({ role: organizers.find((item) => item.eventId === params.eventId && item.memberId === MOCK_USER.id)?.role ?? null })),
+        ok({ role: organizers.find((item) => item.eventId === params.eventId && item.memberId === MOCK_USER.id)?.role
+            ?? MOCK_ROLES[String(params.eventId)] ?? null })),
     http.get(`${base}/events/:eventId/organizers`, ({ params }) =>
         ok(organizers.filter((item) => item.eventId === params.eventId))),
     http.post(`${base}/events/:eventId/organizers`, async ({ params, request }) => {

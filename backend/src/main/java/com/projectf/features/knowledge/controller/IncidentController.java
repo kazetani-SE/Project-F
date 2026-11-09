@@ -1,7 +1,6 @@
 package com.projectf.features.knowledge.controller;
 
 import com.projectf.common.response.ApiResponse;
-import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.knowledge.dto.request.CreateIncidentRequest;
 import com.projectf.features.knowledge.dto.response.IncidentResponse;
 import com.projectf.features.knowledge.service.IncidentService;
@@ -26,11 +25,8 @@ public class IncidentController {
 
     private final IncidentService incidentService;
 
-    private final AccessPolicy access;
-
-    public IncidentController(IncidentService incidentService, AccessPolicy access) {
+    public IncidentController(IncidentService incidentService) {
         this.incidentService = incidentService;
-        this.access = access;
     }
 
     @GetMapping("/events/{eventId}/incidents")
@@ -55,7 +51,6 @@ public class IncidentController {
             @PathVariable("incidentId") UUID incidentId
     ) {
         IncidentResponse response = incidentService.getIncidentById(incidentId);
-        access.requireEvent(response.eventId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

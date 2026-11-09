@@ -1,4 +1,3 @@
-import { ErrorNotice } from '../../../components/ui/CrudUi';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     FileText,
@@ -25,7 +24,8 @@ import {
     resolveVersionHistoryChain,
 } from '../../../services/uploadWorkflow';
 import { useS3Upload } from '../../../hooks/useS3Upload';
-import { isClubAdmin, useAuth } from '../../../context/authContext';
+import { useActiveEvent } from '../../../context/activeEventContext';
+import { useAuth } from '../../../context/authContext';
 import {
     type DocumentResponse,
     type DocumentDocType,
@@ -38,6 +38,7 @@ interface Props {
 }
 
 export const DocumentTab: React.FC<Props> = ({ eventId }) => {
+    const { role } = useActiveEvent();
     const { user } = useAuth();
     const currentMemberUuid = user?.id || '11111111-1111-4111-8111-111111111101';
     const [documents, setDocuments] = useState<DocumentResponse[]>([]);
@@ -65,7 +66,11 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { isUploading, progress, uploadFile } = useS3Upload();
 
-    const canWrite = isClubAdmin(user?.clubRole);
+    const isLeader =
+        role === 'HEAD_ORGANIZER' ||
+        role === 'VICE_ORGANIZER' ||
+        role === 'LEAD_CONTENT' ||
+        role === 'LEAD_LOGISTICS';
 
     const fetchDocuments = useCallback(async () => {
         setIsLoading(true);
@@ -169,14 +174,12 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
         }
     };
 
-    const [downloadError, setDownloadError] = useState<unknown>(null);
     const handleDownload = async (fileUrl: string) => {
-        setDownloadError(null);
         try {
             const res = await getPresignedDownloadUrl(fileUrl);
-            window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
-        } catch (error) {
-            setDownloadError(error);
+            window.open(res.downloadUrl, '_blank');
+        } catch {
+            window.open(fileUrl, '_blank');
         }
     };
 
@@ -192,7 +195,6 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
 
     return (
         <div className="space-y-6">
-            <ErrorNotice error={downloadError} />
             {/* Thanh công cụ Tìm kiếm & Bộ lọc & Nút tạo */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-1 flex-wrap items-center gap-3">
@@ -235,15 +237,13 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                     </div>
                 </div>
 
-                {canWrite && (
-                    <button
-                        onClick={() => handleOpenCreateModal()}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                        <span>Tải lên tài liệu mới</span>
-                    </button>
-                )}
+                <button
+                    onClick={() => handleOpenCreateModal()}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span>Tải lên tài liệu mới</span>
+                </button>
             </div>
 
             {/* Status Pills */}
@@ -413,17 +413,15 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                                                         <GitBranch className="h-4 w-4" />
                                                     </button>
 
-                                                    {canWrite && (
-                                                        <button
-                                                            onClick={() => handleOpenCreateModal(doc)}
-                                                            className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                                            title="Nâng cấp phiên bản mới"
-                                                        >
-                                                            <Plus className="h-4 w-4" />
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        onClick={() => handleOpenCreateModal(doc)}
+                                                        className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                                        title="Nâng cấp phiên bản mới"
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </button>
 
-                                                    {canWrite && (doc.status === 'PENDING' || doc.status === 'DRAFT') && (
+                                                    {isLeader && (doc.status === 'PENDING' || doc.status === 'DRAFT') && (
                                                         <button
                                                             onClick={() => setApprovalModalDoc(doc)}
                                                             className="rounded-lg p-1.5 text-amber-600 hover:bg-amber-50 transition-colors"
@@ -444,7 +442,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
             )}
 
             {/* Modal: Tải lên tài liệu mới / Phiên bản mới */}
-            {canWrite && isCreateModalOpen && (
+            {isCreateModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -554,7 +552,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
             )}
 
             {/* Modal: Phê duyệt / Từ chối (Dành cho Leader) */}
-            {canWrite && approvalModalDoc && (
+            {approvalModalDoc && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
                     <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                         <h3 className="text-base font-bold text-slate-900">Phê duyệt tài liệu đề án</h3>

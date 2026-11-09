@@ -189,7 +189,7 @@ public class EventServiceImpl implements EventService {
     public void removeOrganizer(UUID eventId, UUID memberId) {
         requireEventExists(eventId);
         if (organizers.deleteByEventIdAndMemberId(eventId, memberId) == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "ORGANIZER_NOT_FOUND", "Organizer not found");
+            throw resourceNotFound("Organizer not found");
         }
     }
 
@@ -257,7 +257,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private static ApiException invalidDates(String message) {
-        return new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_DATES", message);
+        return new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_DATE_RANGE", message);
     }
 
     private static ApiException duplicateOrganizer(Throwable cause) {
@@ -265,10 +265,14 @@ public class EventServiceImpl implements EventService {
     }
 
     private static ApiException seriesNotFound() {
-        return new ApiException(HttpStatus.NOT_FOUND, "SERIES_NOT_FOUND", "Event series not found");
+        return resourceNotFound("Event series not found");
     }
 
     private static ApiException eventNotFound() {
-        return new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found");
+        return resourceNotFound("Event not found");
+    }
+
+    private static ApiException resourceNotFound(String message) {
+        return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", message);
     }
 }

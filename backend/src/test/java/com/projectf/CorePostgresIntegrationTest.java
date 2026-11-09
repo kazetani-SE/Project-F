@@ -1,6 +1,7 @@
 package com.projectf;
 
 import com.projectf.features.member.repository.ClubMemberRepository;
+import com.projectf.features.member.service.MemberService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.DriverManager;
@@ -19,6 +20,7 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +40,7 @@ class CorePostgresIntegrationTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private ClubMemberRepository members;
+    @Autowired private MemberService memberService;
 
     static boolean postgresAvailable() {
         return LOCAL_URL != null || DockerClientFactory.instance().isDockerAvailable();
@@ -104,11 +107,11 @@ class CorePostgresIntegrationTest {
         UUID unconfirmed = UUID.fromString("00000000-0000-4000-8000-000000000004");
         UUID mismatch = UUID.fromString("00000000-0000-4000-8000-000000000005");
 
-        assertEquals(0, members.claimAccount(unconfirmed, "two@example.test"));
-        assertEquals(0, members.claimAccount(mismatch, "two@example.test"));
-        assertEquals(1, members.claimAccount(verified, "tWo@EXAMPLE.test"));
+        assertTrue(memberService.claimAccount(unconfirmed, "two@example.test").isEmpty());
+        assertTrue(memberService.claimAccount(mismatch, "two@example.test").isEmpty());
+        assertEquals("SE000003", memberService.claimAccount(verified, "tWo@EXAMPLE.test").orElseThrow().studentId());
         assertEquals(0, members.claimAccount(verified, "two@example.test"));
-        assertEquals("SE000003", members.findByAuthUserId(verified).orElseThrow().getStudentId());
+        assertEquals("SE000003", memberService.findByAuthUserId(verified).orElseThrow().studentId());
     }
 
     @Test

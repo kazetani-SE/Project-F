@@ -1,11 +1,12 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse, PageResponse } from '../types/common/api';
-import type { EventFields, EventResponse, EventRole, EventSeriesDetail, EventSeriesResponse, EventStatusRequest, OrganizerFields, OrganizerResponse, SeriesFields } from '../types/models/event';
+import type { EventFields, EventResponse, EventSeriesDetail, EventSeriesResponse, EventStatus, EventStatusRequest, OrganizerFields, OrganizerResponse, SeriesFields } from '../types/models/event';
 
 interface PageQuery { page: number; size: number }
+interface EventQuery extends PageQuery { seriesId?: string; status?: EventStatus }
 
 export const eventService = {
-    list: async (params: PageQuery) =>
+    list: async (params: EventQuery) =>
         (await apiClient.get<ApiResponse<PageResponse<EventResponse>>>('/events', { params })).data.data,
     get: async (id: string) =>
         (await apiClient.get<ApiResponse<EventResponse>>(`/events/${id}`)).data.data,
@@ -15,8 +16,6 @@ export const eventService = {
         (await apiClient.put<ApiResponse<EventResponse>>(`/events/${id}`, payload)).data.data,
     updateStatus: async (id: string, payload: EventStatusRequest) =>
         (await apiClient.patch<ApiResponse<EventResponse>>(`/events/${id}/status`, payload)).data.data,
-    myRole: async (id: string) =>
-        (await apiClient.get<ApiResponse<{ role: EventRole | null }>>(`/events/${id}/my-role`)).data.data.role,
     organizers: async (id: string) =>
         (await apiClient.get<ApiResponse<OrganizerResponse[]>>(`/events/${id}/organizers`)).data.data,
     assign: async (id: string, payload: OrganizerFields) =>

@@ -7,11 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 public interface EventOrganizerRepository extends JpaRepository<EventOrganizer,UUID> {
- @Query("""
-     select (count(organizer) > 0) from EventOrganizer organizer, Event event
-     where organizer.eventId = event.id and event.seriesId = :seriesId and organizer.memberId = :memberId
-     """)
- boolean hasAssignmentInSeries(UUID seriesId, UUID memberId);
  List<EventOrganizer> findByEventIdOrderByJoinedAtAscIdAsc(UUID eventId);
  boolean existsByEventIdAndMemberId(UUID eventId, UUID memberId);
  Optional<EventOrganizer> findByEventIdAndMemberId(UUID eventId, UUID memberId);
