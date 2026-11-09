@@ -23,151 +23,156 @@ import type {
     UpdateExpenseRequest,
 } from '../types/models/finance';
 
+const DEFAULT_EVENT_ID = '00000000-0000-0000-0000-000000000000';
+
+function getFinanceBase(eventId?: string): string {
+    return `/events/${eventId || DEFAULT_EVENT_ID}/finance`;
+}
+
 export const financeService = {
     // --- Danh mục kinh phí ---
-    async getCategories(): Promise<BudgetCategory[]> {
-        const res = await apiClient.get<ApiResponse<BudgetCategory[]>>('/finance/categories');
+    async getCategories(eventId?: string): Promise<BudgetCategory[]> {
+        const res = await apiClient.get<ApiResponse<BudgetCategory[]>>(`${getFinanceBase(eventId)}/categories`);
         return res.data.data;
     },
 
-    async getCategoryById(id: string): Promise<BudgetCategory> {
-        const res = await apiClient.get<ApiResponse<BudgetCategory>>(`/finance/categories/${id}`);
+    async getCategoryById(id: string, eventId?: string): Promise<BudgetCategory> {
+        const res = await apiClient.get<ApiResponse<BudgetCategory>>(`${getFinanceBase(eventId)}/categories/${id}`);
         return res.data.data;
     },
 
-    async createCategory(data: CreateBudgetCategoryRequest): Promise<BudgetCategory> {
-        const res = await apiClient.post<ApiResponse<BudgetCategory>>('/finance/categories', data);
+    async createCategory(data: CreateBudgetCategoryRequest, eventId?: string): Promise<BudgetCategory> {
+        const res = await apiClient.post<ApiResponse<BudgetCategory>>(`${getFinanceBase(eventId)}/categories`, data);
         return res.data.data;
     },
 
-    async updateCategory(id: string, data: UpdateBudgetCategoryRequest): Promise<BudgetCategory> {
-        const res = await apiClient.put<ApiResponse<BudgetCategory>>(`/finance/categories/${id}`, data);
+    async updateCategory(id: string, data: UpdateBudgetCategoryRequest, eventId?: string): Promise<BudgetCategory> {
+        const res = await apiClient.put<ApiResponse<BudgetCategory>>(`${getFinanceBase(eventId)}/categories/${id}`, data);
         return res.data.data;
     },
 
-    async deleteCategory(id: string): Promise<void> {
-        await apiClient.delete(`/finance/categories/${id}`);
+    async deleteCategory(id: string, eventId?: string): Promise<void> {
+        await apiClient.delete(`${getFinanceBase(eventId)}/categories/${id}`);
     },
 
     // --- Bảng giá tham chiếu thị trường ---
-    async getBenchmarks(categoryId?: string, keyword?: string): Promise<BenchmarkResponse[]> {
+    async getBenchmarks(categoryId?: string, keyword?: string, eventId?: string): Promise<BenchmarkResponse[]> {
         const params: Record<string, string> = {};
         if (categoryId) params.categoryId = categoryId;
         if (keyword) params.keyword = keyword;
-        const res = await apiClient.get<ApiResponse<BenchmarkResponse[]>>('/finance/benchmarks', { params });
+        const res = await apiClient.get<ApiResponse<BenchmarkResponse[]>>(`${getFinanceBase(eventId)}/benchmarks`, { params });
         return res.data.data;
     },
 
-    async getBenchmarkById(id: string): Promise<BenchmarkResponse> {
-        const res = await apiClient.get<ApiResponse<BenchmarkResponse>>(`/finance/benchmarks/${id}`);
+    async getBenchmarkById(id: string, eventId?: string): Promise<BenchmarkResponse> {
+        const res = await apiClient.get<ApiResponse<BenchmarkResponse>>(`${getFinanceBase(eventId)}/benchmarks/${id}`);
         return res.data.data;
     },
 
-    async createBenchmark(data: CreateBenchmarkRequest): Promise<BenchmarkResponse> {
-        const res = await apiClient.post<ApiResponse<BenchmarkResponse>>('/finance/benchmarks', data);
+    async createBenchmark(data: CreateBenchmarkRequest, eventId?: string): Promise<BenchmarkResponse> {
+        const res = await apiClient.post<ApiResponse<BenchmarkResponse>>(`${getFinanceBase(eventId)}/benchmarks`, data);
         return res.data.data;
     },
 
-    async updateBenchmark(id: string, data: UpdateBenchmarkRequest): Promise<BenchmarkResponse> {
-        const res = await apiClient.put<ApiResponse<BenchmarkResponse>>(`/finance/benchmarks/${id}`, data);
+    async updateBenchmark(id: string, data: UpdateBenchmarkRequest, eventId?: string): Promise<BenchmarkResponse> {
+        const res = await apiClient.put<ApiResponse<BenchmarkResponse>>(`${getFinanceBase(eventId)}/benchmarks/${id}`, data);
         return res.data.data;
     },
 
-    async deleteBenchmark(id: string): Promise<void> {
-        await apiClient.delete(`/finance/benchmarks/${id}`);
+    async deleteBenchmark(id: string, eventId?: string): Promise<void> {
+        await apiClient.delete(`${getFinanceBase(eventId)}/benchmarks/${id}`);
     },
 
     // --- Dự trù kinh phí chi tiết ---
     async getBudgetItems(eventId: string, status?: ApprovalStatus): Promise<BudgetItem[]> {
-        const params: Record<string, string> = { eventId };
+        const params: Record<string, string> = {};
         if (status) params.status = status;
-        const res = await apiClient.get<ApiResponse<BudgetItem[]>>('/finance/budgets', { params });
+        const res = await apiClient.get<ApiResponse<BudgetItem[]>>(`${getFinanceBase(eventId)}/budgets`, { params });
         return res.data.data;
     },
 
-    async getBudgetItemById(id: string): Promise<BudgetItem> {
-        const res = await apiClient.get<ApiResponse<BudgetItem>>(`/finance/budgets/${id}`);
+    async getBudgetItemById(eventId: string, id: string): Promise<BudgetItem> {
+        const res = await apiClient.get<ApiResponse<BudgetItem>>(`${getFinanceBase(eventId)}/budgets/${id}`);
         return res.data.data;
     },
 
-    async createBudgetItem(data: CreateBudgetItemRequest): Promise<BudgetItem> {
-        const res = await apiClient.post<ApiResponse<BudgetItem>>('/finance/budgets', data);
+    async createBudgetItem(eventId: string, data: CreateBudgetItemRequest): Promise<BudgetItem> {
+        const res = await apiClient.post<ApiResponse<BudgetItem>>(`${getFinanceBase(eventId)}/budgets`, data);
         return res.data.data;
     },
 
-    async updateBudgetItem(id: string, data: UpdateBudgetItemRequest): Promise<BudgetItem> {
-        const res = await apiClient.put<ApiResponse<BudgetItem>>(`/finance/budgets/${id}`, data);
+    async updateBudgetItem(eventId: string, id: string, data: UpdateBudgetItemRequest): Promise<BudgetItem> {
+        const res = await apiClient.put<ApiResponse<BudgetItem>>(`${getFinanceBase(eventId)}/budgets/${id}`, data);
         return res.data.data;
     },
 
-    async reviewBudgetItem(id: string, data: ReviewBudgetItemRequest): Promise<BudgetItem> {
-        const res = await apiClient.post<ApiResponse<BudgetItem>>(`/finance/budgets/${id}/review`, data);
+    async reviewBudgetItem(eventId: string, id: string, data: ReviewBudgetItemRequest): Promise<BudgetItem> {
+        const res = await apiClient.post<ApiResponse<BudgetItem>>(`${getFinanceBase(eventId)}/budgets/${id}/review`, data);
         return res.data.data;
     },
 
-    async deleteBudgetItem(id: string): Promise<void> {
-        await apiClient.delete(`/finance/budgets/${id}`);
+    async deleteBudgetItem(eventId: string, id: string): Promise<void> {
+        await apiClient.delete(`${getFinanceBase(eventId)}/budgets/${id}`);
     },
 
     // --- Dự toán tự động từ mùa trước ---
-    async getProjectedBudgetPreview(previousEventId: string): Promise<ProjectedBudgetItem[]> {
-        const res = await apiClient.get<ApiResponse<ProjectedBudgetItem[]>>('/finance/budgets/projected-preview', {
+    async getProjectedBudgetPreview(eventId: string, previousEventId: string): Promise<ProjectedBudgetItem[]> {
+        const res = await apiClient.get<ApiResponse<ProjectedBudgetItem[]>>(`${getFinanceBase(eventId)}/budgets/projected-preview`, {
             params: { previousEventId },
         });
         return res.data.data;
     },
 
-    async autoProjectBudget(data: AutoProjectBudgetRequest): Promise<BudgetItem[]> {
-        const res = await apiClient.post<ApiResponse<BudgetItem[]>>('/finance/budgets/project-from-previous', data);
+    async autoProjectBudget(eventId: string, data: AutoProjectBudgetRequest): Promise<BudgetItem[]> {
+        const res = await apiClient.post<ApiResponse<BudgetItem[]>>(`${getFinanceBase(eventId)}/budgets/project-from-previous`, data);
         return res.data.data;
     },
 
     // --- Chi tiêu thực tế & Duyệt chi ---
     async getExpenses(eventId: string, status?: ApprovalStatus): Promise<Expense[]> {
-        const params: Record<string, string> = { eventId };
+        const params: Record<string, string> = {};
         if (status) params.status = status;
-        const res = await apiClient.get<ApiResponse<Expense[]>>('/finance/expenses', { params });
+        const res = await apiClient.get<ApiResponse<Expense[]>>(`${getFinanceBase(eventId)}/expenses`, { params });
         return res.data.data;
     },
 
-    async getExpenseById(id: string): Promise<Expense> {
-        const res = await apiClient.get<ApiResponse<Expense>>(`/finance/expenses/${id}`);
+    async getExpenseById(eventId: string, id: string): Promise<Expense> {
+        const res = await apiClient.get<ApiResponse<Expense>>(`${getFinanceBase(eventId)}/expenses/${id}`);
         return res.data.data;
     },
 
-    async createExpense(data: CreateExpenseRequest): Promise<Expense> {
-        const res = await apiClient.post<ApiResponse<Expense>>('/finance/expenses', data);
+    async createExpense(eventId: string, data: CreateExpenseRequest): Promise<Expense> {
+        const res = await apiClient.post<ApiResponse<Expense>>(`${getFinanceBase(eventId)}/expenses`, data);
         return res.data.data;
     },
 
-    async updateExpense(id: string, data: UpdateExpenseRequest): Promise<Expense> {
-        const res = await apiClient.put<ApiResponse<Expense>>(`/finance/expenses/${id}`, data);
+    async updateExpense(eventId: string, id: string, data: UpdateExpenseRequest): Promise<Expense> {
+        const res = await apiClient.put<ApiResponse<Expense>>(`${getFinanceBase(eventId)}/expenses/${id}`, data);
         return res.data.data;
     },
 
-    async reviewExpense(id: string, data: ReviewExpenseRequest): Promise<Expense> {
-        const res = await apiClient.post<ApiResponse<Expense>>(`/finance/expenses/${id}/review`, data);
+    async reviewExpense(eventId: string, id: string, data: ReviewExpenseRequest): Promise<Expense> {
+        const res = await apiClient.post<ApiResponse<Expense>>(`${getFinanceBase(eventId)}/expenses/${id}/review`, data);
         return res.data.data;
     },
 
-    async deleteExpense(id: string): Promise<void> {
-        await apiClient.delete(`/finance/expenses/${id}`);
+    async deleteExpense(eventId: string, id: string): Promise<void> {
+        await apiClient.delete(`${getFinanceBase(eventId)}/expenses/${id}`);
     },
 
     // --- Hóa đơn & Chứng từ ---
-    async addReceipt(expenseId: string, data: CreateReceiptRequest): Promise<ExpenseReceipt> {
-        const res = await apiClient.post<ApiResponse<ExpenseReceipt>>(`/finance/expenses/${expenseId}/receipts`, data);
+    async addReceipt(eventId: string, expenseId: string, data: CreateReceiptRequest): Promise<ExpenseReceipt> {
+        const res = await apiClient.post<ApiResponse<ExpenseReceipt>>(`${getFinanceBase(eventId)}/expenses/${expenseId}/receipts`, data);
         return res.data.data;
     },
 
-    async deleteReceipt(expenseId: string, receiptId: string): Promise<void> {
-        await apiClient.delete(`/finance/expenses/${expenseId}/receipts/${receiptId}`);
+    async deleteReceipt(eventId: string, expenseId: string, receiptId: string): Promise<void> {
+        await apiClient.delete(`${getFinanceBase(eventId)}/expenses/${expenseId}/receipts/${receiptId}`);
     },
 
     // --- Real-time Dashboard Summary ---
     async getBudgetSummary(eventId: string): Promise<EventBudgetSummary> {
-        const res = await apiClient.get<ApiResponse<EventBudgetSummary>>(`/finance/summary/${eventId}`);
+        const res = await apiClient.get<ApiResponse<EventBudgetSummary>>(`${getFinanceBase(eventId)}/summary`);
         return res.data.data;
     },
 };
-

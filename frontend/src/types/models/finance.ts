@@ -64,7 +64,6 @@ export interface BudgetItem {
 }
 
 export interface CreateBudgetItemRequest {
-    eventId: string;
     categoryId: string;
     benchmarkId?: string;
     mediaAsset?: string;
@@ -127,7 +126,6 @@ export interface Expense {
 }
 
 export interface CreateExpenseRequest {
-    eventId: string;
     budgetItemId?: string;
     itemName: string;
     quantity: number;
@@ -180,6 +178,5 @@ export interface ProjectedBudgetItem {
 }
 
 export interface AutoProjectBudgetRequest {
-    targetEventId: string;
     previousEventId: string;
 }
