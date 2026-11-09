@@ -44,7 +44,7 @@ import java.util.UUID;
 
 @Tag(name = "Finance", description = "Quản lý danh mục, định mức, dự toán, phát sinh và báo cáo ngân sách")
 @RestController
-@RequestMapping("/v1/finance")
+@RequestMapping("/v1/events/{eventId}/finance")
 @RequiredArgsConstructor
 public class FinanceController {
 
