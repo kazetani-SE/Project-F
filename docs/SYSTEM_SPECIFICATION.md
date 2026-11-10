@@ -268,6 +268,25 @@ CREATE TABLE event_feedbacks (
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Bảng Báo cáo Tổng hợp Feedback bởi AI (Lưu Cache Báo cáo kèm Snapshot Watermark chống dữ liệu lỗi thời)
+CREATE TABLE event_feedback_ai_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL UNIQUE REFERENCES events(id) ON DELETE CASCADE,
+    model_used VARCHAR(100) NOT NULL,
+    model_tier VARCHAR(20) NOT NULL CHECK (model_tier IN ('FAST', 'DEEP', 'HEURISTIC')),
+    feedback_count_snapshot INT NOT NULL CHECK (feedback_count_snapshot >= 0),
+    latest_feedback_at_snapshot TIMESTAMPTZ,
+    average_rating_snapshot NUMERIC(4, 2) NOT NULL DEFAULT 0.00,
+    executive_summary TEXT NOT NULL,
+    sentiment_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb,
+    top_highlights JSONB NOT NULL DEFAULT '[]'::jsonb,
+    top_improvements JSONB NOT NULL DEFAULT '[]'::jsonb,
+    department_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    suggested_incidents JSONB NOT NULL DEFAULT '[]'::jsonb,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ============================================================================
 -- 5. CHIẾN LƯỢC ĐÁNH CHỈ MỤC (INDEXES)
 -- ============================================================================
@@ -284,6 +303,7 @@ CREATE INDEX idx_event_incidents_event_severity ON event_incidents(event_id, sev
 CREATE INDEX idx_event_faqs_series_pinned ON event_faqs(series_id, is_pinned);
 CREATE INDEX idx_event_feedbacks_event_id ON event_feedbacks(event_id);
 CREATE INDEX idx_event_feedbacks_custom_jsonb ON event_feedbacks USING GIN (custom_responses);
+CREATE INDEX idx_event_feedback_ai_reports_event_id ON event_feedback_ai_reports(event_id);
 
 -- ============================================================================
 -- 6. VIEWS TÍNH TOÁN NGÂN SÁCH & DỰ TOÁN MÙA MỚI

@@ -28,6 +28,7 @@ import {
 } from '../../../services/knowledgeService';
 import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FeedbackImportModal } from './FeedbackImportModal';
+import { FeedbackAiReportPanel } from './FeedbackAiReportPanel';
 import {
     aggregateFeedbackQuestions,
     extractStructuredFeedback,
@@ -481,6 +482,9 @@ export const FeedbackSection: React.FC<Props> = ({ eventId }) => {
                     <span>{error}</span>
                 </div>
             )}
+
+            {/* AI Agent: Báo cáo tổng hợp Feedback kèm kiểm tra dữ liệu mới (Snapshot Staleness) */}
+            <FeedbackAiReportPanel eventId={eventId} totalFeedbacksCount={feedbacks.length} />
 
             {/* Dashboard Thống kê tổng quan (Luôn cố định điểm gốc, không bị thay đổi khi gõ vào ô Search) */}
             {summary && feedbacks.length > 0 && (

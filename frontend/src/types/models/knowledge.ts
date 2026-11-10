@@ -100,6 +100,114 @@ export interface FeedbackSummaryResponse {
     ratingBreakdown: Record<number, number>;
 }
 
+// --- AI Agent & Chatbot Types ---
+export type AiModelTier = 'FAST' | 'DEEP' | 'HEURISTIC';
+
+export interface FeedbackAiDepartmentAction {
+    department: Department | string;
+    action: string;
+}
+
+export interface FeedbackAiSuggestedIncident {
+    title: string;
+    severity: IncidentSeverity;
+    departments: Department[];
+    description: string;
+    rootCause: string;
+    immediateSolution: string;
+    lessonLearned: string;
+}
+
+export interface FeedbackAiReportResponse {
+    id: string;
+    eventId: string;
+    modelUsed: string;
+    modelTier: AiModelTier;
+    routingReason: string;
+    feedbackCountSnapshot: number;
+    currentFeedbackCount: number;
+    newFeedbackCountDelta: number;
+    isStale: boolean;
+    averageRatingSnapshot: number;
+    executiveSummary: string;
+    sentimentBreakdown: {
+        positive?: number;
+        neutral?: number;
+        negative?: number;
+        [key: string]: number | undefined;
+    };
+    topHighlights: string[];
+    topImprovements: string[];
+    departmentActions: FeedbackAiDepartmentAction[];
+    suggestedIncidents: FeedbackAiSuggestedIncident[];
+    generatedAt: string;
+    updatedAt: string;
+}
+
+export interface GenerateFaqSuggestionsRequest {
+    eventId?: string;
+    focusTopic?: string;
+    count?: number;
+}
+
+export interface FaqSuggestionItemResponse {
+    question: string;
+    category: string;
+    rationale: string;
+    answerHint: string;
+}
+
+export interface FaqSuggestionsResultResponse {
+    modelUsed: string;
+    modelTier: AiModelTier;
+    routingReason: string;
+    suggestions: FaqSuggestionItemResponse[];
+}
+
+export interface DraftIncidentAiRequest {
+    briefObservation: string;
+    eventTitle?: string;
+}
+
+export interface DraftIncidentAiResponse {
+    title: string;
+    severity: IncidentSeverity;
+    departments: Department[];
+    description: string;
+    rootCause: string;
+    immediateSolution: string;
+    lessonLearned: string;
+    modelUsed: string;
+    modelTier: AiModelTier;
+    routingReason: string;
+}
+
+export interface KnowledgeChatTurnItem {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export interface KnowledgeChatRequest {
+    seriesId?: string;
+    message: string;
+    history?: KnowledgeChatTurnItem[];
+}
+
+export interface KnowledgeChatCitation {
+    sourceType: 'FAQ' | 'INCIDENT' | 'FEEDBACK' | string;
+    title: string;
+    snippet: string;
+}
+
+export interface KnowledgeChatResponse {
+    answer: string;
+    modelUsed: string;
+    modelTier: AiModelTier;
+    routingReason: string;
+    citations: KnowledgeChatCitation[];
+    followUpQuestions: string[];
+}
+
 export const INCIDENT_SEVERITY_CONFIG: Record<
     IncidentSeverity,
     { label: string; color: string; bg: string; border: string }

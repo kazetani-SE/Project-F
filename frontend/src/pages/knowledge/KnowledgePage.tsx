@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AlertTriangle, HelpCircle, MessageSquare, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, HelpCircle, MessageSquare, ChevronRight, Sparkles, Bot } from 'lucide-react';
 import { IncidentSection } from './components/IncidentSection';
 import { FaqSection } from './components/FaqSection';
 import { FeedbackSection } from './components/FeedbackSection';
+import { KnowledgeAiChatDrawer } from './components/KnowledgeAiChatDrawer';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getIncidentsByEvent, getFaqsBySeries, getFeedbacksByEvent } from '../../services/knowledgeService';
 
@@ -18,6 +19,7 @@ export const KnowledgePage: React.FC = () => {
     const [incidentCount, setIncidentCount] = useState<number | null>(null);
     const [faqCount, setFaqCount] = useState<number | null>(null);
     const [feedbackCount, setFeedbackCount] = useState<number | null>(null);
+    const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -74,9 +76,20 @@ export const KnowledgePage: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
-                        <Sparkles className="h-4 w-4" />
-                        <span>Kế thừa tri thức đa mùa</span>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
+                            <Sparkles className="h-4 w-4" />
+                            <span>Kế thừa tri thức đa mùa</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsAiChatOpen(true)}
+                            className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                        >
+                            <Bot className="h-4 w-4 text-emerald-400" />
+                            <span>Trợ lý AI Kho Tri Thức (RAG)</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -156,9 +169,18 @@ export const KnowledgePage: React.FC = () => {
             {/* Tab Contents */}
             <div>
                 {activeTab === 'INCIDENTS' && <IncidentSection eventId={eventId} />}
-                {activeTab === 'FAQS' && <FaqSection seriesId={seriesId} />}
+                {activeTab === 'FAQS' && <FaqSection seriesId={seriesId} eventId={eventId} />}
                 {activeTab === 'FEEDBACKS' && <FeedbackSection eventId={eventId} />}
             </div>
+
+            {/* Chatbot Trợ lý Kho Tri Thức Đa Mùa (RAG) */}
+            <KnowledgeAiChatDrawer
+                eventId={eventId}
+                seriesId={seriesId}
+                eventName={currentEvent?.name}
+                isOpen={isAiChatOpen}
+                onClose={() => setIsAiChatOpen(false)}
+            />
         </div>
     );
 };

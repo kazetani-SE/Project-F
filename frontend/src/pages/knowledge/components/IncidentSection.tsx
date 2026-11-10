@@ -8,10 +8,13 @@ import {
     Users,
     XCircle,
     Search,
+    Sparkles,
+    Cpu,
 } from 'lucide-react';
 import {
     getIncidentsByEvent,
     createIncident,
+    draftIncidentByAi,
 } from '../../../services/knowledgeService';
 import { useAuth } from '../../../context/authContext';
 import {
@@ -48,6 +51,14 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
     const [formSolution, setFormSolution] = useState('');
     const [formLesson, setFormLesson] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // AI Post-Mortem Copilot State
+    const [aiBriefInput, setAiBriefInput] = useState('');
+    const [isAiDrafting, setIsAiDrafting] = useState(false);
+    const [aiDraftMeta, setAiDraftMeta] = useState<{
+        modelTier: string;
+        routingReason: string;
+    } | null>(null);
 
     const fetchIncidents = useCallback(async () => {
         setIsLoading(true);
@@ -101,6 +112,31 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
         setFormDepts((prev) =>
             prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept],
         );
+    };
+
+    const handleAiDraftIncident = async () => {
+        if (!aiBriefInput.trim()) return;
+        setIsAiDrafting(true);
+        try {
+            const draft = await draftIncidentByAi(eventId, {
+                briefObservation: aiBriefInput.trim(),
+            });
+            setFormTitle(draft.title);
+            setFormSeverity(draft.severity);
+            setFormDepts(draft.departments?.length ? draft.departments : ['PLAN']);
+            setFormDesc(draft.description);
+            setFormRootCause(draft.rootCause);
+            setFormSolution(draft.immediateSolution);
+            setFormLesson(draft.lessonLearned);
+            setAiDraftMeta({
+                modelTier: draft.modelTier,
+                routingReason: draft.routingReason,
+            });
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Lỗi khi gọi AI phân tích sự cố');
+        } finally {
+            setIsAiDrafting(false);
+        }
     };
 
     const filteredIncidents = incidents.filter((inc) => {
@@ -325,6 +361,50 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
                         </div>
 
                         <form onSubmit={handleCreateIncident} className="mt-5 space-y-4 text-xs">
+                            {/* AI Trợ lý Phân tích Post-Mortem */}
+                            <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/50 p-3.5 space-y-2.5">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                                        <span>AI Trợ lý Phân tích Sự cố 5-Whys (Post-Mortem Copilot)</span>
+                                    </div>
+                                    {aiDraftMeta && (
+                                        <span
+                                            className="inline-flex items-center gap-1 rounded-md bg-sky-50 border border-sky-200 px-2 py-0.5 text-[10px] font-bold text-sky-800"
+                                            title={aiDraftMeta.routingReason}
+                                        >
+                                            <Cpu className="h-3 w-3" />
+                                            {aiDraftMeta.modelTier} Tier
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-600">
+                                    Chỉ cần nhập 1 câu mô tả hiện tượng sự cố, AI sẽ tự động đề xuất mức độ nghiêm trọng, ban liên quan và điền nháp 4 mục Post-Mortem bên dưới.
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={aiBriefInput}
+                                        onChange={(e) => setAiBriefInput(e.target.value)}
+                                        placeholder="VD: Micro không dây bị mất tiếng 15 phút lúc khai mạc và bàn check-in ùn tắc..."
+                                        className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                    />
+                                    <button
+                                        type="button"
+                                        disabled={isAiDrafting || !aiBriefInput.trim()}
+                                        onClick={handleAiDraftIncident}
+                                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                    >
+                                        {isAiDrafting ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                        )}
+                                        <span>✨ AI Điền Mẫu</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block font-semibold text-slate-700">Tiêu đề sự cố *</label>
                                 <input

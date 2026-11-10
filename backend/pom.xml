@@ -77,6 +77,12 @@
             <artifactId>s3</artifactId>
         </dependency>
 
+        <!-- AWS SDK v2 for Amazon Bedrock Runtime (AI Agent & Chatbot) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bedrockruntime</artifactId>
+        </dependency>
+
         <!-- PostgreSQL JDBC Driver (Supabase Cloud Database) -->
         <dependency>
             <groupId>org.postgresql</groupId>

@@ -7,12 +7,14 @@ import {
     AlertCircle,
     Loader2,
     XCircle,
+    Sparkles,
 } from 'lucide-react';
 import {
     getFaqsBySeries,
     createFaq,
     updateFaqPin,
 } from '../../../services/knowledgeService';
+import { FaqAiSuggestModal } from './FaqAiSuggestModal';
 import {
     type FaqResponse,
     type CreateFaqRequest,
@@ -20,9 +22,10 @@ import {
 
 interface Props {
     seriesId: string;
+    eventId?: string;
 }
 
-export const FaqSection: React.FC<Props> = ({ seriesId }) => {
+export const FaqSection: React.FC<Props> = ({ seriesId, eventId }) => {
     const [faqs, setFaqs] = useState<FaqResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,6 +36,7 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
 
     // Create Modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isAiSuggestOpen, setIsAiSuggestOpen] = useState(false);
     const [formQuestion, setFormQuestion] = useState('');
     const [formAnswer, setFormAnswer] = useState('');
     const [formCategory, setFormCategory] = useState('Thể lệ & Tham dự');
@@ -156,13 +160,24 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    <span>Thêm câu hỏi FAQ</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        type="button"
+                        onClick={() => setIsAiSuggestOpen(true)}
+                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 shadow-2xs hover:bg-emerald-100 transition-colors"
+                    >
+                        <Sparkles className="h-4 w-4 text-emerald-600" />
+                        <span>✨ AI Gợi ý Câu hỏi FAQ</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Thêm câu hỏi FAQ</span>
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -324,6 +339,15 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                     </div>
                 </div>
             )}
+
+            {/* Modal AI Gợi ý câu hỏi FAQ để quản trị viên điền câu trả lời */}
+            <FaqAiSuggestModal
+                seriesId={seriesId}
+                eventId={eventId}
+                isOpen={isAiSuggestOpen}
+                onClose={() => setIsAiSuggestOpen(false)}
+                onSavedSuccess={fetchFaqs}
+            />
         </div>
     );
 };
