@@ -10,8 +10,13 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -23,21 +28,36 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @Service
 public class S3StorageServiceImpl implements StorageService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3StorageServiceImpl.class);
+
     private final S3Presigner s3Presigner;
+    private final S3Client s3Client;
     private final String bucketName;
     private final String region;
     private final int expirationMinutes;
 
+    @Autowired
     public S3StorageServiceImpl(
             S3Presigner s3Presigner,
+            @Autowired(required = false) S3Client s3Client,
             @Value("${aws.s3.bucket-name:project-f-media-storage}") String bucketName,
             @Value("${aws.region:ap-southeast-1}") String region,
             @Value("${aws.s3.presigned-url-expiration-minutes:10}") int expirationMinutes
     ) {
         this.s3Presigner = s3Presigner;
+        this.s3Client = s3Client;
         this.bucketName = bucketName;
         this.region = region;
         this.expirationMinutes = expirationMinutes;
+    }
+
+    public S3StorageServiceImpl(
+            S3Presigner s3Presigner,
+            String bucketName,
+            String region,
+            int expirationMinutes
+    ) {
+        this(s3Presigner, null, bucketName, region, expirationMinutes);
     }
 
     @Override
@@ -108,6 +128,28 @@ public class S3StorageServiceImpl implements StorageService {
                 cleanKey,
                 expMinutes
         );
+    }
+
+    @Override
+    public void deleteFile(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("Đường dẫn tệp (objectKey) không được để trống");
+        }
+
+        String cleanKey = extractObjectKey(objectKey);
+        if (s3Client != null) {
+            try {
+                DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(cleanKey)
+                        .build();
+                s3Client.deleteObject(deleteRequest);
+            } catch (Exception ex) {
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn("Không thể xóa object trên S3 [bucket={}, key={}]: {}", bucketName, cleanKey, ex.getMessage());
+                }
+            }
+        }
     }
 
     public static String sanitizeFileName(String rawFileName) {

@@ -372,3 +372,9 @@ WHERE b_prev.approval_status = 'APPROVED';
 ### 5.2. Quy chuẩn lưu trữ tệp đính kèm (File & Media Storage)
 - Database chỉ lưu đường dẫn định danh (`file_url`, `design_file_url`, `image_url`), **tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`)** trực tiếp trong PostgreSQL.
 - Các tệp hóa đơn (`expense_receipts`) và tài liệu (`event_documents`) được tải lên dịch vụ Object Storage (**Amazon S3**) thông qua cơ chế **Pre-signed URL**, giới hạn dung lượng tối đa **15MB** cho ảnh hóa đơn (`JPG/PNG/WEBP/PDF`) và **50MB** cho tài liệu kế hoạch.
+
+### 5.3. Quy chuẩn Xóa & Bảo toàn Dữ liệu (Deletion & Data Integrity Guard)
+- **Tài liệu sự kiện (`event_documents`)**: Chỉ cho phép xóa khi ở trạng thái `DRAFT` hoặc `REJECTED`. Nghiêm cấm xóa tài liệu đã được phê duyệt chính thức (`APPROVED`). Khi xóa tài liệu cha, toàn bộ tài liệu con kế thừa qua `parent_document_id` tự động đặt về `NULL` (`ON DELETE SET NULL`) để bảo toàn dữ liệu.
+- **Ấn phẩm truyền thông (`event_media_assets`)**: Chỉ cho phép xóa khi ấn phẩm chưa được gửi đi in (`is_printed = false`). Khóa ngoại tham chiếu từ `budget_items.media_asset` được cấu hình `ON DELETE SET NULL`.
+- **Nhật ký sự cố (`event_incidents`) & FAQ (`event_faqs`) & Feedback (`event_feedbacks`)**: Cung cấp API `DELETE` cho phép Ban Tổ Chức dọn dẹp các mục nhập nhầm, lỗi thời hoặc phản hồi spam.
+- **Quản lý tệp Object Storage (`com.projectf.features.storage`)**: Hỗ trợ endpoint xóa tệp trên bucket Amazon S3 (`DELETE /api/v1/storage/file?objectKey=...`) khi cần thu hồi dữ liệu.

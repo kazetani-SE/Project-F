@@ -59,3 +59,13 @@ export async function updateMediaApproval(
     const res = await apiClient.patch<ApiResponse<MediaAssetResponse>>(path, data);
     return res.data.data;
 }
+
+export async function deleteMediaAsset(
+    assetId: string,
+    eventId?: string,
+): Promise<void> {
+    const path = eventId
+        ? `/events/${eventId}/media-assets/${assetId}`
+        : `/media-assets/${assetId}`;
+    await apiClient.delete<ApiResponse<null>>(path);
+}

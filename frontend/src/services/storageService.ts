@@ -28,6 +28,12 @@ export async function getPresignedDownloadUrl(
     return res.data.data;
 }
 
+export async function deleteFileFromS3(objectKey: string): Promise<void> {
+    await apiClient.delete<ApiResponse<null>>('/storage/file', {
+        params: { objectKey },
+    });
+}
+
 export function uploadBinaryToS3(
     uploadUrl: string,
     file: File,

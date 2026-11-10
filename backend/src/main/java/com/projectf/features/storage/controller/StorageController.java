@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,5 +44,14 @@ public class StorageController {
     ) {
         PresignedDownloadResponse response = storageService.generatePresignedDownloadUrl(objectKey);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(summary = "Xóa tệp trên Amazon S3")
+    @DeleteMapping("/file")
+    public ResponseEntity<ApiResponse<Void>> deleteFile(
+            @RequestParam("objectKey") String objectKey
+    ) {
+        storageService.deleteFile(objectKey);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

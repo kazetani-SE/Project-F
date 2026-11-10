@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -63,5 +64,14 @@ public class FeedbackController {
     ) {
         List<FeedbackResponse> response = feedbackService.submitFeedbacksBatch(eventId, requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
+
+    @DeleteMapping({"/events/{eventId}/feedbacks/{feedbackId}", "/feedbacks/{feedbackId}"})
+    public ResponseEntity<ApiResponse<Void>> deleteFeedback(
+            @PathVariable(value = EVENT_ID_PARAM, required = false) UUID eventId,
+            @PathVariable("feedbackId") UUID feedbackId
+    ) {
+        feedbackService.deleteFeedback(feedbackId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

@@ -38,3 +38,13 @@ export async function updateDocumentApproval(
     const res = await apiClient.patch<ApiResponse<DocumentResponse>>(path, data);
     return res.data.data;
 }
+
+export async function deleteDocument(
+    documentId: string,
+    eventId?: string,
+): Promise<void> {
+    const path = eventId
+        ? `/events/${eventId}/documents/${documentId}`
+        : `/documents/${documentId}`;
+    await apiClient.delete<ApiResponse<null>>(path);
+}
