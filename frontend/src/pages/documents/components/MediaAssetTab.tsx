@@ -37,11 +37,7 @@ export const MediaAssetTab: React.FC<Props> = ({ eventId }) => {
     const { role } = useActiveEvent();
     const { user } = useAuth();
     const currentMemberUuid = user?.id || '11111111-1111-4111-8111-111111111101';
-    const isLeader =
-        role === 'HEAD_ORGANIZER' ||
-        role === 'VICE_ORGANIZER' ||
-        role === 'LEAD_MEDIA' ||
-        role === 'LEAD_CONTENT';
+    const isLeader = role === 'HR';
 
     const [assets, setAssets] = useState<MediaAssetResponse[]>([]);
     const [resolvedPreviews, setResolvedPreviews] = useState<Record<string, string>>({});

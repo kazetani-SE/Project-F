@@ -1,6 +1,9 @@
 package com.projectf.features.member.service.impl;
 
 import com.projectf.common.exception.ApiException;
+import com.projectf.common.enums.ClubRole;
+import com.projectf.common.security.AccessPolicy;
+import com.projectf.features.auth.dto.response.AccountResponse;
 import com.projectf.features.member.dto.request.CreateMemberRequest;
 import com.projectf.features.member.dto.request.MemberFilterRequest;
 import com.projectf.features.member.dto.request.UpdateMemberRequest;
@@ -9,6 +12,7 @@ import com.projectf.features.member.entity.ClubMember;
 import com.projectf.features.member.mapper.MemberMapper;
 import com.projectf.features.member.repository.ClubMemberRepository;
 import com.projectf.features.member.service.MemberService;
+import com.projectf.features.member.service.VerifiedEmail;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,6 +26,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +37,29 @@ import org.springframework.util.StringUtils;
 public class MemberServiceImpl implements MemberService {
     private final ClubMemberRepository members;
     private final MemberMapper mapper;
+    private final VerifiedEmail verifiedEmail;
 
-    public MemberServiceImpl(ClubMemberRepository members, MemberMapper mapper) {
+    public MemberServiceImpl(ClubMemberRepository members, MemberMapper mapper, VerifiedEmail verifiedEmail) {
         this.members = members;
         this.mapper = mapper;
+        this.verifiedEmail = verifiedEmail;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public AccountResponse resolveAccount(Jwt jwt) {
+        UUID authUserId;
+        try {
+            authUserId = UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException exception) {
+            throw AccessPolicy.forbidden(exception);
+        }
+        MemberResponse member = findByAuthUserId(authUserId)
+                .or(() -> claimAccount(authUserId, verifiedEmail.forToken(jwt)))
+                .filter(linked -> Boolean.TRUE.equals(linked.active()))
+                .orElseThrow(AccessPolicy::forbidden);
+        ClubRole role = member.clubRole() == null ? ClubRole.MEMBER : member.clubRole();
+        return new AccountResponse(member.id(), member.fullName(), member.email(), role);
     }
 
     @Override
@@ -110,7 +134,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public MemberResponse updateStatus(UUID memberId, boolean active) {
         ClubMember member = getForUpdate(memberId);
-        mapper.updateStatus(member, active);
+        member.changeStatus(active);
         return mapper.toResponse(members.saveAndFlush(member));
     }
 

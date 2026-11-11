@@ -34,8 +34,38 @@ class SupabaseMigrationTest {
                     alter default privileges grant all on tables to anon, authenticated;
                     """);
             for (Path migration : files.filter(path -> path.toString().endsWith(".sql")).sorted().toList()) {
+                if (migration.getFileName().toString().contains("normalize_event_roles")) {
+                    sql.execute("""
+                            insert into club_members(id, student_id, full_name, email, batch)
+                            values ('00000000-0000-4000-8000-000000000090', 'SE000090', 'Legacy Organizer',
+                                'legacy@example.test', 'K20');
+                            insert into events(id, season_name, title, expected_start_date, expected_end_date)
+                            values ('00000000-0000-4000-8000-000000000091', '2026', 'Legacy Event',
+                                '2026-11-11', '2026-11-12');
+                            insert into event_organizers(event_id, member_id, role)
+                            values ('00000000-0000-4000-8000-000000000091',
+                                '00000000-0000-4000-8000-000000000090', 'MASTER_PLAN');
+                            """);
+                }
                 sql.execute(Files.readString(migration));
             }
+        }
+    }
+
+    @Test
+    void legacyOrganizerRoleIsResetToLeastPrivilege() throws SQLException {
+        try (Connection connection = connection(); Statement sql = connection.createStatement();
+             var row = sql.executeQuery("""
+                     select role::text from event_organizers
+                     where event_id = '00000000-0000-4000-8000-000000000091'
+                     """)) {
+            assertTrue(row.next());
+            assertEquals("MEMBER", row.getString(1));
+        }
+        try (Connection connection = connection(); Statement sql = connection.createStatement();
+             var row = sql.executeQuery("select enum_range(null::event_role_enum)::text")) {
+            assertTrue(row.next());
+            assertEquals("{LEAD_HEADER,HR,PLAN,MEDIA,MEMBER}", row.getString(1));
         }
     }
 

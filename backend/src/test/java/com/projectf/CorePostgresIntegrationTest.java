@@ -89,15 +89,15 @@ class CorePostgresIntegrationTest {
     }
 
     @Test
-    void memberSeesOnlyAssignedSeasonsAcrossBothCollections() throws Exception {
+    void memberSeesAllSeasonMetadataAcrossBothCollections() throws Exception {
         var member = jwt().jwt(token -> token.subject(MEMBER));
         mvc.perform(get("/v1/events").with(member).param("seriesId", SERIES).param("status", "APPROVED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
                 .andExpect(jsonPath("$.data.items[0].title").value("Assigned"));
         mvc.perform(get("/v1/event-series/{id}", SERIES).with(member))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.events.length()").value(1))
+                .andExpect(jsonPath("$.data.events.length()").value(2))
                 .andExpect(jsonPath("$.data.events[0].title").value("Assigned"));
     }
 
@@ -177,7 +177,7 @@ class CorePostgresIntegrationTest {
                         (gen_random_uuid(),'00000000-0000-4000-8000-000000000010',
                             '2026','Unassigned','2026-01-01','2026-01-02','APPROVED');
                     insert into event_organizers(event_id,member_id,role) values
-                        ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000022','MASTER_PLAN');
+                        ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000022','PLAN');
                     """);
         }
     }

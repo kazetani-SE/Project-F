@@ -4,7 +4,7 @@ import {EVENT_ROLE_LABEL} from "../../constants/enum/role.ts";
 
 export default function RoleBadge({ role }: { role: EventRole }) {
     const tone =
-        role === 'HEAD_ORGANIZER' || role === 'VICE_ORGANIZER'
+        role === 'LEAD_HEADER'
             ? 'bg-gold text-title'
             : role === 'MEMBER'
                 ? 'bg-primary-surface text-primary'

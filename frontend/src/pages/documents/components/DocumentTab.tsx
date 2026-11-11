@@ -67,11 +67,7 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { isUploading, progress, uploadFile } = useS3Upload();
 
-    const isLeader =
-        role === 'HEAD_ORGANIZER' ||
-        role === 'VICE_ORGANIZER' ||
-        role === 'LEAD_CONTENT' ||
-        role === 'LEAD_LOGISTICS';
+    const isLeader = role === 'LEAD_HEADER' || role === 'PLAN';
 
     const fetchDocuments = useCallback(async () => {
         setIsLoading(true);

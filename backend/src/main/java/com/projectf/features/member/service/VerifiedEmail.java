@@ -1,4 +1,4 @@
-package com.projectf.features.auth.service;
+package com.projectf.features.member.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.projectf.common.exception.ApiException;

@@ -3,6 +3,7 @@ package com.projectf.common.security;
 import com.projectf.common.enums.ClubRole;
 import com.projectf.common.exception.ApiException;
 import com.projectf.features.event.service.EventMembership;
+import com.projectf.features.event.entity.EventRole;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.service.MemberService;
 import java.util.Optional;
@@ -36,13 +37,33 @@ public class AccessPolicy {
         return isAdmin(SecurityContextHolder.getContext().getAuthentication());
     }
 
+    public boolean canAccessEvent(UUID eventId, Authentication authentication) {
+        return findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
+                || membership.hasAssignment(eventId, member.id())).orElse(false);
+    }
+
+    public boolean canAccessEvent(String eventId, Authentication authentication) {
+        boolean allowed;
+        try {
+            allowed = canAccessEvent(UUID.fromString(eventId), authentication);
+        } catch (IllegalArgumentException exception) {
+            allowed = false;
+        }
+        return allowed;
+    }
+
+    public boolean isEventLead(UUID eventId, Authentication authentication) {
+        return findActiveMember(authentication).map(member -> membership.hasRole(eventId, member.id(), EventRole.LEAD_HEADER))
+                .orElse(false);
+    }
+
     public UUID currentMemberId() {
         return findActiveMember(SecurityContextHolder.getContext().getAuthentication())
                 .orElseThrow(AccessPolicy::forbidden).id();
     }
 
     public void requireEvent(UUID eventId) {
-        // API §2: trong Slice 1, thành viên thường phải có phân công BTC để xem mùa.
+        // Dữ liệu nội bộ theo mùa chỉ dành cho Ban Chủ nhiệm hoặc BTC của chính mùa đó.
         if (!isAdmin() && !membership.hasAssignment(eventId, currentMemberId())) {
             throw forbidden();
         }
@@ -62,9 +83,15 @@ public class AccessPolicy {
 
     private Optional<MemberResponse> findActiveMember(Authentication authentication) {
         // JWT xác thực danh tính. Vai trò và trạng thái hoạt động lấy từ hồ sơ CLB hiện hành.
-        return authentication != null && authentication.getPrincipal() instanceof Jwt jwt
-                ? members.findByAuthUserId(UUID.fromString(jwt.getSubject()))
-                        .filter(member -> Boolean.TRUE.equals(member.active()))
-                : Optional.empty();
+        Optional<MemberResponse> result = Optional.empty();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            try {
+                result = members.findByAuthUserId(UUID.fromString(jwt.getSubject()))
+                        .filter(member -> Boolean.TRUE.equals(member.active()));
+            } catch (IllegalArgumentException exception) {
+                result = Optional.empty();
+            }
+        }
+        return result;
     }
 }

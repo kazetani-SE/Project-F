@@ -25,4 +25,15 @@ public class ClubMember {
  @Generated @Column(name="created_at",nullable=false,insertable=false,updatable=false) private OffsetDateTime createdAt;
  @Column(name="inactive_at") private OffsetDateTime inactiveAt;
  @Column(name="auth_user_id", unique=true) private UUID authUserId;
+
+ @SuppressWarnings("PMD.NullAssignment")
+ public void changeStatus(boolean isActive) {
+  // Mốc ngừng hoạt động chỉ được tạo lần đầu và được xóa khi kích hoạt lại.
+  active = isActive;
+  if (isActive) {
+   inactiveAt = null;
+  } else if (inactiveAt == null) {
+   inactiveAt = OffsetDateTime.now();
+  }
+ }
 }

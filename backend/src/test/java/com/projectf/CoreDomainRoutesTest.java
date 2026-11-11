@@ -198,12 +198,12 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
 
         mvc.perform(post("/v1/events/{id}/organizers", eventId).with(adminToken())
                 .contentType(MediaType.APPLICATION_JSON).content("""
-                        {"eventId":"%s","memberId":"%s","role":"MASTER_PLAN"}
+                        {"eventId":"%s","memberId":"%s","role":"PLAN"}
                         """.formatted(UUID.randomUUID(), memberId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.eventId").value(eventId.toString()))
                 .andExpect(jsonPath("$.data.memberName").value("Organizer Name"))
-                .andExpect(jsonPath("$.data.role").value("MASTER_PLAN"));
+                .andExpect(jsonPath("$.data.role").value("PLAN"));
     }
 
     private JwtRequestPostProcessor adminToken() {

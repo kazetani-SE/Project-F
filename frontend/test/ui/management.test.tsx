@@ -77,17 +77,17 @@ it('adds an organizer using the member ID and a documented role', async () => {
     vi.spyOn(eventService, 'organizers').mockResolvedValue([]);
     const assign = vi.spyOn(eventService, 'assign').mockResolvedValue({
         id: 'organizer', eventId: 'event-1', memberId: 'candidate', memberName: 'An',
-        role: 'RISK_PLAN', assignedTasks: 'Chuẩn bị kế hoạch', joinedAt: '',
+        role: 'PLAN', assignedTasks: 'Chuẩn bị kế hoạch', joinedAt: '',
     });
     render(<OrganizerSection eventId="event-1" admin />);
     const input = userEvent.setup();
     await input.click(await screen.findByRole('button', { name: 'Thêm thành viên BTC' }));
     await input.selectOptions(await screen.findByLabelText('Thành viên'), 'candidate');
-    await input.selectOptions(screen.getByLabelText('Vai trò BTC'), 'RISK_PLAN');
+    await input.selectOptions(screen.getByLabelText('Vai trò BTC'), 'PLAN');
     await input.type(screen.getByLabelText('Nhiệm vụ được giao'), 'Chuẩn bị kế hoạch');
     await input.click(screen.getByRole('button', { name: 'Phân công' }));
     expect(assign).toHaveBeenCalledWith('event-1', {
-        memberId: 'candidate', role: 'RISK_PLAN', assignedTasks: 'Chuẩn bị kế hoạch',
+        memberId: 'candidate', role: 'PLAN', assignedTasks: 'Chuẩn bị kế hoạch',
     });
 });
 
@@ -123,7 +123,7 @@ it('confirms event approval before requesting it', async () => {
 
 it('opens a deep link through the real route guard and switches events from the shell', async () => {
     vi.spyOn(eventService, 'list').mockResolvedValue(apiPage([event, { ...event, id: 'event-2', title: 'Mùa thu' }]));
-    const role = vi.spyOn(shellService, 'fetchRole').mockResolvedValue('RISK_PLAN');
+    const role = vi.spyOn(shellService, 'fetchRole').mockResolvedValue('PLAN');
     vi.spyOn(eventService, 'get').mockImplementation(async (id) => id === event.id ? event : { ...event, id, title: 'Mùa thu' });
     vi.spyOn(eventService, 'organizers').mockResolvedValue([]);
     const router = createMemoryRouter([{ path: '/', element: <MainLayout />, children: eventRoutes }], {
@@ -137,6 +137,34 @@ it('opens a deep link through the real route guard and switches events from the 
     await userEvent.selectOptions(screen.getByLabelText('Chuyển mùa sự kiện'), 'event-2');
     expect(await screen.findByRole('heading', { name: 'Mùa thu' })).toBeTruthy();
     expect(router.state.location.pathname).toBe('/events/event-2/overview');
+});
+
+it('allows an unassigned member to read the event overview without organizer details', async () => {
+    vi.spyOn(eventService, 'list').mockResolvedValue(apiPage([event]));
+    vi.spyOn(shellService, 'fetchRole').mockResolvedValue(null);
+    vi.spyOn(eventService, 'get').mockResolvedValue(event);
+    const organizers = vi.spyOn(eventService, 'organizers');
+    const router = createMemoryRouter([{ path: '/', element: <MainLayout />, children: eventRoutes }], {
+        initialEntries: ['/events/event-1/overview'],
+    });
+    render(<AuthContext value={auth('MEMBER')}><RouterProvider router={router} /></AuthContext>);
+    expect(await screen.findByRole('heading', { name: 'Mùa xuân' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Chỉnh sửa' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Ban tổ chức' })).toBeNull();
+    expect(organizers).not.toHaveBeenCalled();
+});
+
+it('lets a LEAD_HEADER edit event metadata while organizer assignment stays admin only', async () => {
+    vi.spyOn(eventService, 'list').mockResolvedValue(apiPage([event]));
+    vi.spyOn(shellService, 'fetchRole').mockResolvedValue('LEAD_HEADER');
+    vi.spyOn(eventService, 'get').mockResolvedValue(event);
+    vi.spyOn(eventService, 'organizers').mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/', element: <MainLayout />, children: eventRoutes }], {
+        initialEntries: ['/events/event-1/overview'],
+    });
+    render(<AuthContext value={auth('MEMBER')}><RouterProvider router={router} /></AuthContext>);
+    expect(await screen.findByRole('button', { name: 'Chỉnh sửa' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Thêm thành viên BTC' })).toBeNull();
 });
 
 it('includes both actual dates when completing a legacy event that lacks a start date', async () => {

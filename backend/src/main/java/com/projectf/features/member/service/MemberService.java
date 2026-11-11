@@ -4,14 +4,17 @@ import com.projectf.features.member.dto.request.CreateMemberRequest;
 import com.projectf.features.member.dto.request.MemberFilterRequest;
 import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.dto.response.MemberResponse;
+import com.projectf.features.auth.dto.response.AccountResponse;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 public interface MemberService {
+    AccountResponse resolveAccount(Jwt jwt);
     MemberResponse create(CreateMemberRequest request);
     MemberResponse get(UUID memberId);
     Page<MemberResponse> list(MemberFilterRequest filters, Pageable pageable);

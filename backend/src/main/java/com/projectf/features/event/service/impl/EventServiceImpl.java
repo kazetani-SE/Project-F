@@ -25,8 +25,6 @@ import com.projectf.features.event.service.EventService;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.service.MemberService;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +98,6 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventResponse get(UUID eventId) {
-        access.requireEvent(eventId);
         return mapper.toResponse(events.findById(eventId).orElseThrow(EventServiceImpl::eventNotFound));
     }
 
@@ -130,13 +127,7 @@ public class EventServiceImpl implements EventService {
         // API §3.2: khóa bản ghi để hai yêu cầu không thể chuyển trạng thái từ cùng một trạng thái cũ.
         Event event = findEventForUpdate(eventId);
         EventStatus next = request.status();
-        boolean allowed = switch (event.getStatus()) {
-            case PLANNING -> next == EventStatus.APPROVED || next == EventStatus.CANCELLED;
-            case APPROVED -> next == EventStatus.IN_PROGRESS || next == EventStatus.CANCELLED;
-            case IN_PROGRESS -> next == EventStatus.COMPLETED || next == EventStatus.CANCELLED;
-            case COMPLETED, CANCELLED -> false;
-        };
-        if (!allowed) {
+        if (!event.getStatus().canTransitionTo(next)) {
             throw invalidTransition();
         }
         if (next == EventStatus.IN_PROGRESS && request.actualStartDate() == null) {
@@ -152,7 +143,6 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventRoleResponse getMyRole(UUID eventId) {
-        access.requireEvent(eventId);
         requireEventExists(eventId);
         UUID memberId = access.currentMemberId();
         return new EventRoleResponse(organizers.findByEventIdAndMemberId(eventId, memberId)
@@ -194,8 +184,6 @@ public class EventServiceImpl implements EventService {
     }
 
     private Specification<Event> eventFilter(UUID seriesId, EventStatus status) {
-        // Lọc mùa theo phân công ngay trong truy vấn để tổng số bản ghi và phân trang cùng phạm vi.
-        UUID memberId = access.isAdmin() ? null : access.currentMemberId();
         return (event, query, criteria) -> {
             List<Predicate> filters = new ArrayList<>();
             if (seriesId != null) {
@@ -203,14 +191,6 @@ public class EventServiceImpl implements EventService {
             }
             if (status != null) {
                 filters.add(criteria.equal(event.get("status"), status));
-            }
-            if (memberId != null) {
-                Subquery<Integer> assignment = query.subquery(Integer.class);
-                Root<EventOrganizer> organizer = assignment.from(EventOrganizer.class);
-                assignment.select(criteria.literal(1)).where(
-                        criteria.equal(organizer.get("eventId"), event.get("id")),
-                        criteria.equal(organizer.get("memberId"), memberId));
-                filters.add(criteria.exists(assignment));
             }
             return criteria.and(filters.toArray(Predicate[]::new));
         };

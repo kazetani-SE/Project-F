@@ -1,9 +1,6 @@
 export type EventStatus = 'PLANNING' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-export type EventRole =
-    | 'HEAD_ORGANIZER' | 'VICE_ORGANIZER'
-    | 'LEAD_FINANCE' | 'LEAD_LOGISTICS' | 'LEAD_MEDIA' | 'LEAD_CONTENT' | 'LEAD_EXTERNAL'
-    | 'MEMBER';
-export type OrganizerRole = 'MASTER_PLAN' | 'RUNNING_ORDER' | 'SPONSOR_PROPOSAL' | 'MEETING_MINUTES' | 'RISK_PLAN' | 'MEMBER';
+export type EventRole = 'LEAD_HEADER' | 'HR' | 'PLAN' | 'MEDIA' | 'MEMBER';
+export type OrganizerRole = EventRole;
 
 export interface EventSummary {
     id: string;

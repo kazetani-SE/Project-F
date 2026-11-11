@@ -24,13 +24,13 @@ class TaskOneSecurityScopeTest extends ProjectFApplicationTests {
     }
 
     @Test
-    void sliceTwoWriteReachesItsControllerInDev() throws Exception {
-        mvc.perform(post("/v1/finance/categories")).andExpect(status().isBadRequest());
+    void sliceTwoWriteRequiresJwtInDev() throws Exception {
+        mvc.perform(post("/v1/finance/categories")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void sliceThreeNestedRouteKeepsItsOwnAccessPolicyInDev() throws Exception {
+    void sliceThreeNestedRouteRequiresJwtInDev() throws Exception {
         mvc.perform(get("/v1/events/{eventId}/documents", "00000000-0000-4000-8000-000000000001"))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 }

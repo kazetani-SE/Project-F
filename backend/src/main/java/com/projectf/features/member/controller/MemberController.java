@@ -22,6 +22,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,6 +39,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/v1/members")
 public class MemberController {
+    private static final String ADMIN_RULE = "@accessPolicy.isAdmin(authentication)";
     private static final Set<String> SORT_FIELDS = Set.of("id", "fullName", "studentId", "email", "department",
             "clubRole", "batch", "active", "createdAt", "inactiveAt");
     private static final Map<String, String> SORT_ALIASES = Map.of("isActive", "active", "role", "clubRole");
@@ -52,6 +54,7 @@ public class MemberController {
     }
 
     @GetMapping("/import/template")
+    @PreAuthorize(ADMIN_RULE)
     public ResponseEntity<byte[]> template() {
         return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=club-members-template.xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
@@ -59,17 +62,20 @@ public class MemberController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<MemberImportReport> importMembers(@RequestPart("file") MultipartFile file) {
         return ApiResponse.ok(importer.importFile(file));
     }
 
     @PostMapping("/{id}/credentials/resend")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<Void> resendCredentials(@PathVariable UUID id) {
         credentials.resend(members.get(id));
         return ApiResponse.ok(null);
     }
 
     @PostMapping("/{id}/credentials/provision")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<String> provisionCredentials(@PathVariable UUID id) {
         String status;
         try {
@@ -94,17 +100,20 @@ public class MemberController {
     }
 
     @PostMapping
+    @PreAuthorize(ADMIN_RULE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<MemberResponse> create(@Valid @RequestBody CreateMemberRequest request) {
         return ApiResponse.ok(members.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<MemberResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateMemberRequest request) {
         return ApiResponse.ok(members.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<MemberResponse> updateStatus(
             @PathVariable UUID id, @Valid @RequestBody UpdateMemberStatusRequest request) {
         return ApiResponse.ok(members.updateStatus(id, request.isActive()));

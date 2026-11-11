@@ -140,7 +140,7 @@ interface PageResponse<T> {
   - **Mô tả**: Chỉ Ban Chủ nhiệm CLB được rút thành viên khỏi BTC sự kiện.
   - **Response 200**: `ApiResponse<null>`
 
-**Phân quyền theo sự kiện:** `role` chỉ nhận `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`. Đây là vai trò BTC (`event_role_enum`), khác `clubRole` (`PRESIDENT`, `VICEPRESIDENT`, `MEMBER`) và khác loại tài liệu (`docType`). Ban Chủ nhiệm CLB có quyền quản trị mọi sự kiện; người có `clubRole=MEMBER` chỉ truy cập sự kiện đã được phân công. Thiếu JWT trả 401; có JWT nhưng không đủ quyền hoặc không thuộc BTC của sự kiện trả 403. API nhận ID bản ghi phải kiểm tra sự kiện thực tế của bản ghi để chống truy cập chéo sự kiện.
+**Phân quyền theo sự kiện:** `role` chỉ nhận `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`. Đây là vai trò BTC (`event_role_enum`), khác `clubRole` (`PRESIDENT`, `VICEPRESIDENT`, `MEMBER`) và khác loại tài liệu (`docType`). Ban Chủ nhiệm CLB có quyền quản trị mọi sự kiện; thành viên CLB đang hoạt động được đọc danh sách/tổng quan mọi sự kiện, nhưng dữ liệu nội bộ chỉ đọc khi được phân công BTC. Thiếu JWT trả 401; có JWT nhưng không đủ quyền hoặc không thuộc BTC của dữ liệu nội bộ trả 403. API nhận ID bản ghi phải kiểm tra sự kiện thực tế của bản ghi để chống truy cập chéo sự kiện.
 
 | Thao tác API theo sự kiện | Vai trò BTC được phép, ngoài Ban Chủ nhiệm CLB |
 | :--- | :--- |
@@ -166,6 +166,7 @@ Các endpoint cập nhật ấn phẩm và FAQ nêu dưới đây là hợp đ�
 - **`POST /api/v1/event-series`**: Tạo chuỗi sự kiện mới.
   - **Request Body**: `{ "name": "F-Code Hackathon", "description": "Cuộc thi lập trình thường niên" }`
 - **`GET /api/v1/event-series/{id}`**: Lấy chi tiết chuỗi sự kiện kèm danh sách các mùa đã tổ chức.
+- **`PUT /api/v1/event-series/{id}`**: Ban Chủ nhiệm CLB cập nhật tên và mô tả chuỗi sự kiện; trả `ApiResponse<EventSeriesResponseDto>`.
 
 ### 3.2. Quản lý Mùa Sự kiện (`events`)
 
@@ -174,6 +175,7 @@ Các endpoint cập nhật ấn phẩm và FAQ nêu dưới đây là hợp đ�
   - **Response 200**: `ApiResponse<PageResponse<EventSummaryDto>>`
 
 - **`GET /api/v1/events/{id}`**: Lấy thông tin chi tiết mùa sự kiện.
+- **`GET /api/v1/events/{id}/my-role`**: Lấy vai trò BTC của người dùng tại mùa này; `role: null` nếu chưa được phân công.
 - **`POST /api/v1/events`**
   - **Request Body**:
     ```json
@@ -188,6 +190,10 @@ Các endpoint cập nhật ấn phẩm và FAQ nêu dưới đây là hợp đ�
     }
     ```
   - **Response 201**: `ApiResponse<EventDetailDto>`
+
+- **`PUT /api/v1/events/{id}`**
+  - **Mô tả**: Ban Chủ nhiệm CLB hoặc `LEAD_HEADER` của chính sự kiện cập nhật thông tin tổng quan; không đổi trạng thái qua endpoint này.
+  - **Response 200**: `ApiResponse<EventDetailDto>`
 
 - **`PATCH /api/v1/events/{id}/status`**
   - **Mô tả**: Cập nhật trạng thái vòng đời mùa sự kiện.

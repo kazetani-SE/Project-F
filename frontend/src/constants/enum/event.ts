@@ -17,10 +17,9 @@ export const EVENT_STATUS_ACTION: Record<EventStatus, string> = {
 };
 
 export const ORGANIZER_ROLE_LABEL: Record<OrganizerRole, string> = {
-    MASTER_PLAN: 'Kế hoạch tổng thể',
-    RUNNING_ORDER: 'Kịch bản chương trình',
-    SPONSOR_PROPOSAL: 'Hồ sơ tài trợ',
-    MEETING_MINUTES: 'Biên bản họp',
-    RISK_PLAN: 'Kế hoạch rủi ro',
+    LEAD_HEADER: 'Trưởng BTC',
+    HR: 'Ban Nhân sự',
+    PLAN: 'Ban Kế hoạch',
+    MEDIA: 'Ban Truyền thông',
     MEMBER: 'Thành viên BTC',
 };

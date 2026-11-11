@@ -25,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/v1")
 public class EventController {
+    private static final String ADMIN_RULE = "@accessPolicy.isAdmin(authentication)";
     private static final Set<String> SERIES_SORT = Set.of("id", "name", "createdAt");
     private static final Set<String> EVENT_SORT = Set.of("id", "title", "seasonName", "status", "expectedStartDate",
             "expectedEndDate", "createdAt", "updatedAt");
@@ -62,12 +64,14 @@ public class EventController {
     }
 
     @PostMapping("/event-series")
+    @PreAuthorize(ADMIN_RULE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<EventSeriesResponse> createSeries(@Valid @RequestBody CreateEventSeriesRequest request) {
         return ApiResponse.ok(events.createSeries(request));
     }
 
     @PutMapping("/event-series/{seriesId}")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<EventSeriesResponse> updateSeries(
             @PathVariable UUID seriesId, @Valid @RequestBody UpdateEventSeriesRequest request) {
         return ApiResponse.ok(events.updateSeries(seriesId, request));
@@ -88,17 +92,20 @@ public class EventController {
     }
 
     @PostMapping("/events")
+    @PreAuthorize(ADMIN_RULE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<EventResponse> create(@Valid @RequestBody CreateEventRequest request) {
         return ApiResponse.ok(events.create(request));
     }
 
     @PutMapping("/events/{eventId}")
+    @PreAuthorize("@accessPolicy.isAdmin(authentication) or @accessPolicy.isEventLead(#eventId, authentication)")
     public ApiResponse<EventResponse> update(@PathVariable UUID eventId, @Valid @RequestBody UpdateEventRequest request) {
         return ApiResponse.ok(events.update(eventId, request));
     }
 
     @PatchMapping("/events/{eventId}/status")
+    @PreAuthorize("@accessPolicy.isAdmin(authentication) or @accessPolicy.isEventLead(#eventId, authentication)")
     public ApiResponse<EventResponse> updateStatus(
             @PathVariable UUID eventId, @Valid @RequestBody UpdateEventStatusRequest request) {
         return ApiResponse.ok(events.updateStatus(eventId, request));
@@ -115,6 +122,7 @@ public class EventController {
     }
 
     @PostMapping("/events/{eventId}/organizers")
+    @PreAuthorize(ADMIN_RULE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<OrganizerResponse> assign(
             @PathVariable UUID eventId, @Valid @RequestBody AssignOrganizerRequest request) {
@@ -122,6 +130,7 @@ public class EventController {
     }
 
     @DeleteMapping("/events/{eventId}/organizers/{memberId}")
+    @PreAuthorize(ADMIN_RULE)
     public ApiResponse<Void> removeOrganizer(@PathVariable UUID eventId, @PathVariable UUID memberId) {
         events.removeOrganizer(eventId, memberId);
         return ApiResponse.ok(null);
