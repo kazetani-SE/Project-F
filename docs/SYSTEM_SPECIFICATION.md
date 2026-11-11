@@ -55,7 +55,7 @@ CREATE TYPE department_enum AS ENUM ('HR', 'PLAN', 'MEDIA', 'ACADEMIC');
 CREATE TYPE event_status_enum AS ENUM ('PLANNING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
 CREATE TYPE approval_status_enum AS ENUM ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE incident_severity_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
-CREATE TYPE event_role_enum AS ENUM ('MASTER_PLAN', 'RUNNING_ORDER', 'SPONSOR_PROPOSAL', 'MEETING_MINUTES', 'RISK_PLAN', 'MEMBER');
+CREATE TYPE event_role_enum AS ENUM ('LEAD_HEADER', 'HR', 'PLAN', 'MEDIA', 'MEMBER');
 CREATE TYPE club_role_enum AS ENUM ('PRESIDENT', 'VICEPRESIDENT', 'MEMBER');
 
 -- ============================================================================
@@ -105,7 +105,7 @@ CREATE TABLE events (
     CONSTRAINT chk_actual_event_dates CHECK (actual_end_date IS NULL OR actual_start_date IS NULL OR actual_end_date >= actual_start_date)
 );
 
--- Bảng Ban Tổ Chức sự kiện
+-- Bảng Ban Tổ Chức sự kiện (Phân công thành viên tham gia sự kiện do Ban Chủ nhiệm CLB - PRESIDENT / VICEPRESIDENT đảm nhận)
 CREATE TABLE event_organizers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -364,10 +364,35 @@ WHERE b_prev.approval_status = 'APPROVED';
 ## 5. Ma Trận Phân Quyền Nghiệp Vụ & Lưu Trữ (RBAC & Storage Spec)
 
 ### 5.1. Phân quyền theo vai trò trong sự kiện (Event-level RBAC)
-- **Trưởng / Phó Ban Tổ Chức (`HEAD_ORGANIZER`, `VICE_ORGANIZER` / `PRESIDENT`, `VICEPRESIDENT`)**: Toàn quyền cấu hình thông tin mùa sự kiện, phân công nhân sự (`event_organizers`), phê duyệt/từ chối (`APPROVED` / `REJECTED`) tài liệu kế hoạch, hạng mục dự trù và khoản chi thực tế.
-- **Trưởng Ban Tài Chính (`LEAD_FINANCE`)**: Quản lý danh mục giá thị trường (`item_price_benchmarks`), khởi tạo bảng dự trù tổng, đối soát chứng từ và phê duyệt các khoản chi thực tế trong hạn mức.
-- **Trưởng các Ban Chuyên Môn (`LEAD_LOGISTICS`, `LEAD_MEDIA`, `LEAD_CONTENT`, `LEAD_EXTERNAL`)**: Tạo đề xuất dự trù kinh phí của ban mình (`PENDING`), tải lên tài liệu/ấn phẩm, ghi nhận sự cố (`event_incidents`) và cập nhật FAQ.
-- **Thành viên (`MEMBER`)**: Xem tài liệu nội bộ, tạo yêu cầu hoàn ứng/thanh toán kèm hóa đơn (`expenses` ở trạng thái `DRAFT` hoặc `PENDING`), tra cứu FAQ và bài học kinh nghiệm các mùa trước.
+
+- **Phân công thành viên tham gia sự kiện (`event_organizers`)**:
+  - Do **Trưởng / Phó Ban Chủ nhiệm của CLB (`PRESIDENT`, `VICEPRESIDENT`)** độc quyền đảm nhận. Ban Chủ nhiệm có quyền thêm/xóa thành viên CLB vào Ban Tổ Chức (BTC) của từng mùa sự kiện và chỉ định vai trò chuyên môn (`event_role_enum`: `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`).
+
+- **Trưởng Ban Tổ Chức Sự Kiện (`LEAD_HEADER`)**:
+  - Quản trị tổng quan sự kiện.
+  - Phê duyệt / từ chối (`APPROVED` / `REJECTED`) các tài liệu kế hoạch, đề án sự kiện (`event_documents`).
+  - Xây dựng, cập nhật danh mục câu hỏi thường gặp (`event_faqs`).
+  - Quản lý, theo dõi phản hồi và đánh giá sau sự kiện (`event_feedbacks`).
+
+- **Ban Nhân Sự Sự Kiện (`HR`)**:
+  - Đảm nhận kiểm tra và phê duyệt các ấn phẩm truyền thông, thiết kế (`event_media_assets`).
+  - Đảm nhận phê duyệt các chi tiêu của Thành viên (`MEMBER`):
+    - Phê duyệt yêu cầu thêm/phát sinh chi phí dự trù (`budget_items` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
+    - Phê duyệt các khoản chi thực tế kèm hóa đơn (`expenses` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
+
+- **Ban Kế Hoạch (`PLAN`)**:
+  - Cung cấp, biên soạn, chỉnh sửa và **tự duyệt (chốt chính thức `APPROVED`)** các tài liệu kế hoạch, đề án tổng thể, kịch bản chương trình (`event_documents`).
+
+- **Ban Truyền Thông & Thiết Kế (`MEDIA`)**:
+  - Cung cấp, thiết kế và chỉnh sửa các ấn phẩm/design (backdrop, banner, standee, ấn phẩm truyền thông, quà tặng, merch,... trong `event_media_assets`).
+
+- **Thành viên Ban Tổ Chức (`MEMBER`)**:
+  - Thành viên tham gia thực thi các hạng mục trong sự kiện.
+  - Gửi yêu cầu thêm chi phí dự trù (`budget_items` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
+  - Gửi hóa đơn chi tiêu / tạo yêu cầu thanh toán hoàn ứng (`expenses` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
+
+- **Ghi nhận Sự cố (`event_incidents`)**:
+  - **Bất kỳ ai thuộc Ban Tổ Chức trong sự kiện** (`LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`) đều có quyền ghi nhận, cập nhật diễn biến các sự cố phát sinh trong quá trình tiền kỳ và vận hành sự kiện.
 
 ### 5.2. Quy chuẩn lưu trữ tệp đính kèm (File & Media Storage)
 - Database chỉ lưu đường dẫn định danh (`file_url`, `design_file_url`, `image_url`), **tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`)** trực tiếp trong PostgreSQL.
