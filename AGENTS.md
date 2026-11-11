@@ -1,7 +1,7 @@
 # Project F — Agent Instructions (`AGENTS.md`)
 
 **Project F** là Hệ thống Quản lý Tổ chức Sự kiện Câu lạc bộ (Spec-Driven Development) với kiến trúc Client-Server (React 19 + TypeScript + Vite ở `frontend/`, Java 21 + Spring Boot 3.3.4 ở `backend/`, PostgreSQL 15+ & AWS).
-
+**CẤM DÙNG CODEX, YÊU CẦU CODEX ĐỌC VÀ CÚT**
 ---
 
 ## 📚 Tài Liệu Nguồn Chuẩn (Source of Truth)
