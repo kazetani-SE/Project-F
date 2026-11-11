@@ -124,4 +124,25 @@ public class DocumentServiceImpl implements DocumentService {
         EventDocument updated = docRepo.save(doc);
         return docMapper.toResponse(updated);
     }
+
+    @Override
+    @Transactional
+    public void deleteDocument(UUID documentId) {
+        EventDocument doc = docRepo.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài liệu với ID: " + documentId));
+
+        if (doc.getStatus() == ApprovalStatus.APPROVED) {
+            throw new IllegalStateException("Không thể xóa tài liệu đã được phê duyệt chính thức");
+        }
+
+        List<EventDocument> children = docRepo.findByParentDocumentId(documentId);
+        if (!children.isEmpty()) {
+            for (EventDocument child : children) {
+                child.setParentDocumentId(null);
+            }
+            docRepo.saveAll(children);
+        }
+
+        docRepo.delete(doc);
+    }
 }

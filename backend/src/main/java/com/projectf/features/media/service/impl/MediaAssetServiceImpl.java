@@ -27,6 +27,7 @@ public class MediaAssetServiceImpl implements MediaAssetService {
             "SOCIAL_POST",
             "OTHER"
     );
+    private static final String NOT_FOUND_MSG = "Không tìm thấy ấn phẩm với ID: ";
 
     private final MediaAssetRepository mediaRepo;
     private final MediaAssetMapper mediaMapper;
@@ -52,7 +53,7 @@ public class MediaAssetServiceImpl implements MediaAssetService {
     @Transactional(readOnly = true)
     public MediaAssetResponse getMediaAssetById(UUID assetId) {
         EventMediaAsset asset = mediaRepo.findById(assetId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy ấn phẩm với ID: " + assetId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_MSG + assetId));
         return mediaMapper.toResponse(asset);
     }
 
@@ -71,7 +72,7 @@ public class MediaAssetServiceImpl implements MediaAssetService {
     @Transactional
     public MediaAssetResponse updatePrintStatus(UUID assetId, UpdatePrintStatusRequest request) {
         EventMediaAsset asset = mediaRepo.findById(assetId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy ấn phẩm với ID: " + assetId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_MSG + assetId));
 
         asset.setIsPrinted(request.isPrinted());
         EventMediaAsset updated = mediaRepo.save(asset);
@@ -82,11 +83,24 @@ public class MediaAssetServiceImpl implements MediaAssetService {
     @Transactional
     public MediaAssetResponse updateApproval(UUID assetId, MediaApprovalRequest request) {
         EventMediaAsset asset = mediaRepo.findById(assetId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy ấn phẩm với ID: " + assetId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_MSG + assetId));
 
         asset.setApprovalStatus(request.approvalStatus());
         asset.setApprovedBy(request.approvedBy());
         EventMediaAsset updated = mediaRepo.save(asset);
         return mediaMapper.toResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMediaAsset(UUID assetId) {
+        EventMediaAsset asset = mediaRepo.findById(assetId)
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_MSG + assetId));
+
+        if (Boolean.TRUE.equals(asset.getIsPrinted())) {
+            throw new IllegalStateException("Không thể xóa ấn phẩm đã được in ấn");
+        }
+
+        mediaRepo.delete(asset);
     }
 }

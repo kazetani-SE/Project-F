@@ -14,4 +14,6 @@ public interface FaqService {
     FaqResponse createFaq(UUID seriesId, CreateFaqRequest request);
 
     FaqResponse updatePinStatus(UUID faqId, UpdateFaqPinRequest request);
+
+    void deleteFaq(UUID faqId);
 }

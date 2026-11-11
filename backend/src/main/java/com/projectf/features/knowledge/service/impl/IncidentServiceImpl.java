@@ -45,4 +45,12 @@ public class IncidentServiceImpl implements IncidentService {
         EventIncident saved = incidentRepo.save(entity);
         return incidentMapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional
+    public void deleteIncident(UUID incidentId) {
+        EventIncident incident = incidentRepo.findById(incidentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhật ký sự cố với ID: " + incidentId));
+        incidentRepo.delete(incident);
+    }
 }

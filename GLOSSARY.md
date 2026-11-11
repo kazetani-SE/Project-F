@@ -9,7 +9,7 @@ Tài liệu này định nghĩa ngôn ngữ chung (Ubiquitous Language) cho dự
 - **Club Member (`club_members`)**: Thành viên thuộc Câu lạc bộ, được định danh duy nhất bởi mã số sinh viên (`student_id`, 8 ký tự) và `email`, thuộc một ban chuyên môn (`department_enum`: `HR`, `PLAN`, `MEDIA`, `ACADEMIC`) và giữ vai trò cấp CLB (`club_role_enum`: `PRESIDENT`, `VICEPRESIDENT`, `MEMBER`).
 - **Event Series (`event_series`)**: Chuỗi sự kiện thường niên hoặc định kỳ của CLB (ví dụ: một cuộc thi học thuật hoặc ngày hội truyền thống được tổ chức qua nhiều năm/kỳ học).
 - **Event / Season (`events`)**: Một mùa tổ chức cụ thể thuộc một `Event Series`, có ngày dự kiến (`expected_start_date`, `expected_end_date`), ngày thực tế (`actual_start_date`, `actual_end_date`), quỹ cấp phát (`allocated_fund`) và trạng thái vòng đời (`event_status_enum`: `PLANNING`, `APPROVED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
-- **Event Organizer (`event_organizers`)**: Thành viên CLB được phân công vào Ban Tổ Chức (BTC) của một mùa sự kiện cụ thể (`event_id`, `member_id`), gắn với vai trò trong sự kiện (`event_role_enum`) và nhiệm vụ được giao (`assigned_tasks`).
+- **Event Organizer (`event_organizers`)**: Thành viên CLB được phân công vào Ban Tổ Chức (BTC) của một mùa sự kiện cụ thể (`event_id`, `member_id`), gắn với vai trò trong sự kiện (`event_role_enum`: `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`) và nhiệm vụ được giao (`assigned_tasks`). Việc phân công do Ban Chủ nhiệm CLB (`PRESIDENT`, `VICEPRESIDENT`) đảm nhận.
 
 ---
 

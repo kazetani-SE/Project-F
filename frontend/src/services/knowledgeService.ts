@@ -33,6 +33,16 @@ export async function getIncidentById(incidentId: string): Promise<IncidentRespo
     return res.data.data;
 }
 
+export async function deleteIncident(
+    incidentId: string,
+    eventId?: string,
+): Promise<void> {
+    const path = eventId
+        ? `/events/${eventId}/incidents/${incidentId}`
+        : `/incidents/${incidentId}`;
+    await apiClient.delete<ApiResponse<null>>(path);
+}
+
 // --- FAQs ---
 export async function getFaqsBySeries(
     seriesId: string,
@@ -70,6 +80,16 @@ export async function updateFaqPin(
     return res.data.data;
 }
 
+export async function deleteFaq(
+    faqId: string,
+    seriesId?: string,
+): Promise<void> {
+    const path = seriesId
+        ? `/event-series/${seriesId}/faqs/${faqId}`
+        : `/faqs/${faqId}`;
+    await apiClient.delete<ApiResponse<null>>(path);
+}
+
 // --- Feedbacks ---
 export async function getFeedbacksByEvent(eventId: string): Promise<FeedbackResponse[]> {
     const res = await apiClient.get<ApiResponse<FeedbackResponse[]>>(`/events/${eventId}/feedbacks`);
@@ -105,4 +125,14 @@ export async function submitFeedbacksBatch(
         data,
     );
     return res.data.data;
+}
+
+export async function deleteFeedback(
+    feedbackId: string,
+    eventId?: string,
+): Promise<void> {
+    const path = eventId
+        ? `/events/${eventId}/feedbacks/${feedbackId}`
+        : `/feedbacks/${feedbackId}`;
+    await apiClient.delete<ApiResponse<null>>(path);
 }

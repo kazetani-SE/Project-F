@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,5 +80,14 @@ public class MediaAssetController {
     ) {
         MediaAssetResponse response = mediaAssetService.updateApproval(assetId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @DeleteMapping({"/events/{eventId}/media-assets/{assetId}", "/media-assets/{assetId}"})
+    public ResponseEntity<ApiResponse<Void>> deleteMediaAsset(
+            @PathVariable(value = EVENT_ID, required = false) UUID eventId,
+            @PathVariable(ASSET_ID) UUID assetId
+    ) {
+        mediaAssetService.deleteMediaAsset(assetId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

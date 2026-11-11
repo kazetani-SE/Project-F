@@ -55,7 +55,7 @@ CREATE TYPE department_enum AS ENUM ('HR', 'PLAN', 'MEDIA', 'ACADEMIC');
 CREATE TYPE event_status_enum AS ENUM ('PLANNING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
 CREATE TYPE approval_status_enum AS ENUM ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE incident_severity_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
-CREATE TYPE event_role_enum AS ENUM ('MASTER_PLAN', 'RUNNING_ORDER', 'SPONSOR_PROPOSAL', 'MEETING_MINUTES', 'RISK_PLAN', 'MEMBER');
+CREATE TYPE event_role_enum AS ENUM ('LEAD_HEADER', 'HR', 'PLAN', 'MEDIA', 'MEMBER');
 CREATE TYPE club_role_enum AS ENUM ('PRESIDENT', 'VICEPRESIDENT', 'MEMBER');
 
 -- ============================================================================
@@ -105,7 +105,7 @@ CREATE TABLE events (
     CONSTRAINT chk_actual_event_dates CHECK (actual_end_date IS NULL OR actual_start_date IS NULL OR actual_end_date >= actual_start_date)
 );
 
--- Bảng Ban Tổ Chức sự kiện
+-- Bảng Ban Tổ Chức sự kiện (Phân công thành viên tham gia sự kiện do Ban Chủ nhiệm CLB - PRESIDENT / VICEPRESIDENT đảm nhận)
 CREATE TABLE event_organizers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -268,6 +268,25 @@ CREATE TABLE event_feedbacks (
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Bảng Báo cáo Tổng hợp Feedback bởi AI (Lưu Cache Báo cáo kèm Snapshot Watermark chống dữ liệu lỗi thời)
+CREATE TABLE event_feedback_ai_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL UNIQUE REFERENCES events(id) ON DELETE CASCADE,
+    model_used VARCHAR(100) NOT NULL,
+    model_tier VARCHAR(20) NOT NULL CHECK (model_tier IN ('FAST', 'DEEP', 'HEURISTIC')),
+    feedback_count_snapshot INT NOT NULL CHECK (feedback_count_snapshot >= 0),
+    latest_feedback_at_snapshot TIMESTAMPTZ,
+    average_rating_snapshot NUMERIC(4, 2) NOT NULL DEFAULT 0.00,
+    executive_summary TEXT NOT NULL,
+    sentiment_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb,
+    top_highlights JSONB NOT NULL DEFAULT '[]'::jsonb,
+    top_improvements JSONB NOT NULL DEFAULT '[]'::jsonb,
+    department_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    suggested_incidents JSONB NOT NULL DEFAULT '[]'::jsonb,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ============================================================================
 -- 5. CHIẾN LƯỢC ĐÁNH CHỈ MỤC (INDEXES)
 -- ============================================================================
@@ -284,6 +303,7 @@ CREATE INDEX idx_event_incidents_event_severity ON event_incidents(event_id, sev
 CREATE INDEX idx_event_faqs_series_pinned ON event_faqs(series_id, is_pinned);
 CREATE INDEX idx_event_feedbacks_event_id ON event_feedbacks(event_id);
 CREATE INDEX idx_event_feedbacks_custom_jsonb ON event_feedbacks USING GIN (custom_responses);
+CREATE INDEX idx_event_feedback_ai_reports_event_id ON event_feedback_ai_reports(event_id);
 
 -- ============================================================================
 -- 6. VIEWS TÍNH TOÁN NGÂN SÁCH & DỰ TOÁN MÙA MỚI
@@ -364,11 +384,42 @@ WHERE b_prev.approval_status = 'APPROVED';
 ## 5. Ma Trận Phân Quyền Nghiệp Vụ & Lưu Trữ (RBAC & Storage Spec)
 
 ### 5.1. Phân quyền theo vai trò trong sự kiện (Event-level RBAC)
-- **Trưởng / Phó Ban Tổ Chức (`HEAD_ORGANIZER`, `VICE_ORGANIZER` / `PRESIDENT`, `VICEPRESIDENT`)**: Toàn quyền cấu hình thông tin mùa sự kiện, phân công nhân sự (`event_organizers`), phê duyệt/từ chối (`APPROVED` / `REJECTED`) tài liệu kế hoạch, hạng mục dự trù và khoản chi thực tế.
-- **Trưởng Ban Tài Chính (`LEAD_FINANCE`)**: Quản lý danh mục giá thị trường (`item_price_benchmarks`), khởi tạo bảng dự trù tổng, đối soát chứng từ và phê duyệt các khoản chi thực tế trong hạn mức.
-- **Trưởng các Ban Chuyên Môn (`LEAD_LOGISTICS`, `LEAD_MEDIA`, `LEAD_CONTENT`, `LEAD_EXTERNAL`)**: Tạo đề xuất dự trù kinh phí của ban mình (`PENDING`), tải lên tài liệu/ấn phẩm, ghi nhận sự cố (`event_incidents`) và cập nhật FAQ.
-- **Thành viên (`MEMBER`)**: Xem tài liệu nội bộ, tạo yêu cầu hoàn ứng/thanh toán kèm hóa đơn (`expenses` ở trạng thái `DRAFT` hoặc `PENDING`), tra cứu FAQ và bài học kinh nghiệm các mùa trước.
+
+- **Phân công thành viên tham gia sự kiện (`event_organizers`)**:
+  - Do **Trưởng / Phó Ban Chủ nhiệm của CLB (`PRESIDENT`, `VICEPRESIDENT`)** độc quyền đảm nhận. Ban Chủ nhiệm có quyền thêm/xóa thành viên CLB vào Ban Tổ Chức (BTC) của từng mùa sự kiện và chỉ định vai trò chuyên môn (`event_role_enum`: `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`).
+
+- **Trưởng Ban Tổ Chức Sự Kiện (`LEAD_HEADER`)**:
+  - Quản trị tổng quan sự kiện.
+  - Phê duyệt / từ chối (`APPROVED` / `REJECTED`) các tài liệu kế hoạch, đề án sự kiện (`event_documents`).
+  - Xây dựng, cập nhật danh mục câu hỏi thường gặp (`event_faqs`).
+  - Quản lý, theo dõi phản hồi và đánh giá sau sự kiện (`event_feedbacks`).
+
+- **Ban Nhân Sự Sự Kiện (`HR`)**:
+  - Đảm nhận kiểm tra và phê duyệt các ấn phẩm truyền thông, thiết kế (`event_media_assets`).
+  - Đảm nhận phê duyệt các chi tiêu của Thành viên (`MEMBER`):
+    - Phê duyệt yêu cầu thêm/phát sinh chi phí dự trù (`budget_items` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
+    - Phê duyệt các khoản chi thực tế kèm hóa đơn (`expenses` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
+
+- **Ban Kế Hoạch (`PLAN`)**:
+  - Cung cấp, biên soạn, chỉnh sửa và **tự duyệt (chốt chính thức `APPROVED`)** các tài liệu kế hoạch, đề án tổng thể, kịch bản chương trình (`event_documents`).
+
+- **Ban Truyền Thông & Thiết Kế (`MEDIA`)**:
+  - Cung cấp, thiết kế và chỉnh sửa các ấn phẩm/design (backdrop, banner, standee, ấn phẩm truyền thông, quà tặng, merch,... trong `event_media_assets`).
+
+- **Thành viên Ban Tổ Chức (`MEMBER`)**:
+  - Thành viên tham gia thực thi các hạng mục trong sự kiện.
+  - Gửi yêu cầu thêm chi phí dự trù (`budget_items` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
+  - Gửi hóa đơn chi tiêu / tạo yêu cầu thanh toán hoàn ứng (`expenses` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
+
+- **Ghi nhận Sự cố (`event_incidents`)**:
+  - **Bất kỳ ai thuộc Ban Tổ Chức trong sự kiện** (`LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`) đều có quyền ghi nhận, cập nhật diễn biến các sự cố phát sinh trong quá trình tiền kỳ và vận hành sự kiện.
 
 ### 5.2. Quy chuẩn lưu trữ tệp đính kèm (File & Media Storage)
 - Database chỉ lưu đường dẫn định danh (`file_url`, `design_file_url`, `image_url`), **tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`)** trực tiếp trong PostgreSQL.
 - Các tệp hóa đơn (`expense_receipts`) và tài liệu (`event_documents`) được tải lên dịch vụ Object Storage (**Amazon S3**) thông qua cơ chế **Pre-signed URL**, giới hạn dung lượng tối đa **15MB** cho ảnh hóa đơn (`JPG/PNG/WEBP/PDF`) và **50MB** cho tài liệu kế hoạch.
+
+### 5.3. Quy chuẩn Xóa & Bảo toàn Dữ liệu (Deletion & Data Integrity Guard)
+- **Tài liệu sự kiện (`event_documents`)**: Chỉ cho phép xóa khi ở trạng thái `DRAFT` hoặc `REJECTED`. Nghiêm cấm xóa tài liệu đã được phê duyệt chính thức (`APPROVED`). Khi xóa tài liệu cha, toàn bộ tài liệu con kế thừa qua `parent_document_id` tự động đặt về `NULL` (`ON DELETE SET NULL`) để bảo toàn dữ liệu.
+- **Ấn phẩm truyền thông (`event_media_assets`)**: Chỉ cho phép xóa khi ấn phẩm chưa được gửi đi in (`is_printed = false`). Khóa ngoại tham chiếu từ `budget_items.media_asset` được cấu hình `ON DELETE SET NULL`.
+- **Nhật ký sự cố (`event_incidents`) & FAQ (`event_faqs`) & Feedback (`event_feedbacks`)**: Cung cấp API `DELETE` cho phép Ban Tổ Chức dọn dẹp các mục nhập nhầm, lỗi thời hoặc phản hồi spam.
+- **Quản lý tệp Object Storage (`com.projectf.features.storage`)**: Hỗ trợ endpoint xóa tệp trên bucket Amazon S3 (`DELETE /api/v1/storage/file?objectKey=...`) khi cần thu hồi dữ liệu.

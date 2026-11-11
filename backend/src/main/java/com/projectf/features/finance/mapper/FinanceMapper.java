@@ -57,7 +57,8 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierReference(request.supplierReference());
+        entity.setSupplierName(request.supplierName());
+        entity.setSupplierLink(request.supplierLink());
         return entity;
     }
 
@@ -66,7 +67,8 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierReference(request.supplierReference());
+        entity.setSupplierName(request.supplierName());
+        entity.setSupplierLink(request.supplierLink());
     }
 
     public BenchmarkResponse toResponse(ItemPriceBenchmark entity) {
@@ -76,7 +78,8 @@ public class FinanceMapper {
                 entity.getItemName(),
                 entity.getUnit(),
                 entity.getCurMarketPrice(),
-                entity.getSupplierReference(),
+                entity.getSupplierName(),
+                entity.getSupplierLink(),
                 entity.getLastUpdatedAt());
     }
 
