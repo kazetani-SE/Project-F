@@ -47,8 +47,8 @@ Hệ thống là nền tảng quản trị tri thức và hỗ trợ tiền kỳ
 ```sql
 -- ============================================================================
 -- 1. KHỞI TẠO KIỂU DỮ LIỆU ENUM CỐ ĐỊNH (STATE ENUMS)
--- Lưu ý: Các danh mục dễ biến đổi như Vai trò BTC, Loại tài liệu, Loại ấn phẩm
--- sử dụng VARCHAR kết hợp CHECK constraint để dễ dàng mở rộng qua Flyway.
+-- Vai trò BTC là enum cố định; loại tài liệu và loại ấn phẩm dùng VARCHAR + CHECK.
+-- event_role_enum biểu diễn thẩm quyền trong BTC, không biểu diễn loại tài liệu.
 -- ============================================================================
 
 CREATE TYPE department_enum AS ENUM ('HR', 'PLAN', 'MEDIA', 'ACADEMIC');
@@ -385,34 +385,21 @@ WHERE b_prev.approval_status = 'APPROVED';
 
 ### 5.1. Phân quyền theo vai trò trong sự kiện (Event-level RBAC)
 
-- **Phân công thành viên tham gia sự kiện (`event_organizers`)**:
-  - Do **Trưởng / Phó Ban Chủ nhiệm của CLB (`PRESIDENT`, `VICEPRESIDENT`)** độc quyền đảm nhận. Ban Chủ nhiệm có quyền thêm/xóa thành viên CLB vào Ban Tổ Chức (BTC) của từng mùa sự kiện và chỉ định vai trò chuyên môn (`event_role_enum`: `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`).
+`club_role_enum` là quyền cấp CLB; `event_role_enum` là quyền nghiệp vụ trong **một** sự kiện. Chỉ thành viên CLB đang hoạt động và có bản ghi `event_organizers` của sự kiện mới nhận quyền event-level. `department_enum` (`HR`, `PLAN`, `MEDIA`, `ACADEMIC`) mô tả ban trực thuộc CLB, không tự cấp quyền BTC.
 
-- **Trưởng Ban Tổ Chức Sự Kiện (`LEAD_HEADER`)**:
-  - Quản trị tổng quan sự kiện.
-  - Phê duyệt / từ chối (`APPROVED` / `REJECTED`) các tài liệu kế hoạch, đề án sự kiện (`event_documents`).
-  - Xây dựng, cập nhật danh mục câu hỏi thường gặp (`event_faqs`).
-  - Quản lý, theo dõi phản hồi và đánh giá sau sự kiện (`event_feedbacks`).
+| Chủ thể | Quyền trong sự kiện |
+| :--- | :--- |
+| `PRESIDENT`, `VICEPRESIDENT` (cấp CLB) | Đọc/ghi và duyệt trên mọi sự kiện; **chỉ hai vai trò này** được thêm, đổi vai trò hoặc rút nhân sự khỏi `event_organizers`. |
+| `LEAD_HEADER` (BTC) | Quản trị thông tin tổng quan và vòng đời sự kiện; duyệt/từ chối tài liệu kế hoạch; quản lý FAQ của chuỗi sự kiện đang phụ trách và xem, tổng hợp Feedback. Không được phân công nhân sự BTC. |
+| `HR` (BTC) | Duyệt/từ chối ấn phẩm truyền thông; đối soát hóa đơn và duyệt/từ chối khoản chi cùng dự trù phát sinh do `MEMBER` của cùng sự kiện gửi. |
+| `PLAN` (BTC) | Soạn thảo, tải lên và cập nhật tài liệu kế hoạch bằng phiên bản mới; được tự chuyển tài liệu do chính mình tải lên sang `APPROVED`. Không duyệt tài liệu của người khác. |
+| `MEDIA` (BTC) | Thiết kế, tải lên và cập nhật ấn phẩm/design của sự kiện (`BANNER`, `BACKDROP`, `BADGE`/merch và các loại ấn phẩm hợp lệ khác); không tự duyệt ấn phẩm. |
+| `MEMBER` (BTC) | Thực thi nhiệm vụ được giao; tạo dự trù `PENDING` và khoản chi `DRAFT`/`PENDING` kèm hóa đơn để `HR` duyệt. Không tự duyệt. |
 
-- **Ban Nhân Sự Sự Kiện (`HR`)**:
-  - Đảm nhận kiểm tra và phê duyệt các ấn phẩm truyền thông, thiết kế (`event_media_assets`).
-  - Đảm nhận phê duyệt các chi tiêu của Thành viên (`MEMBER`):
-    - Phê duyệt yêu cầu thêm/phát sinh chi phí dự trù (`budget_items` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
-    - Phê duyệt các khoản chi thực tế kèm hóa đơn (`expenses` từ trạng thái `PENDING` sang `APPROVED` / `REJECTED`).
-
-- **Ban Kế Hoạch (`PLAN`)**:
-  - Cung cấp, biên soạn, chỉnh sửa và **tự duyệt (chốt chính thức `APPROVED`)** các tài liệu kế hoạch, đề án tổng thể, kịch bản chương trình (`event_documents`).
-
-- **Ban Truyền Thông & Thiết Kế (`MEDIA`)**:
-  - Cung cấp, thiết kế và chỉnh sửa các ấn phẩm/design (backdrop, banner, standee, ấn phẩm truyền thông, quà tặng, merch,... trong `event_media_assets`).
-
-- **Thành viên Ban Tổ Chức (`MEMBER`)**:
-  - Thành viên tham gia thực thi các hạng mục trong sự kiện.
-  - Gửi yêu cầu thêm chi phí dự trù (`budget_items` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
-  - Gửi hóa đơn chi tiêu / tạo yêu cầu thanh toán hoàn ứng (`expenses` ở trạng thái `PENDING`) cho Ban Nhân sự (`HR`) xét duyệt.
-
-- **Ghi nhận Sự cố (`event_incidents`)**:
-  - **Bất kỳ ai thuộc Ban Tổ Chức trong sự kiện** (`LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`) đều có quyền ghi nhận, cập nhật diễn biến các sự cố phát sinh trong quá trình tiền kỳ và vận hành sự kiện.
+- Mọi vai trò BTC trên đều được đọc dữ liệu của **sự kiện được phân công** và ghi nhận `event_incidents`. Người không thuộc BTC không có quyền đọc/ghi dữ liệu nội bộ của sự kiện, trừ Ban Chủ nhiệm CLB. Khi truy cập qua ID tài liệu, ấn phẩm, dự trù hoặc khoản chi, phải kiểm tra `event_id` thực tế của bản ghi; ID trên URL không thay thế kiểm tra này.
+- Vai trò BTC không kế thừa quyền phân công nhân sự từ `LEAD_HEADER`. Mỗi thành viên có tối đa một bản ghi BTC cho một sự kiện (`uq_event_member`); đổi vai trò là cập nhật bản ghi đó.
+- Quyền `PLAN` tự duyệt dựa trên `event_documents.uploaded_by`, lấy từ người dùng đã xác thực chứ không tin ID do client gửi. Quyền `HR` duyệt đề xuất của `MEMBER` cần định danh người gửi: `budget_items` chưa có cột người đề xuất, còn `expenses.paid_by` là người chi tiền, không nhất thiết là người gửi. Phải bổ sung thông tin người gửi trước khi triển khai điều kiện duyệt này; không suy ra từ `department_enum`.
+- `APPROVED`/`REJECTED` là trạng thái duyệt của tài liệu, ấn phẩm, dự trù hoặc khoản chi; quyền duyệt được kiểm tra tại thời điểm chuyển trạng thái. Mọi quyền nêu trên vẫn phải tuân thủ ràng buộc chứng từ và vòng đời nghiệp vụ ở các mục tương ứng.
 
 ### 5.2. Quy chuẩn lưu trữ tệp đính kèm (File & Media Storage)
 - Database chỉ lưu đường dẫn định danh (`file_url`, `design_file_url`, `image_url`), **tuyệt đối không lưu dữ liệu nhị phân (`BYTEA`)** trực tiếp trong PostgreSQL.

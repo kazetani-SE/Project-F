@@ -8,6 +8,9 @@ import com.projectf.features.member.dto.request.MemberFilterRequest;
 import com.projectf.features.member.dto.request.UpdateMemberRequest;
 import com.projectf.features.member.dto.request.UpdateMemberStatusRequest;
 import com.projectf.features.member.dto.response.MemberResponse;
+import com.projectf.features.member.dto.response.MemberImportReport;
+import com.projectf.features.member.service.MemberImportService;
+import com.projectf.features.member.service.MemberCredentialService;
 import com.projectf.features.member.service.MemberService;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -17,6 +20,8 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -27,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/v1/members")
@@ -35,9 +42,42 @@ public class MemberController {
             "clubRole", "batch", "active", "createdAt", "inactiveAt");
     private static final Map<String, String> SORT_ALIASES = Map.of("isActive", "active", "role", "clubRole");
     private final MemberService members;
+    private final MemberImportService importer;
+    private final MemberCredentialService credentials;
 
-    public MemberController(MemberService members) {
+    public MemberController(MemberService members, MemberImportService importer, MemberCredentialService credentials) {
         this.members = members;
+        this.importer = importer;
+        this.credentials = credentials;
+    }
+
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> template() {
+        return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=club-members-template.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(importer.template());
+    }
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<MemberImportReport> importMembers(@RequestPart("file") MultipartFile file) {
+        return ApiResponse.ok(importer.importFile(file));
+    }
+
+    @PostMapping("/{id}/credentials/resend")
+    public ApiResponse<Void> resendCredentials(@PathVariable UUID id) {
+        credentials.resend(members.get(id));
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/{id}/credentials/provision")
+    public ApiResponse<String> provisionCredentials(@PathVariable UUID id) {
+        String status;
+        try {
+            status = credentials.provision(members.get(id));
+        } catch (org.springframework.mail.MailException exception) {
+            status = "EMAIL_FAILED";
+        }
+        return ApiResponse.ok(status);
     }
 
     @GetMapping

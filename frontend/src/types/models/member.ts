@@ -32,3 +32,25 @@ export interface MemberQuery {
     batch?: string;
     isActive?: boolean;
 }
+
+export interface MemberImportRow {
+    rowNumber: number;
+    studentId: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    department: string;
+    batch: string;
+    status: 'CREATED' | 'AUTH_EXISTS' | 'EMAIL_FAILED' | 'AUTH_FAILED' | 'FAILED';
+    reason: string;
+    memberId: string | null;
+}
+
+export interface MemberImportReport {
+    total: number;
+    created: number;
+    failed: number;
+    existingAuth: number;
+    emailFailed: number;
+    rows: MemberImportRow[];
+}

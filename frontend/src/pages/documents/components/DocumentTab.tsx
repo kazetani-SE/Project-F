@@ -18,6 +18,7 @@ import {
 } from '../../../services/documentService';
 import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
+import { button } from '../../../components/ui/CrudUi';
 import {
     executeStagedUploadAndSave,
     incrementDocumentVersion,
@@ -238,8 +239,9 @@ export const DocumentTab: React.FC<Props> = ({ eventId }) => {
                 </div>
 
                 <button
+                    type="button"
                     onClick={() => handleOpenCreateModal()}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    className={`${button} !inline-flex shrink-0 items-center justify-center gap-2 shadow-xs`}
                 >
                     <Plus className="h-4 w-4" />
                     <span>Tải lên tài liệu mới</span>

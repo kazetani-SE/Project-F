@@ -46,6 +46,18 @@ class CoreApiTest extends ProjectFApplicationTests {
     }
 
     @Test
+    void importEndpointsRequireAdminRole() throws Exception {
+        mvc.perform(get("/v1/members/import/template")).andExpect(status().isUnauthorized());
+        UUID subject = UUID.randomUUID();
+        when(members.findByAuthUserId(subject)).thenReturn(Optional.of(member(ClubRole.MEMBER, true)));
+        var token = jwt().jwt(builder -> builder.subject(subject.toString()));
+        mvc.perform(get("/v1/members/import/template").with(token)).andExpect(status().isForbidden());
+        mvc.perform(post("/v1/members/import").with(token)).andExpect(status().isForbidden());
+        mvc.perform(post("/v1/members/{id}/credentials/provision", UUID.randomUUID()).with(token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void eventListRejectsAnInvalidBearer() throws Exception {
         mvc.perform(get("/v1/events").header("Authorization", "Bearer invalid"))
                 .andExpect(status().isUnauthorized());

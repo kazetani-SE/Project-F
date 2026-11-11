@@ -10,6 +10,7 @@ import { isClubAdmin, useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { useResource } from '../../hooks/useResource';
 import { memberService } from '../../services/memberService';
+import { MemberImportPanel } from './MemberImportPanel';
 import type { ClubRole } from '../../types/models/auth';
 import type { Department, MemberFields, MemberQuery, MemberResponse } from '../../types/models/member';
 
@@ -38,6 +39,7 @@ export function MembersPage() {
 
     return <section className="space-y-5">
         <PageHeader title="Thành viên CLB" action={isClubAdmin(user?.clubRole) && <Link className={button} to={ROUTE_PATHS.MEMBER_NEW}>Thêm thành viên</Link>} />
+        {isClubAdmin(user?.clubRole) && <MemberImportPanel onImported={resource.reload} />}
         <form className={`${panel} grid gap-3 sm:grid-cols-2 xl:grid-cols-4`} onSubmit={filter}>
             <label>Từ khóa<input className={field} name="keyword" placeholder="Tên, email hoặc MSSV" /></label>
             <label>Ban<select className={field} name="department"><option value="">Tất cả</option>{departmentOptions}</select></label>

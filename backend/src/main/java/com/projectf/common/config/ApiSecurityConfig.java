@@ -24,6 +24,8 @@ public class ApiSecurityConfig {
     public SecurityFilterChain apiSecurity(HttpSecurity http, AccessPolicy access, ObjectMapper json) throws Exception {
         // Chỉ áp dụng RBAC Task 1. Các route con của Tài chính, Tài liệu và Tri thức giữ chuỗi lọc riêng.
         return http.securityMatcher("/v1/auth/me", "/v1/members", "/v1/members/{id}", "/v1/members/{id}/status",
+                        "/v1/members/import", "/v1/members/import/template", "/v1/members/{id}/credentials/resend",
+                        "/v1/members/{id}/credentials/provision",
                         "/v1/event-series", "/v1/event-series/{seriesId}", "/v1/events", "/v1/events/{eventId}",
                         "/v1/events/{eventId}/status", "/v1/events/{eventId}/my-role",
                         "/v1/events/{eventId}/organizers", "/v1/events/{eventId}/organizers/{memberId}")
@@ -37,6 +39,8 @@ public class ApiSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // API §2: cho phép tài khoản có JWT hợp lệ gọi /auth/me để liên kết hồ sơ lần đầu.
                         .requestMatchers(HttpMethod.GET, "/v1/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/v1/members/import/template")
+                        .access((authentication, context) -> new AuthorizationDecision(access.isAdmin(authentication.get())))
                         .requestMatchers(HttpMethod.GET, "/v1/**")
                         .access((authentication, context) -> new AuthorizationDecision(access.isActiveMember(authentication.get())))
                         .anyRequest()

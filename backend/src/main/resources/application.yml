@@ -7,6 +7,15 @@ spring:
   application:
     name: project-f-club-backend
 
+  mail:
+    host: ${SPRING_MAIL_HOST:127.0.0.1}
+    port: ${SPRING_MAIL_PORT:54325}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SPRING_MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+
   # IntelliJ có thể chạy từ thư mục gốc dự án hoặc backend; nạp .env ở cả hai vị trí.
   config:
     import:

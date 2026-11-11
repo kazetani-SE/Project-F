@@ -1,8 +1,19 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse, PageResponse } from '../types/common/api';
-import type { CreateMemberRequest, MemberFields, MemberQuery, MemberResponse } from '../types/models/member';
+import type { CreateMemberRequest, MemberFields, MemberImportReport, MemberQuery, MemberResponse } from '../types/models/member';
 
 export const memberService = {
+    template: async () => (await apiClient.get<Blob>('/members/import/template', { responseType: 'blob' })).data,
+    importFile: async (file: File) => {
+        const form = new FormData();
+        form.append('file', file);
+        return (await apiClient.post<ApiResponse<MemberImportReport>>('/members/import', form)).data.data;
+    },
+    resendCredentials: async (id: string) => {
+        await apiClient.post(`/members/${id}/credentials/resend`);
+    },
+    provisionCredentials: async (id: string) =>
+        (await apiClient.post<ApiResponse<'CREATED' | 'AUTH_EXISTS' | 'EMAIL_FAILED'>>(`/members/${id}/credentials/provision`)).data.data,
     list: async (params: MemberQuery) =>
         (await apiClient.get<ApiResponse<PageResponse<MemberResponse>>>('/members', { params })).data.data,
     get: async (id: string) =>

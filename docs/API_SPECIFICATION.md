@@ -120,20 +120,41 @@ interface PageResponse<T> {
   - **Response 200**: `ApiResponse<List<OrganizerResponseDto>>`
 
 - **`POST /api/v1/events/{eventId}/organizers`**
-  - **Mô tả**: Phân công thành viên CLB vào Ban Tổ Chức sự kiện.
+  - **Mô tả**: Ban Chủ nhiệm CLB (`PRESIDENT` hoặc `VICEPRESIDENT`) phân công thành viên đang hoạt động vào BTC sự kiện; không cho phép tự phân công hoặc chọn vai trò từ `department`.
   - **Request Body**:
     ```json
     {
       "memberId": "123e4567-e89b-12d3-a456-426614174000",
       "role": "PLAN",
-      "assignedTasks": "Chịu trách nhiệm đề án tổng thể và timeline"
+      "assignedTasks": "Soạn đề án tổng thể và timeline"
     }
     ```
   - **Response 201**: `ApiResponse<OrganizerResponseDto>`
 
+- **`PUT /api/v1/events/{eventId}/organizers/{memberId}`**
+  - **Mô tả**: Ban Chủ nhiệm CLB đổi vai trò BTC hoặc nhiệm vụ được giao của thành viên đã phân công; không tạo bản ghi BTC thứ hai.
+  - **Request Body**: `{ "role": "LEAD_HEADER", "assignedTasks": "Điều phối chung sự kiện" }`
+  - **Response 200**: `ApiResponse<OrganizerResponseDto>`
+
 - **`DELETE /api/v1/events/{eventId}/organizers/{memberId}`**
-  - **Mô tả**: Rút thành viên khỏi BTC sự kiện.
+  - **Mô tả**: Chỉ Ban Chủ nhiệm CLB được rút thành viên khỏi BTC sự kiện.
   - **Response 200**: `ApiResponse<null>`
+
+**Phân quyền theo sự kiện:** `role` chỉ nhận `LEAD_HEADER`, `HR`, `PLAN`, `MEDIA`, `MEMBER`. Đây là vai trò BTC (`event_role_enum`), khác `clubRole` (`PRESIDENT`, `VICEPRESIDENT`, `MEMBER`) và khác loại tài liệu (`docType`). Ban Chủ nhiệm CLB có quyền quản trị mọi sự kiện; người có `clubRole=MEMBER` chỉ truy cập sự kiện đã được phân công. Thiếu JWT trả 401; có JWT nhưng không đủ quyền hoặc không thuộc BTC của sự kiện trả 403. API nhận ID bản ghi phải kiểm tra sự kiện thực tế của bản ghi để chống truy cập chéo sự kiện.
+
+| Thao tác API theo sự kiện | Vai trò BTC được phép, ngoài Ban Chủ nhiệm CLB |
+| :--- | :--- |
+| Sửa tổng quan/trạng thái sự kiện | `LEAD_HEADER` |
+| `POST /events/{eventId}/documents`, tạo phiên bản mới qua `parentDocumentId` | `PLAN` |
+| `PATCH /events/{eventId}/documents/{documentId}/approval` | `LEAD_HEADER`; `PLAN` chỉ tự duyệt tài liệu do mình tải lên sang `APPROVED` |
+| Tạo/cập nhật ấn phẩm trong `/events/{eventId}/media-assets` | `MEDIA` |
+| `PATCH /events/{eventId}/media-assets/{assetId}/approval` | `HR` |
+| `POST /events/{eventId}/budget-items`, `POST /events/{eventId}/expenses` | `MEMBER` |
+| `PATCH /events/{eventId}/budget-items/{itemId}/approval`, `PATCH /events/{eventId}/expenses/{expenseId}/approval` | `HR`, chỉ đối với đề xuất của `MEMBER` cùng sự kiện |
+| `POST /events/{eventId}/incidents` | Mọi vai trò BTC |
+| Tạo/cập nhật/ghim FAQ của chuỗi và xem, tổng hợp Feedback | `LEAD_HEADER` phụ trách một sự kiện thuộc chuỗi |
+
+Các endpoint cập nhật ấn phẩm và FAQ nêu dưới đây là hợp đồng cần triển khai; schema còn thiếu thông tin người gửi dự trù/khoản chi để áp điều kiện duyệt của `HR`. `paidBy` là người chi tiền, không mặc nhiên là người gửi. ID người tải tài liệu và người gửi đề xuất phải lấy từ JWT/hồ sơ đã liên kết, không tin giá trị do client tự khai; không suy ra quyền duyệt từ ban trực thuộc (`department`).
 
 ---
 
@@ -299,11 +320,14 @@ interface PageResponse<T> {
     }
     ```
 - **`PATCH /api/v1/events/{eventId}/documents/{documentId}/approval`**: Duyệt/từ chối tài liệu kế hoạch.
+  - **Quyền**: `LEAD_HEADER` được duyệt/từ chối; `PLAN` chỉ được tự duyệt (`APPROVED`) tài liệu do chính mình tải lên. Ban Chủ nhiệm CLB được duyệt trên mọi sự kiện.
 
 ### 6.2. Ấn phẩm Truyền thông & Trạng thái in ấn (`event_media_assets`)
 
 - **`GET /api/v1/events/{eventId}/media-assets`**: Danh sách ấn phẩm thiết kế.
 - **`POST /api/v1/events/{eventId}/media-assets`**: Thêm ấn phẩm mới.
+- **`PUT /api/v1/events/{eventId}/media-assets/{assetId}`**: `MEDIA` cập nhật nội dung/thiết kế ấn phẩm của sự kiện được phân công.
+- **`PATCH /api/v1/events/{eventId}/media-assets/{assetId}/approval`**: `HR` duyệt/từ chối ấn phẩm; `MEDIA` không tự duyệt.
 - **`PATCH /api/v1/events/{eventId}/media-assets/{assetId}/print-status`**: Cập nhật trạng thái in ấn (`isPrinted: true`).
 
 ### 6.3. Tri thức Đa mùa: Sự cố, FAQ & Khảo sát (`event_incidents`, `event_faqs`, `event_feedbacks`)
@@ -325,6 +349,7 @@ interface PageResponse<T> {
 
 - **`GET /api/v1/event-series/{seriesId}/faqs`**: Tra cứu kho FAQ tích lũy của chuỗi sự kiện.
 - **`POST /api/v1/event-series/{seriesId}/faqs`**: Thêm câu hỏi thường gặp mới.
+- **`PUT /api/v1/event-series/{seriesId}/faqs/{faqId}`**: `LEAD_HEADER` cập nhật FAQ của chuỗi có sự kiện mình phụ trách.
 - **`PATCH /api/v1/event-series/{seriesId}/faqs/{faqId}/pin`**: Ghim/bỏ ghim FAQ lên đầu danh mục.
 
 - **`GET /api/v1/events/{eventId}/feedbacks`**: Lấy danh sách và thống kê điểm đánh giá khảo sát sau sự kiện.
