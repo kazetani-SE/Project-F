@@ -17,4 +17,6 @@ public interface MediaAssetService {
     MediaAssetResponse updatePrintStatus(UUID assetId, UpdatePrintStatusRequest request);
 
     MediaAssetResponse updateApproval(UUID assetId, MediaApprovalRequest request);
+
+    void deleteMediaAsset(UUID assetId);
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1")
 public class FaqController {
 
+    private static final String SERIES_ID = "seriesId";
+    private static final String FAQ_ID = "faqId";
+
     private final FaqService faqService;
 
     public FaqController(FaqService faqService) {
@@ -33,7 +37,7 @@ public class FaqController {
 
     @GetMapping("/event-series/{seriesId}/faqs")
     public ResponseEntity<ApiResponse<List<FaqResponse>>> getFaqs(
-            @PathVariable("seriesId") UUID seriesId,
+            @PathVariable(SERIES_ID) UUID seriesId,
             @RequestParam(value = "category", required = false) String category
     ) {
         List<FaqResponse> response = faqService.getFaqsBySeries(seriesId, category);
@@ -42,7 +46,7 @@ public class FaqController {
 
     @PostMapping("/event-series/{seriesId}/faqs")
     public ResponseEntity<ApiResponse<FaqResponse>> createFaq(
-            @PathVariable("seriesId") UUID seriesId,
+            @PathVariable(SERIES_ID) UUID seriesId,
             @Valid @RequestBody CreateFaqRequest request
     ) {
         FaqResponse response = faqService.createFaq(seriesId, request);
@@ -51,7 +55,7 @@ public class FaqController {
 
     @GetMapping("/faqs/{faqId}")
     public ResponseEntity<ApiResponse<FaqResponse>> getFaqById(
-            @PathVariable("faqId") UUID faqId
+            @PathVariable(FAQ_ID) UUID faqId
     ) {
         FaqResponse response = faqService.getFaqById(faqId);
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -59,11 +63,20 @@ public class FaqController {
 
     @PatchMapping({"/event-series/{seriesId}/faqs/{faqId}/pin", "/faqs/{faqId}/pin"})
     public ResponseEntity<ApiResponse<FaqResponse>> updatePin(
-            @PathVariable(value = "seriesId", required = false) UUID seriesId,
-            @PathVariable("faqId") UUID faqId,
+            @PathVariable(value = SERIES_ID, required = false) UUID seriesId,
+            @PathVariable(FAQ_ID) UUID faqId,
             @Valid @RequestBody UpdateFaqPinRequest request
     ) {
         FaqResponse response = faqService.updatePinStatus(faqId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @DeleteMapping({"/event-series/{seriesId}/faqs/{faqId}", "/faqs/{faqId}"})
+    public ResponseEntity<ApiResponse<Void>> deleteFaq(
+            @PathVariable(value = SERIES_ID, required = false) UUID seriesId,
+            @PathVariable(FAQ_ID) UUID faqId
+    ) {
+        faqService.deleteFaq(faqId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

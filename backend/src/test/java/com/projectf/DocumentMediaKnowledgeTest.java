@@ -14,11 +14,18 @@ import com.projectf.features.knowledge.dto.request.CreateFeedbackRequest;
 import com.projectf.features.knowledge.dto.request.CreateIncidentRequest;
 import com.projectf.features.knowledge.dto.response.FeedbackResponse;
 import com.projectf.features.knowledge.dto.response.FeedbackSummaryResponse;
+import com.projectf.features.knowledge.entity.EventFaq;
 import com.projectf.features.knowledge.entity.EventFeedback;
 import com.projectf.features.knowledge.entity.EventIncident;
+import com.projectf.features.knowledge.mapper.FaqMapper;
 import com.projectf.features.knowledge.mapper.FeedbackMapper;
+import com.projectf.features.knowledge.mapper.IncidentMapper;
+import com.projectf.features.knowledge.repository.FaqRepository;
 import com.projectf.features.knowledge.repository.FeedbackRepository;
+import com.projectf.features.knowledge.repository.IncidentRepository;
+import com.projectf.features.knowledge.service.impl.FaqServiceImpl;
 import com.projectf.features.knowledge.service.impl.FeedbackServiceImpl;
+import com.projectf.features.knowledge.service.impl.IncidentServiceImpl;
 import com.projectf.features.media.dto.request.UpdatePrintStatusRequest;
 import com.projectf.features.media.entity.EventMediaAsset;
 import com.projectf.features.media.mapper.MediaAssetMapper;
@@ -40,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DocumentMediaKnowledgeTest {
@@ -265,5 +273,133 @@ class DocumentMediaKnowledgeTest {
         assertEquals("event_media_assets", EventMediaAsset.class.getAnnotation(Table.class).name());
         assertEquals("event_incidents", EventIncident.class.getAnnotation(Table.class).name());
         assertEquals("event_feedbacks", EventFeedback.class.getAnnotation(Table.class).name());
+    }
+
+    @Test
+    void documentDeleteFailsIfApproved() {
+        DocumentRepository docRepo = Mockito.mock(DocumentRepository.class);
+        DocumentMapper mapper = new DocumentMapper();
+        DocumentServiceImpl service = new DocumentServiceImpl(docRepo, mapper);
+
+        UUID docId = UUID.randomUUID();
+        EventDocument doc = new EventDocument();
+        doc.setId(docId);
+        doc.setStatus(ApprovalStatus.APPROVED);
+
+        when(docRepo.findById(docId)).thenReturn(Optional.of(doc));
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> service.deleteDocument(docId)
+        );
+        assertTrue(ex.getMessage().contains("phê duyệt chính thức"));
+    }
+
+    @Test
+    void documentDeleteSucceedsWhenDraftOrPending() {
+        DocumentRepository docRepo = Mockito.mock(DocumentRepository.class);
+        DocumentMapper mapper = new DocumentMapper();
+        DocumentServiceImpl service = new DocumentServiceImpl(docRepo, mapper);
+
+        UUID docId = UUID.randomUUID();
+        EventDocument doc = new EventDocument();
+        doc.setId(docId);
+        doc.setStatus(ApprovalStatus.DRAFT);
+
+        when(docRepo.findById(docId)).thenReturn(Optional.of(doc));
+        when(docRepo.findByParentDocumentId(docId)).thenReturn(List.of());
+
+        service.deleteDocument(docId);
+
+        verify(docRepo).delete(doc);
+    }
+
+    @Test
+    void mediaAssetDeleteFailsIfPrinted() {
+        MediaAssetRepository mediaRepo = Mockito.mock(MediaAssetRepository.class);
+        MediaAssetMapper mapper = new MediaAssetMapper();
+        MediaAssetServiceImpl service = new MediaAssetServiceImpl(mediaRepo, mapper);
+
+        UUID assetId = UUID.randomUUID();
+        EventMediaAsset asset = new EventMediaAsset();
+        asset.setId(assetId);
+        asset.setIsPrinted(true);
+
+        when(mediaRepo.findById(assetId)).thenReturn(Optional.of(asset));
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> service.deleteMediaAsset(assetId)
+        );
+        assertTrue(ex.getMessage().contains("đã được in ấn"));
+    }
+
+    @Test
+    void mediaAssetDeleteSucceedsWhenNotPrinted() {
+        MediaAssetRepository mediaRepo = Mockito.mock(MediaAssetRepository.class);
+        MediaAssetMapper mapper = new MediaAssetMapper();
+        MediaAssetServiceImpl service = new MediaAssetServiceImpl(mediaRepo, mapper);
+
+        UUID assetId = UUID.randomUUID();
+        EventMediaAsset asset = new EventMediaAsset();
+        asset.setId(assetId);
+        asset.setIsPrinted(false);
+
+        when(mediaRepo.findById(assetId)).thenReturn(Optional.of(asset));
+
+        service.deleteMediaAsset(assetId);
+
+        verify(mediaRepo).delete(asset);
+    }
+
+    @Test
+    void incidentDeleteSucceeds() {
+        IncidentRepository incidentRepo = Mockito.mock(IncidentRepository.class);
+        IncidentMapper mapper = new IncidentMapper();
+        IncidentServiceImpl service = new IncidentServiceImpl(incidentRepo, mapper);
+
+        UUID incidentId = UUID.randomUUID();
+        EventIncident incident = new EventIncident();
+        incident.setId(incidentId);
+
+        when(incidentRepo.findById(incidentId)).thenReturn(Optional.of(incident));
+
+        service.deleteIncident(incidentId);
+
+        verify(incidentRepo).delete(incident);
+    }
+
+    @Test
+    void faqDeleteSucceeds() {
+        FaqRepository faqRepo = Mockito.mock(FaqRepository.class);
+        FaqMapper mapper = new FaqMapper();
+        FaqServiceImpl service = new FaqServiceImpl(faqRepo, mapper);
+
+        UUID faqId = UUID.randomUUID();
+        EventFaq faq = new EventFaq();
+        faq.setId(faqId);
+
+        when(faqRepo.findById(faqId)).thenReturn(Optional.of(faq));
+
+        service.deleteFaq(faqId);
+
+        verify(faqRepo).delete(faq);
+    }
+
+    @Test
+    void feedbackDeleteSucceeds() {
+        FeedbackRepository feedbackRepo = Mockito.mock(FeedbackRepository.class);
+        FeedbackMapper mapper = new FeedbackMapper();
+        FeedbackServiceImpl service = new FeedbackServiceImpl(feedbackRepo, mapper);
+
+        UUID feedbackId = UUID.randomUUID();
+        EventFeedback feedback = new EventFeedback();
+        feedback.setId(feedbackId);
+
+        when(feedbackRepo.findById(feedbackId)).thenReturn(Optional.of(feedback));
+
+        service.deleteFeedback(feedbackId);
+
+        verify(feedbackRepo).delete(feedback);
     }
 }
