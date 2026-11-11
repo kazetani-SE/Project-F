@@ -1,5 +1,5 @@
 server:
-  port: ${PORT}
+  port: ${PORT:8080}
   servlet:
     context-path: /api
 
@@ -7,9 +7,10 @@ spring:
   application:
     name: project-f-club-backend
 
-  # Profile gốc chỉ nạp duy nhất file .env gốc của backend
+  # IntelliJ có thể chạy từ thư mục gốc dự án hoặc backend; nạp .env ở cả hai vị trí.
   config:
     import:
+      - optional:file:backend/.env[.properties]
       - optional:file:.env[.properties]
 
   profiles:
