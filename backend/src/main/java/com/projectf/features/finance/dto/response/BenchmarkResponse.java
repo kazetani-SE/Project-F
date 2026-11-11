@@ -5,11 +5,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record BenchmarkResponse(
-    UUID id,
-    UUID categoryId,
-    String itemName,
-    String unit,
-    BigDecimal curMarketPrice,
-    String supplierReference,
-    OffsetDateTime lastUpdatedAt
-) {}
+        UUID id,
+        UUID categoryId,
+        String itemName,
+        String unit,
+        BigDecimal curMarketPrice,
+        String supplierName,
+        String supplierLink,
+        OffsetDateTime lastUpdatedAt) {
+}

@@ -39,33 +39,32 @@ class FinanceFoundationTest {
 
     @Test
     void benchmarkRequestRejectsNegativePriceAndBlankNames() {
-        var invalidReq = new CreateBenchmarkRequest(null, "  ", "", new BigDecimal("-100"), null);
+        var invalidReq = new CreateBenchmarkRequest(null, "  ", "", new BigDecimal("-100"), null, "invalid-url");
         var violations = validator.validate(invalidReq);
 
         var violatedFields = violations.stream()
-            .map(v -> v.getPropertyPath().toString())
-            .toList();
+                .map(v -> v.getPropertyPath().toString())
+                .toList();
 
         assertTrue(violatedFields.contains("categoryId"));
         assertTrue(violatedFields.contains("itemName"));
         assertTrue(violatedFields.contains("unit"));
         assertTrue(violatedFields.contains("curMarketPrice"));
+        assertTrue(violatedFields.contains("supplierLink"));
     }
 
     @Test
     void budgetItemRequestRejectsZeroOrNegativeQuantity() {
         var zeroQty = new CreateBudgetItemRequest(
-            UUID.randomUUID(), UUID.randomUUID(), null, null,
-            "Standee A0", BigDecimal.ZERO, "Cái", new BigDecimal("150000"), null
-        );
+                UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "Standee A0", BigDecimal.ZERO, "Cái", new BigDecimal("150000"), null);
         var violations = validator.validate(zeroQty);
         assertFalse(violations.isEmpty());
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("quantity")));
 
         var negativePrice = new CreateBudgetItemRequest(
-            UUID.randomUUID(), UUID.randomUUID(), null, null,
-            "Standee A0", new BigDecimal("2"), "Cái", new BigDecimal("-50000"), null
-        );
+                UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "Standee A0", new BigDecimal("2"), "Cái", new BigDecimal("-50000"), null);
         var priceViolations = validator.validate(negativePrice);
         assertFalse(priceViolations.isEmpty());
         assertTrue(priceViolations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("estUnitPrice")));
@@ -74,10 +73,9 @@ class FinanceFoundationTest {
     @Test
     void expenseRequestValidationSuccess() {
         var validReq = new CreateExpenseRequest(
-            UUID.randomUUID(), UUID.randomUUID(), "In ấn backdrop sân khấu",
-            new BigDecimal("1"), new BigDecimal("450000"), UUID.randomUUID(),
-            LocalDate.of(2026, 11, 4), "Đã thanh toán cho nhà in F", null
-        );
+                UUID.randomUUID(), UUID.randomUUID(), "In ấn backdrop sân khấu",
+                new BigDecimal("1"), new BigDecimal("450000"), UUID.randomUUID(),
+                LocalDate.of(2026, 11, 4), "Đã thanh toán cho nhà in F", null);
         var violations = validator.validate(validReq);
         assertTrue(violations.isEmpty());
     }
@@ -102,12 +100,15 @@ class FinanceFoundationTest {
         benchmark.setItemName("Nước suối Aquafina 500ml");
         benchmark.setUnit("Thùng");
         benchmark.setCurMarketPrice(new BigDecimal("95000"));
-        benchmark.setSupplierReference("Đại lý nước FPT");
+        benchmark.setSupplierName("Đại lý nước FPT");
+        benchmark.setSupplierLink("https://example.com/aquafina");
 
         var bmResp = financeMapper.toResponse(benchmark);
         assertEquals(bmId, bmResp.id());
         assertEquals("Nước suối Aquafina 500ml", bmResp.itemName());
         assertEquals(new BigDecimal("95000"), bmResp.curMarketPrice());
+        assertEquals("Đại lý nước FPT", bmResp.supplierName());
+        assertEquals("https://example.com/aquafina", bmResp.supplierLink());
     }
 
     @Test
@@ -119,29 +120,28 @@ class FinanceFoundationTest {
 
         // Tạo dynamic proxy cho ExpenseRepository & ExpenseReceiptRepository
         ExpenseRepository expenseRepo = (ExpenseRepository) Proxy.newProxyInstance(
-            getClass().getClassLoader(),
-            new Class<?>[]{ExpenseRepository.class},
-            (proxy, method, args) -> {
-                if (method.getName().equals("findById")) return Optional.of(expense);
-                return null;
-            }
-        );
+                getClass().getClassLoader(),
+                new Class<?>[] { ExpenseRepository.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("findById"))
+                        return Optional.of(expense);
+                    return null;
+                });
 
         ExpenseReceiptRepository receiptRepo = (ExpenseReceiptRepository) Proxy.newProxyInstance(
-            getClass().getClassLoader(),
-            new Class<?>[]{ExpenseReceiptRepository.class},
-            (proxy, method, args) -> {
-                if (method.getName().equals("countByExpenseId")) return 0L;
-                return null;
-            }
-        );
+                getClass().getClassLoader(),
+                new Class<?>[] { ExpenseReceiptRepository.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("countByExpenseId"))
+                        return 0L;
+                    return null;
+                });
 
         var service = new ExpenseServiceImpl(expenseRepo, receiptRepo, financeMapper);
         var approveRequest = new ReviewExpenseRequest(ApprovalStatus.APPROVED, UUID.randomUUID(), null);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-            service.reviewExpense(expenseId, approveRequest)
-        );
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.reviewExpense(expenseId, approveRequest));
 
         assertTrue(ex.getMessage().contains("bắt buộc phải có ít nhất 1 chứng từ"));
     }
@@ -154,24 +154,26 @@ class FinanceFoundationTest {
         expense.setStatus(ApprovalStatus.PENDING);
 
         ExpenseRepository expenseRepo = (ExpenseRepository) Proxy.newProxyInstance(
-            getClass().getClassLoader(),
-            new Class<?>[]{ExpenseRepository.class},
-            (proxy, method, args) -> {
-                if (method.getName().equals("findById")) return Optional.of(expense);
-                if (method.getName().equals("save")) return args[0];
-                return null;
-            }
-        );
+                getClass().getClassLoader(),
+                new Class<?>[] { ExpenseRepository.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("findById"))
+                        return Optional.of(expense);
+                    if (method.getName().equals("save"))
+                        return args[0];
+                    return null;
+                });
 
         ExpenseReceiptRepository receiptRepo = (ExpenseReceiptRepository) Proxy.newProxyInstance(
-            getClass().getClassLoader(),
-            new Class<?>[]{ExpenseReceiptRepository.class},
-            (proxy, method, args) -> {
-                if (method.getName().equals("countByExpenseId")) return 2L;
-                if (method.getName().equals("findByExpenseId")) return Collections.emptyList();
-                return null;
-            }
-        );
+                getClass().getClassLoader(),
+                new Class<?>[] { ExpenseReceiptRepository.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("countByExpenseId"))
+                        return 2L;
+                    if (method.getName().equals("findByExpenseId"))
+                        return Collections.emptyList();
+                    return null;
+                });
 
         var service = new ExpenseServiceImpl(expenseRepo, receiptRepo, financeMapper);
         var approveRequest = new ReviewExpenseRequest(ApprovalStatus.APPROVED, UUID.randomUUID(), null);
