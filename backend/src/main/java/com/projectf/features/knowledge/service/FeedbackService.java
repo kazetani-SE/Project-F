@@ -14,4 +14,6 @@ public interface FeedbackService {
     FeedbackResponse submitFeedback(UUID eventId, CreateFeedbackRequest request);
 
     List<FeedbackResponse> submitFeedbacksBatch(UUID eventId, List<CreateFeedbackRequest> requests);
+
+    void deleteFeedback(UUID feedbackId);
 }

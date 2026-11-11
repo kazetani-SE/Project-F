@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -185,5 +187,30 @@ class StorageServiceTest {
         assertNotNull(response);
         assertEquals(15, response.expiresInMinutes());
         assertEquals("documents/uuid-test.pdf", response.objectKey());
+    }
+
+    @Test
+    void deleteFileThrowsOnNullOrBlank() {
+        assertThrows(IllegalArgumentException.class, () -> storageService.deleteFile(null));
+        assertThrows(IllegalArgumentException.class, () -> storageService.deleteFile("   "));
+    }
+
+    @Test
+    void deleteFileCallsS3ClientWhenConfigured() {
+        S3Client mockS3 = Mockito.mock(S3Client.class);
+        S3StorageServiceImpl serviceWithClient = new S3StorageServiceImpl(
+                s3Presigner,
+                mockS3,
+                "test-bucket",
+                "ap-southeast-1",
+                10
+        );
+
+        serviceWithClient.deleteFile("documents/test-plan.pdf");
+
+        ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        Mockito.verify(mockS3).deleteObject(captor.capture());
+        assertEquals("test-bucket", captor.getValue().bucket());
+        assertEquals("documents/test-plan.pdf", captor.getValue().key());
     }
 }

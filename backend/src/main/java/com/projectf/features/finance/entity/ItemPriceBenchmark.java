@@ -17,7 +17,7 @@ import java.util.UUID;
 @Entity
 @DynamicInsert
 @Table(name = "item_price_benchmarks", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_benchmark_item_unit", columnNames = {"item_name", "unit"})
+        @UniqueConstraint(name = "uq_benchmark_item_unit", columnNames = { "item_name", "unit" })
 })
 public class ItemPriceBenchmark {
 
@@ -37,8 +37,11 @@ public class ItemPriceBenchmark {
     @Column(name = "current_market_price", nullable = false, precision = 15, scale = 2)
     private BigDecimal curMarketPrice;
 
-    @Column(name = "supplier_reference", length = 200)
-    private String supplierReference;
+    @Column(name = "supplier_name", length = 200)
+    private String supplierName;
+
+    @Column(name = "supplier_link", columnDefinition = "TEXT")
+    private String supplierLink;
 
     @UpdateTimestamp
     @Column(name = "last_updated_at", nullable = false)

@@ -14,4 +14,6 @@ public interface DocumentService {
     DocumentResponse createDocument(UUID eventId, CreateDocumentRequest request);
 
     DocumentResponse updateApproval(UUID documentId, DocumentApprovalRequest request);
+
+    void deleteDocument(UUID documentId);
 }

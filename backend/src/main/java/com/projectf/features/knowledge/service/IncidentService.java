@@ -11,4 +11,6 @@ public interface IncidentService {
     IncidentResponse getIncidentById(UUID incidentId);
 
     IncidentResponse createIncident(UUID eventId, CreateIncidentRequest request);
+
+    void deleteIncident(UUID incidentId);
 }

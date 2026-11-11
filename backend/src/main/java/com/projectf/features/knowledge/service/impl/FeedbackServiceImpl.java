@@ -109,4 +109,12 @@ public class FeedbackServiceImpl implements FeedbackService {
         }
         return responses;
     }
+
+    @Override
+    @Transactional
+    public void deleteFeedback(UUID feedbackId) {
+        EventFeedback feedback = feedbackRepo.findById(feedbackId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phản hồi với ID: " + feedbackId));
+        feedbackRepo.delete(feedback);
+    }
 }

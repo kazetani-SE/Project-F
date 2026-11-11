@@ -57,7 +57,8 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierReference(request.supplierReference());
+        entity.setSupplierName(request.supplierName());
+        entity.setSupplierLink(request.supplierLink());
         return entity;
     }
 
@@ -66,19 +67,20 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierReference(request.supplierReference());
+        entity.setSupplierName(request.supplierName());
+        entity.setSupplierLink(request.supplierLink());
     }
 
     public BenchmarkResponse toResponse(ItemPriceBenchmark entity) {
         return new BenchmarkResponse(
-            entity.getId(),
-            entity.getCategoryId(),
-            entity.getItemName(),
-            entity.getUnit(),
-            entity.getCurMarketPrice(),
-            entity.getSupplierReference(),
-            entity.getLastUpdatedAt()
-        );
+                entity.getId(),
+                entity.getCategoryId(),
+                entity.getItemName(),
+                entity.getUnit(),
+                entity.getCurMarketPrice(),
+                entity.getSupplierName(),
+                entity.getSupplierLink(),
+                entity.getLastUpdatedAt());
     }
 
     // --- BudgetItem ---
@@ -110,23 +112,22 @@ public class FinanceMapper {
 
     public BudgetItemResponse toResponse(BudgetItem entity) {
         return new BudgetItemResponse(
-            entity.getId(),
-            entity.getEventId(),
-            entity.getCategoryId(),
-            entity.getBenchmarkId(),
-            entity.getMediaAsset(),
-            entity.getItemName(),
-            entity.getQuantity(),
-            entity.getUnit(),
-            entity.getEstUnitPrice(),
-            entity.getTotalEstAmount(),
-            entity.getNotes(),
-            entity.getApprovalStatus(),
-            entity.getApprovedBy(),
-            entity.getApprovedAt(),
-            entity.getRejectionReason(),
-            entity.getCreatedAt()
-        );
+                entity.getId(),
+                entity.getEventId(),
+                entity.getCategoryId(),
+                entity.getBenchmarkId(),
+                entity.getMediaAsset(),
+                entity.getItemName(),
+                entity.getQuantity(),
+                entity.getUnit(),
+                entity.getEstUnitPrice(),
+                entity.getTotalEstAmount(),
+                entity.getNotes(),
+                entity.getApprovalStatus(),
+                entity.getApprovedBy(),
+                entity.getApprovedAt(),
+                entity.getRejectionReason(),
+                entity.getCreatedAt());
     }
 
     // --- Expense ---
@@ -156,23 +157,22 @@ public class FinanceMapper {
 
     public ExpenseResponse toResponse(Expense entity, List<ExpenseReceiptResponse> receipts) {
         return new ExpenseResponse(
-            entity.getId(),
-            entity.getEventId(),
-            entity.getBudgetItemId(),
-            entity.getItemName(),
-            entity.getQuantity(),
-            entity.getActualUnitPrice(),
-            entity.getTotalAmount(),
-            entity.getPaidBy(),
-            entity.getStatus(),
-            entity.getApprovedBy(),
-            entity.getApprovedAt(),
-            entity.getRejectionReason(),
-            entity.getPaymentDate(),
-            entity.getNotes(),
-            entity.getCreatedAt(),
-            receipts != null ? receipts : Collections.emptyList()
-        );
+                entity.getId(),
+                entity.getEventId(),
+                entity.getBudgetItemId(),
+                entity.getItemName(),
+                entity.getQuantity(),
+                entity.getActualUnitPrice(),
+                entity.getTotalAmount(),
+                entity.getPaidBy(),
+                entity.getStatus(),
+                entity.getApprovedBy(),
+                entity.getApprovedAt(),
+                entity.getRejectionReason(),
+                entity.getPaymentDate(),
+                entity.getNotes(),
+                entity.getCreatedAt(),
+                receipts != null ? receipts : Collections.emptyList());
     }
 
     // --- ExpenseReceipt ---
@@ -187,42 +187,39 @@ public class FinanceMapper {
 
     public ExpenseReceiptResponse toResponse(ExpenseReceipt entity) {
         return new ExpenseReceiptResponse(
-            entity.getId(),
-            entity.getExpenseId(),
-            entity.getReceiptCode(),
-            entity.getImageUrl(),
-            entity.getSupplierName(),
-            entity.getCreatedAt()
-        );
+                entity.getId(),
+                entity.getExpenseId(),
+                entity.getReceiptCode(),
+                entity.getImageUrl(),
+                entity.getSupplierName(),
+                entity.getCreatedAt());
     }
 
     // --- Views ---
     public EventBudgetSummaryResponse toResponse(EventBudgetSummaryView view) {
         return new EventBudgetSummaryResponse(
-            view.getEventId(),
-            view.getEventTitle(),
-            view.getSeasonName(),
-            view.getAllocatedFund(),
-            view.getTotalBudgetEst(),
-            view.getTotalActualSpent(),
-            view.getRemainingFund(),
-            view.getEstimateVariance()
-        );
+                view.getEventId(),
+                view.getEventTitle(),
+                view.getSeasonName(),
+                view.getAllocatedFund(),
+                view.getTotalBudgetEst(),
+                view.getTotalActualSpent(),
+                view.getRemainingFund(),
+                view.getEstimateVariance());
     }
 
     public ProjectedBudgetResponse toResponse(ProjectedBudgetView view) {
         return new ProjectedBudgetResponse(
-            view.getPrevBudgetItemId(),
-            view.getPreviousEventId(),
-            view.getCategoryId(),
-            view.getBenchmarkId(),
-            view.getItemName(),
-            view.getUnit(),
-            view.getPrevPlannedQty(),
-            view.getBaseProjectionQty(),
-            view.getPreviousUnitPrice(),
-            view.getAdjustedUnitPrice(),
-            view.getProjectedCost()
-        );
+                view.getPrevBudgetItemId(),
+                view.getPreviousEventId(),
+                view.getCategoryId(),
+                view.getBenchmarkId(),
+                view.getItemName(),
+                view.getUnit(),
+                view.getPrevPlannedQty(),
+                view.getBaseProjectionQty(),
+                view.getPreviousUnitPrice(),
+                view.getAdjustedUnitPrice(),
+                view.getProjectedCost());
     }
 }

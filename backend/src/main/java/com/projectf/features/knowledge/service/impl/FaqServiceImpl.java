@@ -61,4 +61,12 @@ public class FaqServiceImpl implements FaqService {
         EventFaq updated = faqRepository.save(faq);
         return faqMapper.toResponse(updated);
     }
+
+    @Override
+    @Transactional
+    public void deleteFaq(UUID faqId) {
+        EventFaq faq = faqRepository.findById(faqId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy FAQ với ID: " + faqId));
+        faqRepository.delete(faq);
+    }
 }

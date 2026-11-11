@@ -8,4 +8,6 @@ public interface StorageService {
     PresignedUploadResponse generatePresignedUploadUrl(PresignedUploadRequest request);
 
     PresignedDownloadResponse generatePresignedDownloadUrl(String objectKey);
+
+    void deleteFile(String objectKey);
 }
