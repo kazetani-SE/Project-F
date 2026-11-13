@@ -84,9 +84,9 @@ public class FinanceMapper {
     }
 
     // --- BudgetItem ---
-    public BudgetItem toEntity(CreateBudgetItemRequest request) {
+    public BudgetItem toEntity(UUID eventId, CreateBudgetItemRequest request) {
         BudgetItem entity = new BudgetItem();
-        entity.setEventId(request.eventId());
+        entity.setEventId(eventId);
         entity.setCategoryId(request.categoryId());
         entity.setBenchmarkId(request.benchmarkId());
         entity.setMediaAsset(request.mediaAsset());
@@ -131,9 +131,9 @@ public class FinanceMapper {
     }
 
     // --- Expense ---
-    public Expense toEntity(CreateExpenseRequest request) {
+    public Expense toEntity(UUID eventId, CreateExpenseRequest request) {
         Expense entity = new Expense();
-        entity.setEventId(request.eventId());
+        entity.setEventId(eventId);
         entity.setBudgetItemId(request.budgetItemId());
         entity.setItemName(request.itemName().trim());
         entity.setQuantity(request.quantity());
