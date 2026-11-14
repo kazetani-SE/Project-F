@@ -71,7 +71,7 @@ export const DocumentsPage: React.FC = () => {
 
                     <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
                         <Layers className="h-4 w-4" />
-                        <span>Mã sự kiện: <code className="font-mono">{eventId}</code></span>
+                        <span>Mã sự kiện: <code className="font-sans">{eventId}</code></span>
                     </div>
                 </div>
             </div>
