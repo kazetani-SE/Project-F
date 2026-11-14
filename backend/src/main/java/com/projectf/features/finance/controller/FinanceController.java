@@ -68,8 +68,7 @@ public class FinanceController {
 
     @PostMapping("/categories")
     public ResponseEntity<ApiResponse<BudgetCategoryResponse>> createCategory(
-            @Valid @RequestBody CreateBudgetCategoryRequest request
-    ) {
+            @Valid @RequestBody CreateBudgetCategoryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(budgetItemService.createCategory(request)));
     }
@@ -77,8 +76,7 @@ public class FinanceController {
     @PutMapping("/categories/{id}")
     public ResponseEntity<ApiResponse<BudgetCategoryResponse>> updateCategory(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateBudgetCategoryRequest request
-    ) {
+            @Valid @RequestBody UpdateBudgetCategoryRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.updateCategory(id, request)));
     }
 
@@ -95,8 +93,7 @@ public class FinanceController {
     @GetMapping("/benchmarks")
     public ResponseEntity<ApiResponse<List<BenchmarkResponse>>> getAllBenchmarks(
             @RequestParam(required = false) UUID categoryId,
-            @RequestParam(required = false) String keyword
-    ) {
+            @RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(ApiResponse.ok(benchmarkService.getAllBenchmarks(categoryId, keyword)));
     }
 
@@ -107,8 +104,7 @@ public class FinanceController {
 
     @PostMapping("/benchmarks")
     public ResponseEntity<ApiResponse<BenchmarkResponse>> createBenchmark(
-            @Valid @RequestBody CreateBenchmarkRequest request
-    ) {
+            @Valid @RequestBody CreateBenchmarkRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(benchmarkService.createBenchmark(request)));
     }
@@ -116,8 +112,7 @@ public class FinanceController {
     @PutMapping("/benchmarks/{id}")
     public ResponseEntity<ApiResponse<BenchmarkResponse>> updateBenchmark(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateBenchmarkRequest request
-    ) {
+            @Valid @RequestBody UpdateBenchmarkRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(benchmarkService.updateBenchmark(id, request)));
     }
 
@@ -134,8 +129,7 @@ public class FinanceController {
     @GetMapping("/budgets")
     public ResponseEntity<ApiResponse<List<BudgetItemResponse>>> getBudgetItems(
             @RequestParam UUID eventId,
-            @RequestParam(required = false) ApprovalStatus status
-    ) {
+            @RequestParam(required = false) ApprovalStatus status) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getBudgetItemsByEvent(eventId, status)));
     }
 
@@ -146,8 +140,7 @@ public class FinanceController {
 
     @PostMapping("/budgets")
     public ResponseEntity<ApiResponse<BudgetItemResponse>> createBudgetItem(
-            @Valid @RequestBody CreateBudgetItemRequest request
-    ) {
+            @Valid @RequestBody CreateBudgetItemRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(budgetItemService.createBudgetItem(request)));
     }
@@ -155,16 +148,14 @@ public class FinanceController {
     @PutMapping("/budgets/{id}")
     public ResponseEntity<ApiResponse<BudgetItemResponse>> updateBudgetItem(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateBudgetItemRequest request
-    ) {
+            @Valid @RequestBody UpdateBudgetItemRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.updateBudgetItem(id, request)));
     }
 
     @PostMapping("/budgets/{id}/review")
     public ResponseEntity<ApiResponse<BudgetItemResponse>> reviewBudgetItem(
             @PathVariable UUID id,
-            @Valid @RequestBody ReviewBudgetItemRequest request
-    ) {
+            @Valid @RequestBody ReviewBudgetItemRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.reviewBudgetItem(id, request)));
     }
 
@@ -180,15 +171,13 @@ public class FinanceController {
 
     @GetMapping("/budgets/projected-preview")
     public ResponseEntity<ApiResponse<List<ProjectedBudgetResponse>>> getProjectedBudgetPreview(
-            @RequestParam UUID previousEventId
-    ) {
+            @RequestParam UUID previousEventId) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getProjectedBudgetPreview(previousEventId)));
     }
 
     @PostMapping("/budgets/project-from-previous")
     public ResponseEntity<ApiResponse<List<BudgetItemResponse>>> autoProjectFromPreviousSeason(
-            @Valid @RequestBody AutoProjectBudgetRequest request
-    ) {
+            @Valid @RequestBody AutoProjectBudgetRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(budgetItemService.autoProjectFromPreviousSeason(request)));
     }
@@ -199,62 +188,65 @@ public class FinanceController {
 
     @GetMapping("/expenses")
     public ResponseEntity<ApiResponse<List<ExpenseResponse>>> getExpenses(
-            @RequestParam UUID eventId,
-            @RequestParam(required = false) ApprovalStatus status
-    ) {
+            @PathVariable UUID eventId,
+            @RequestParam(required = false) ApprovalStatus status) {
         return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpensesByEvent(eventId, status)));
     }
 
     @GetMapping("/expenses/{id}")
-    public ResponseEntity<ApiResponse<ExpenseResponse>> getExpenseById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpenseById(id)));
+    public ResponseEntity<ApiResponse<ExpenseResponse>> getExpenseById(
+            @PathVariable UUID eventId,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpenseById(eventId, id)));
     }
 
     @PostMapping("/expenses")
     public ResponseEntity<ApiResponse<ExpenseResponse>> createExpense(
-            @Valid @RequestBody CreateExpenseRequest request
-    ) {
+            @PathVariable UUID eventId,
+            @Valid @RequestBody CreateExpenseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(expenseService.createExpense(request)));
+                .body(ApiResponse.ok(expenseService.createExpense(eventId, request)));
     }
 
     @PutMapping("/expenses/{id}")
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateExpense(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateExpenseRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.updateExpense(id, request)));
+            @Valid @RequestBody UpdateExpenseRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.updateExpense(eventId, id, request)));
     }
 
     @PostMapping("/expenses/{id}/review")
     public ResponseEntity<ApiResponse<ExpenseResponse>> reviewExpense(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
-            @Valid @RequestBody ReviewExpenseRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.reviewExpense(id, request)));
+            @Valid @RequestBody ReviewExpenseRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.reviewExpense(eventId, id, request)));
     }
 
     @DeleteMapping("/expenses/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteExpense(@PathVariable UUID id) {
-        expenseService.deleteExpense(id);
+    public ResponseEntity<ApiResponse<Void>> deleteExpense(
+            @PathVariable UUID eventId,
+            @PathVariable UUID id) {
+        expenseService.deleteExpense(eventId, id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @PostMapping("/expenses/{id}/receipts")
     public ResponseEntity<ApiResponse<ExpenseReceiptResponse>> addReceipt(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
-            @Valid @RequestBody CreateReceiptRequest request
-    ) {
+            @Valid @RequestBody CreateReceiptRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(expenseService.addReceipt(id, request)));
+                .body(ApiResponse.ok(expenseService.addReceipt(eventId, id, request)));
     }
 
     @DeleteMapping("/expenses/{expenseId}/receipts/{receiptId}")
     public ResponseEntity<ApiResponse<Void>> deleteReceipt(
+            @PathVariable UUID eventId,
             @PathVariable UUID expenseId,
-            @PathVariable UUID receiptId
-    ) {
-        expenseService.deleteReceipt(expenseId, receiptId);
+            @PathVariable UUID receiptId) {
+        expenseService.deleteReceipt(eventId, expenseId, receiptId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
@@ -264,8 +256,7 @@ public class FinanceController {
 
     @GetMapping("/summary/{eventId}")
     public ResponseEntity<ApiResponse<EventBudgetSummaryResponse>> getBudgetSummary(
-            @PathVariable UUID eventId
-    ) {
+            @PathVariable UUID eventId) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getBudgetSummary(eventId)));
     }
 }

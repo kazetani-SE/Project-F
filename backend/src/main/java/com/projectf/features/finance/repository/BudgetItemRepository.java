@@ -6,11 +6,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface BudgetItemRepository extends JpaRepository<BudgetItem, UUID> {
     List<BudgetItem> findByEventId(UUID eventId);
+
+    Optional<BudgetItem> findByIdAndEventId(UUID id, UUID eventId);
+
     List<BudgetItem> findByEventIdAndApprovalStatus(UUID eventId, ApprovalStatus status);
+
     boolean existsByCategoryId(UUID categoryId);
 }
