@@ -84,9 +84,9 @@ public class FinanceMapper {
     }
 
     // --- BudgetItem ---
-    public BudgetItem toEntity(CreateBudgetItemRequest request) {
+    public BudgetItem toEntity(UUID eventId, CreateBudgetItemRequest request) {
         BudgetItem entity = new BudgetItem();
-        entity.setEventId(request.eventId());
+        entity.setEventId(eventId);
         entity.setCategoryId(request.categoryId());
         entity.setBenchmarkId(request.benchmarkId());
         entity.setMediaAsset(request.mediaAsset());
