@@ -1,12 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    CalendarDays, Wallet, Users, X, Loader2, Lock,
+    CalendarDays, Layers, Wallet, Users, X, Loader2, Lock,
     LayoutDashboard, FileText, Calculator, Receipt, Scale, UserCog, BookOpen,
     type LucideIcon,
 } from 'lucide-react';
 import RoleBadge from '../ui/RoleBadge';
 import {useActiveEvent} from "../../context/activeEventContext.ts";
 import logo from "../../assets/NewFCode_Logo.png"
+import { ROUTE_PATHS } from '../../app/router/route';
 
 const SUB_ITEMS = [
     { to: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
@@ -151,6 +152,7 @@ export default function Sidebar({ open, onClose }: Props) {
                     )}
 
                     <NavItem to="/budget" icon={Wallet} label="Budget" onClick={onClose} />
+                    <NavItem to={ROUTE_PATHS.SERIES} icon={Layers} label="Chuỗi sự kiện" onClick={onClose} />
                     <NavItem to="/members" icon={Users} label="Thành viên" onClick={onClose} />
                 </nav>
             </div>

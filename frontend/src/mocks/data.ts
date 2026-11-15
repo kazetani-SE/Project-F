@@ -119,12 +119,12 @@ export const MOCK_EVENTS: EventSummary[] = [
 
 // Muốn test vai trò nào thì sửa ở đây. null = "Không thuộc BTC"
 export const MOCK_ROLES: Record<string, EventRole | null> = {
-    'ev-tech-fall-2026': 'HEAD_ORGANIZER',
-    'ev-git-101': 'LEAD_CONTENT',
-    'ev-codewars-2026': 'LEAD_FINANCE',
-    'ev-orientation-k21': 'LEAD_LOGISTICS',
+    'ev-tech-fall-2026': 'LEAD_HEADER',
+    'ev-git-101': 'PLAN',
+    'ev-codewars-2026': 'HR',
+    'ev-orientation-k21': 'MEDIA',
     'ev-ai-agents': null,
-    'ev-hackathon-2026': 'HEAD_ORGANIZER',
+    'ev-hackathon-2026': 'LEAD_HEADER',
     'ev-tech-spring-2026': 'MEMBER',
     'ev-yearend-2025': 'MEMBER',
 };
