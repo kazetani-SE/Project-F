@@ -15,18 +15,18 @@ public interface ExpenseService {
   // Expense management
   List<ExpenseResponse> getExpensesByEvent(UUID eventId, ApprovalStatus status);
 
-  ExpenseResponse getExpenseById(UUID id);
+  ExpenseResponse getExpenseById(UUID eventId, UUID id);
 
   ExpenseResponse createExpense(UUID eventId, CreateExpenseRequest request);
 
-  ExpenseResponse updateExpense(UUID id, UpdateExpenseRequest request);
+  ExpenseResponse updateExpense(UUID eventId, UUID id, UpdateExpenseRequest request);
 
-  ExpenseResponse reviewExpense(UUID id, ReviewExpenseRequest request);
+  ExpenseResponse reviewExpense(UUID eventId, UUID id, ReviewExpenseRequest request);
 
-  void deleteExpense(UUID id);
+  void deleteExpense(UUID eventId, UUID id);
 
   // Receipt management
-  ExpenseReceiptResponse addReceipt(UUID expenseId, CreateReceiptRequest request);
+  ExpenseReceiptResponse addReceipt(UUID eventId, UUID expenseId, CreateReceiptRequest request);
 
-  void deleteReceipt(UUID expenseId, UUID receiptId);
+  void deleteReceipt(UUID eventId, UUID expenseId, UUID receiptId);
 }

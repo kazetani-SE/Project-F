@@ -197,13 +197,14 @@ public class FinanceController {
     /**
      * GHI CHÚ CHO FE: khi POST /budgets/project-from-previous trả 400 mà `message`
      * chỉ gồm các UUID cách nhau bằng dấu phẩy (regex:
-     * ^[0-9a-fA-F-]{36}(,[0-9a-fA-F-]{36})*$) thì đó là danh sách danh mục đã bị xóa.
+     * ^[0-9a-fA-F-]{36}(,[0-9a-fA-F-]{36})*$) thì đó là danh sách danh mục đã bị
+     * xóa.
      * Luồng:
-     *  (1) tách message theo ',' rồi gọi endpoint này với deletedCateIds;
-     *  (2) hiện UI cho người dùng chọn danh mục mới (activeCategories) thay cho từng
-     *      danh mục cũ (deletedCategories);
-     *  (3) gọi lại project-from-previous với thêm
-     *      cateReplacements: [{oldCategoryId, newCategoryId}, ...].
+     * (1) tách message theo ',' rồi gọi endpoint này với deletedCateIds;
+     * (2) hiện UI cho người dùng chọn danh mục mới (activeCategories) thay cho từng
+     * danh mục cũ (deletedCategories);
+     * (3) gọi lại project-from-previous với thêm
+     * cateReplacements: [{oldCategoryId, newCategoryId}, ...].
      */
     @PostMapping("/budgets/replacement-options")
     public ResponseEntity<ApiResponse<CategoryReplacementOptionsResponse>> getCategoryReplacementOptions(
@@ -224,8 +225,10 @@ public class FinanceController {
     }
 
     @GetMapping("/expenses/{id}")
-    public ResponseEntity<ApiResponse<ExpenseResponse>> getExpenseById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpenseById(id)));
+    public ResponseEntity<ApiResponse<ExpenseResponse>> getExpenseById(
+            @PathVariable UUID eventId,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.getExpenseById(eventId, id)));
     }
 
     @PostMapping("/expenses")
@@ -238,37 +241,43 @@ public class FinanceController {
 
     @PutMapping("/expenses/{id}")
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateExpense(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateExpenseRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.updateExpense(id, request)));
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.updateExpense(eventId, id, request)));
     }
 
     @PostMapping("/expenses/{id}/review")
     public ResponseEntity<ApiResponse<ExpenseResponse>> reviewExpense(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
             @Valid @RequestBody ReviewExpenseRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(expenseService.reviewExpense(id, request)));
+        return ResponseEntity.ok(ApiResponse.ok(expenseService.reviewExpense(eventId, id, request)));
     }
 
     @DeleteMapping("/expenses/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteExpense(@PathVariable UUID id) {
-        expenseService.deleteExpense(id);
+    public ResponseEntity<ApiResponse<Void>> deleteExpense(
+            @PathVariable UUID eventId,
+            @PathVariable UUID id) {
+        expenseService.deleteExpense(eventId, id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @PostMapping("/expenses/{id}/receipts")
     public ResponseEntity<ApiResponse<ExpenseReceiptResponse>> addReceipt(
+            @PathVariable UUID eventId,
             @PathVariable UUID id,
             @Valid @RequestBody CreateReceiptRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(expenseService.addReceipt(id, request)));
+                .body(ApiResponse.ok(expenseService.addReceipt(eventId, id, request)));
     }
 
     @DeleteMapping("/expenses/{expenseId}/receipts/{receiptId}")
     public ResponseEntity<ApiResponse<Void>> deleteReceipt(
+            @PathVariable UUID eventId,
             @PathVariable UUID expenseId,
             @PathVariable UUID receiptId) {
-        expenseService.deleteReceipt(expenseId, receiptId);
+        expenseService.deleteReceipt(eventId, expenseId, receiptId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 

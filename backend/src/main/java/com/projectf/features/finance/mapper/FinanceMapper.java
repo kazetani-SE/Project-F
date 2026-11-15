@@ -156,6 +156,11 @@ public class FinanceMapper {
     }
 
     public ExpenseResponse toResponse(Expense entity, List<ExpenseReceiptResponse> receipts) {
+        return toResponse(entity, receipts, null);
+    }
+
+    public ExpenseResponse toResponse(Expense entity, List<ExpenseReceiptResponse> receipts,
+            BudgetItem budgetItem) {
         return new ExpenseResponse(
                 entity.getId(),
                 entity.getEventId(),
@@ -172,7 +177,20 @@ public class FinanceMapper {
                 entity.getPaymentDate(),
                 entity.getNotes(),
                 entity.getCreatedAt(),
-                receipts != null ? receipts : Collections.emptyList());
+                receipts != null ? receipts : Collections.emptyList(),
+                toLinkedBudgetItem(budgetItem));
+    }
+
+    private ExpenseResponse.LinkedBudgetItem toLinkedBudgetItem(BudgetItem item) {
+        return item == null ? null
+                : new ExpenseResponse.LinkedBudgetItem(
+                        item.getId(),
+                        item.getItemName(),
+                        item.getUnit(),
+                        item.getQuantity(),
+                        item.getEstUnitPrice(),
+                        item.getTotalEstAmount(),
+                        item.getApprovalStatus());
     }
 
     // --- ExpenseReceipt ---
