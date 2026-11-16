@@ -8,6 +8,7 @@ import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventRequest;
 import com.projectf.features.event.dto.request.UpdateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventStatusRequest;
+import com.projectf.features.event.dto.request.UpdateOrganizerRequest;
 import com.projectf.features.event.dto.response.EventResponse;
 import com.projectf.features.event.dto.response.EventRoleResponse;
 import com.projectf.features.event.dto.response.EventSeriesDetailResponse;
@@ -15,6 +16,7 @@ import com.projectf.features.event.dto.response.EventSeriesResponse;
 import com.projectf.features.event.dto.response.OrganizerResponse;
 import com.projectf.features.event.entity.Event;
 import com.projectf.features.event.entity.EventOrganizer;
+import com.projectf.features.event.entity.EventRole;
 import com.projectf.features.event.entity.EventSeries;
 import com.projectf.features.event.entity.EventStatus;
 import com.projectf.features.event.mapper.EventMapper;
@@ -165,6 +167,20 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
+    public OrganizerResponse updateOrganizer(UUID eventId, UUID memberId, UpdateOrganizerRequest request) {
+        // Khóa mùa sự kiện để hai quản trị viên không thể cùng gỡ vai trò Trưởng BTC cuối cùng.
+        findEventForUpdate(eventId);
+        EventOrganizer organizer = organizers.findByEventIdAndMemberId(eventId, memberId)
+                .orElseThrow(() -> resourceNotFound("Organizer not found"));
+        requireAnotherLeadIfDemoting(eventId, organizer, request.role());
+        organizer.setRole(request.role());
+        organizer.setAssignedTasks(request.assignedTasks());
+        String memberName = members.get(memberId).fullName();
+        return mapper.toResponse(organizers.saveAndFlush(organizer), memberName);
+    }
+
+    @Override
     public List<OrganizerResponse> listOrganizers(UUID eventId) {
         access.requireEvent(eventId);
         requireEventExists(eventId);
@@ -177,9 +193,20 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public void removeOrganizer(UUID eventId, UUID memberId) {
-        requireEventExists(eventId);
+        findEventForUpdate(eventId);
+        EventOrganizer organizer = organizers.findByEventIdAndMemberId(eventId, memberId)
+                .orElseThrow(() -> resourceNotFound("Organizer not found"));
+        requireAnotherLeadIfDemoting(eventId, organizer, null);
         if (organizers.deleteByEventIdAndMemberId(eventId, memberId) == 0) {
             throw resourceNotFound("Organizer not found");
+        }
+    }
+
+    private void requireAnotherLeadIfDemoting(UUID eventId, EventOrganizer organizer, EventRole nextRole) {
+        if (organizer.getRole() == EventRole.LEAD_HEADER && nextRole != EventRole.LEAD_HEADER
+                && organizers.countByEventIdAndRole(eventId, EventRole.LEAD_HEADER) <= 1) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "LAST_EVENT_LEAD",
+                    "The last event lead cannot be removed or reassigned");
         }
     }
 

@@ -159,9 +159,9 @@ public class MemberImportService {
             memberId = member.id();
             try {
                 status = credentials.provision(member);
-            } catch (org.springframework.mail.MailException exception) {
-                status = "EMAIL_FAILED";
-                reason = "Đã tạo tài khoản nhưng gửi email thất bại; dùng chức năng gửi lại";
+                if (MemberCredentialService.EMAIL_FAILED.equals(status)) {
+                    reason = "Đã tạo tài khoản nhưng gửi email thất bại; dùng chức năng gửi lại";
+                }
             } catch (RuntimeException exception) {
                 status = "AUTH_FAILED";
                 reason = "Đã tạo hồ sơ nhưng cấp tài khoản thất bại; kiểm tra Supabase Auth";

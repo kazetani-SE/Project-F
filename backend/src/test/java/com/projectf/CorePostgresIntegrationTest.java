@@ -22,8 +22,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -102,6 +104,53 @@ class CorePostgresIntegrationTest {
     }
 
     @Test
+    void financeRouteChecksAssignedEventBeforeEnteringController() throws Exception {
+        mvc.perform(get("/events/{eventId}/v1/finance/categories", "00000000-0000-4000-8000-000000000011")
+                .with(jwt().jwt(token -> token.subject(ADMIN))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/events/{eventId}/v1/finance/categories", "00000000-0000-4000-8000-000000000011")
+                .with(jwt().jwt(token -> token.subject(MEMBER))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/events/{eventId}/v1/finance/categories", "00000000-0000-4000-8000-000000000012")
+                .with(jwt().jwt(token -> token.subject(MEMBER))))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/v1/events/{eventId}/budget-items", "00000000-0000-4000-8000-000000000012")
+                .with(jwt().jwt(token -> token.subject(MEMBER))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void adminCanUpdateOrganizerRole() throws Exception {
+        mvc.perform(put("/v1/events/{eventId}/organizers/{memberId}",
+                "00000000-0000-4000-8000-000000000011", "00000000-0000-4000-8000-000000000022")
+                .with(jwt().jwt(token -> token.subject(ADMIN)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"MEDIA\",\"assignedTasks\":\"Thiết kế\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("MEDIA"))
+                .andExpect(jsonPath("$.data.assignedTasks").value("Thiết kế"));
+        mvc.perform(put("/v1/events/{eventId}/organizers/{memberId}",
+                "00000000-0000-4000-8000-000000000011", "00000000-0000-4000-8000-000000000022")
+                .with(jwt().jwt(token -> token.subject(ADMIN)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"LEAD_HEADER\",\"assignedTasks\":\"Điều phối\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/v1/events/{eventId}/organizers/{memberId}",
+                "00000000-0000-4000-8000-000000000011", "00000000-0000-4000-8000-000000000022")
+                .with(jwt().jwt(token -> token.subject(ADMIN)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"MEDIA\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("LAST_EVENT_LEAD"));
+        mvc.perform(delete("/v1/events/{eventId}/organizers/{memberId}",
+                "00000000-0000-4000-8000-000000000011", "00000000-0000-4000-8000-000000000022")
+                .with(jwt().jwt(token -> token.subject(ADMIN))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("LAST_EVENT_LEAD"));
+    }
+
+    @Test
     void nativeClaimRequiresMatchingConfirmedEmailAndOnlyClaimsOnce() {
         UUID verified = UUID.fromString("00000000-0000-4000-8000-000000000003");
         UUID unconfirmed = UUID.fromString("00000000-0000-4000-8000-000000000004");
@@ -148,6 +197,7 @@ class CorePostgresIntegrationTest {
                     $$;
                     create schema auth;
                     create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+                    alter table auth.users enable row level security;
                     """);
             for (Path migration : files.filter(path -> path.toString().endsWith(".sql")).sorted().toList()) {
                 sql.execute(Files.readString(migration));
@@ -174,7 +224,7 @@ class CorePostgresIntegrationTest {
                     insert into events(id,series_id,season_name,title,expected_start_date,expected_end_date,status) values
                         ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000010',
                             '2025','Assigned','2025-01-01','2025-01-02','APPROVED'),
-                        (gen_random_uuid(),'00000000-0000-4000-8000-000000000010',
+                        ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000010',
                             '2026','Unassigned','2026-01-01','2026-01-02','APPROVED');
                     insert into event_organizers(event_id,member_id,role) values
                         ('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000022','PLAN');

@@ -1,4 +1,4 @@
-import type { EventStatus, OrganizerRole } from '../../types/models/event';
+import type { EventStatus } from '../../types/models/event';
 
 export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
     PLANNING: 'Đang lên kế hoạch',
@@ -16,10 +16,4 @@ export const EVENT_STATUS_ACTION: Record<EventStatus, string> = {
     CANCELLED: 'Hủy sự kiện',
 };
 
-export const ORGANIZER_ROLE_LABEL: Record<OrganizerRole, string> = {
-    LEAD_HEADER: 'Trưởng BTC',
-    HR: 'Ban Nhân sự',
-    PLAN: 'Ban Kế hoạch',
-    MEDIA: 'Ban Truyền thông',
-    MEMBER: 'Thành viên BTC',
-};
+export { EVENT_ROLE_LABEL as ORGANIZER_ROLE_LABEL } from './role';

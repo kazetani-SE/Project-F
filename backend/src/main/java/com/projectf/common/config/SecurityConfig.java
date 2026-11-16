@@ -23,7 +23,11 @@ public class SecurityConfig {
     private static final String[] SWAGGER = {"/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"};
     private static final String[] EVENT_INTERNAL = {
         "/v1/events/{eventId}/documents/**", "/v1/events/{eventId}/media-assets/**",
-        "/v1/events/{eventId}/incidents/**", "/v1/events/{eventId}/feedbacks/**"
+        "/v1/events/{eventId}/incidents/**", "/v1/events/{eventId}/feedbacks/**",
+        "/v1/events/{eventId}/budget-items/**", "/v1/events/{eventId}/expenses/**",
+        "/v1/events/{eventId}/budget-summary", "/v1/events/{eventId}/projected-budget",
+        // FinanceController trên main dùng đường dẫn này; giữ bảo vệ theo eventId.
+        "/events/{eventId}/v1/finance/**"
     };
     private static final String[] RESOURCE_ALIASES = {
         "/v1/documents/**", "/v1/media-assets/**", "/v1/incidents/**", "/v1/faqs/**",
@@ -44,13 +48,16 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/me").authenticated()
+                        // ExpenseService hiện đọc chi tiết theo ID toàn cục, chưa xác thực eventId của bản ghi.
+                        .requestMatchers(HttpMethod.GET, "/events/{eventId}/v1/finance/expenses/{id}")
+                        .access((authentication, context) -> new AuthorizationDecision(access.isAdmin(authentication.get())))
                         .requestMatchers(HttpMethod.GET, EVENT_INTERNAL)
                         .access((authentication, context) -> {
                             String id = context.getVariables().get("eventId");
                             boolean permitted = id != null && access.canAccessEvent(id, authentication.get());
                             return new AuthorizationDecision(permitted);
                         })
-                        // Các slice khác chưa có RBAC theo vai trò BTC: chỉ Ban Chủ nhiệm được ghi.
+                        // Slice 2/3 chưa kiểm tra quyền trên từng bản ghi khi ghi; chỉ Ban Chủ nhiệm được ghi.
                         .requestMatchers(EVENT_INTERNAL)
                         .access((authentication, context) -> new AuthorizationDecision(access.isAdmin(authentication.get())))
                         .requestMatchers(RESOURCE_ALIASES)

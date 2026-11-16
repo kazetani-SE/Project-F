@@ -62,10 +62,39 @@ function AssignForm({ assigned, onAssign, onClose }: {
     </div>;
 }
 
+function EditForm({ organizer, onSave, onClose }: {
+    organizer: OrganizerResponse;
+    onSave: (data: Pick<OrganizerFields, 'role' | 'assignedTasks'>) => Promise<void>;
+    onClose: () => void;
+}) {
+    const { busy, error, mutate } = useMutation();
+    return <form className="space-y-3 rounded-lg border border-slate-200 p-4" onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        void mutate(() => onSave({
+            role: data.get('role') as OrganizerRole,
+            assignedTasks: String(data.get('assignedTasks')).trim() || null,
+        }));
+    }}>
+        <p className="font-medium">Sửa phân công: {organizer.memberName}</p>
+        <ErrorNotice error={error} />
+        <label className="block">Vai trò BTC<select className={field} name="role" defaultValue={organizer.role}>
+            {Object.entries(ORGANIZER_ROLE_LABEL).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select></label>
+        <label className="block">Nhiệm vụ được giao<textarea className={field} name="assignedTasks"
+            defaultValue={organizer.assignedTasks ?? ''} rows={2} /></label>
+        <div className="flex gap-3">
+            <button className={button} disabled={busy}>Lưu thay đổi</button>
+            <button className={secondary} type="button" disabled={busy} onClick={onClose}>Hủy</button>
+        </div>
+    </form>;
+}
+
 export function OrganizerSection({ eventId, admin }: { eventId: string; admin: boolean }) {
     const resource = useResource(useCallback(() => eventService.organizers(eventId), [eventId]));
     const [adding, setAdding] = useState(false);
     const [removing, setRemoving] = useState<OrganizerResponse | null>(null);
+    const [editing, setEditing] = useState<OrganizerResponse | null>(null);
     const removal = useMutation();
     const notify = useSuccessToast();
 
@@ -85,8 +114,12 @@ export function OrganizerSection({ eventId, admin }: { eventId: string; admin: b
                     </div>
                     {item.assignedTasks && <p className="whitespace-pre-line text-sm text-slate-600">{item.assignedTasks}</p>}
                 </div>
-                {admin && <button className={secondary} aria-label={`Xóa ${item.memberName} khỏi BTC`}
-                    onClick={() => setRemoving(item)}>Xóa</button>}
+                {admin && <div className="flex gap-2">
+                    <button className={secondary} aria-label={`Sửa phân công của ${item.memberName}`}
+                        onClick={() => setEditing(item)}>Sửa</button>
+                    <button className={secondary} aria-label={`Xóa ${item.memberName} khỏi BTC`}
+                        onClick={() => setRemoving(item)}>Xóa</button>
+                </div>}
             </li>)}
         </ul> : <p>Chưa có thành viên ban tổ chức.</p>)}
         {admin && adding && resource.data && <AssignForm assigned={resource.data} onClose={() => setAdding(false)} onAssign={async (data) => {
@@ -94,6 +127,12 @@ export function OrganizerSection({ eventId, admin }: { eventId: string; admin: b
             resource.reload();
             setAdding(false);
             notify('Đã phân công thành viên BTC.');
+        }} />}
+        {admin && editing && <EditForm organizer={editing} onClose={() => setEditing(null)} onSave={async (data) => {
+            await eventService.updateOrganizer(eventId, editing.memberId, data);
+            resource.reload();
+            setEditing(null);
+            notify('Đã cập nhật phân công BTC.');
         }} />}
         {admin && removing && <ConfirmationDialog title="Xóa thành viên BTC"
             message={`Bạn có muốn xóa ${removing.memberName} khỏi ban tổ chức?`}

@@ -6,6 +6,7 @@ import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventRequest;
 import com.projectf.features.event.dto.request.UpdateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventStatusRequest;
+import com.projectf.features.event.dto.request.UpdateOrganizerRequest;
 import com.projectf.features.event.dto.response.EventResponse;
 import com.projectf.features.event.dto.response.EventRoleResponse;
 import com.projectf.features.event.dto.response.EventSeriesDetailResponse;
@@ -29,6 +30,7 @@ public interface EventService {
     EventResponse updateStatus(UUID eventId, UpdateEventStatusRequest request);
     EventRoleResponse getMyRole(UUID eventId);
     OrganizerResponse assign(UUID eventId, AssignOrganizerRequest request);
+    OrganizerResponse updateOrganizer(UUID eventId, UUID memberId, UpdateOrganizerRequest request);
     List<OrganizerResponse> listOrganizers(UUID eventId);
     void removeOrganizer(UUID eventId, UUID memberId);
 }

@@ -9,6 +9,7 @@ import { AuthProvider } from '../../src/context/AuthProvider';
 import { apiClient, setAccessToken } from '../../src/services/apiClient';
 import { LogoutButton } from '../../src/components/layout/LogoutButton';
 import { RequireAuth } from '../../src/components/layout/RequireAuth';
+import { ResetPasswordPage } from '../../src/pages/auth/ResetPasswordPage';
 import type { AuthUser } from '../../src/types/models/auth';
 
 const mock = vi.hoisted(() => ({
@@ -73,4 +74,18 @@ it('restores the session, applies refreshed bearer tokens, and clears the token 
     expect(await screen.findByText('Login route')).toBeTruthy();
     await apiClient.get('/events');
     expect(adapter.mock.calls[2][0].headers.get('Authorization')).toBeUndefined();
+});
+
+it('lets a recovery user leave reset password and return to login', async () => {
+    render(<AuthProvider><MemoryRouter initialEntries={['/reset-password']}>
+        <Routes>
+            <Route path="/login" element={<p>Login route</p>} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </Routes>
+    </MemoryRouter></AuthProvider>);
+    act(() => mock.listener?.('PASSWORD_RECOVERY', session('recovery-token')));
+    const cancel = await screen.findByRole('button', { name: 'Hủy và quay lại đăng nhập' });
+    await userEvent.click(cancel);
+    expect(await screen.findByText('Login route')).toBeTruthy();
+    expect(sessionStorage.getItem('pf.recoveryUser')).toBeNull();
 });

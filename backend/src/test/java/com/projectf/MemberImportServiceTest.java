@@ -20,7 +20,6 @@ import org.mockito.ArgumentCaptor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.mail.MailSendException;
 
 class MemberImportServiceTest {
     private final MemberService members = mock(MemberService.class);
@@ -85,7 +84,8 @@ class MemberImportServiceTest {
         var response = new MemberResponse(UUID.randomUUID(), "SE123456", "Nguyễn Văn A", "a@example.test",
                 null, null, ClubRole.MEMBER, "K26", true, null, null);
         when(members.create(any())).thenReturn(response);
-        when(credentials.provision(response)).thenThrow(new MailSendException("secret-password-must-not-leak"));
+        // CredentialService xử lý lỗi SMTP và trả trạng thái, importer chỉ tổng hợp báo cáo.
+        when(credentials.provision(response)).thenReturn("EMAIL_FAILED");
         var report = importer.importFile(file(1));
         assertEquals("EMAIL_FAILED", report.rows().get(0).status());
         assertEquals(response.id(), report.rows().get(0).memberId());

@@ -6,7 +6,7 @@ import { button, ErrorNotice, field, link, Loading } from '../../components/ui/C
 import { AuthCard } from './AuthCard';
 
 export function ResetPasswordPage() {
-    const { recovery, isLoading, updatePassword } = useAuth();
+    const { recovery, isLoading, updatePassword, signOut } = useAuth();
     const navigate = useNavigate();
     const { busy, error, mutate } = useMutation();
     return <AuthCard title="Đặt lại mật khẩu">
@@ -24,7 +24,13 @@ export function ResetPasswordPage() {
             }}>
                 <label className="block">Mật khẩu mới<input className={field} type="password" name="password" autoComplete="new-password" minLength={8} required /></label>
                 <label className="block">Xác nhận mật khẩu<input className={field} type="password" name="confirm" autoComplete="new-password" minLength={8} required /></label>
-                <button className={button} disabled={busy}>Lưu mật khẩu</button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button className={button} disabled={busy}>Lưu mật khẩu</button>
+                    <button type="button" className={link} disabled={busy} onClick={() => void mutate(async () => {
+                        await signOut();
+                        navigate(ROUTE_PATHS.LOGIN, { replace: true });
+                    })}>Hủy và quay lại đăng nhập</button>
+                </div>
             </form>
         </> : <>
             <p>Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.</p>

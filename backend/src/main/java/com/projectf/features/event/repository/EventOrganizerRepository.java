@@ -1,5 +1,6 @@
 package com.projectf.features.event.repository;
 import com.projectf.features.event.entity.EventOrganizer;
+import com.projectf.features.event.entity.EventRole;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,6 +11,7 @@ public interface EventOrganizerRepository extends JpaRepository<EventOrganizer,U
  List<EventOrganizer> findByEventIdOrderByJoinedAtAscIdAsc(UUID eventId);
  boolean existsByEventIdAndMemberId(UUID eventId, UUID memberId);
  Optional<EventOrganizer> findByEventIdAndMemberId(UUID eventId, UUID memberId);
+ long countByEventIdAndRole(UUID eventId, EventRole role);
 
  @Modifying
  @Query("delete from EventOrganizer organizer where organizer.eventId = :eventId and organizer.memberId = :memberId")

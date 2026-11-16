@@ -51,6 +51,7 @@ class SupabaseMigrationTest {
                     create role authenticated;
                     create schema auth;
                     create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+                    alter table auth.users enable row level security;
                     alter default privileges grant all on tables to anon, authenticated;
                     """);
             for (Path migration : files.filter(path -> path.toString().endsWith(".sql")).sorted().toList()) {
@@ -135,6 +136,42 @@ class SupabaseMigrationTest {
             assertFalse(grants.getBoolean(3));
             assertFalse(grants.getBoolean(4));
             assertTrue(grants.getBoolean(5));
+        }
+    }
+
+    @Test
+    void backendRoleUsesScopedAuthFunctionsWithoutDirectAuthTableAccess() throws SQLException {
+        try (Connection connection = connection(); Statement sql = connection.createStatement()) {
+            sql.execute("""
+                    insert into auth.users(id, email, email_confirmed_at)
+                    values ('00000000-0000-4000-8000-000000000099', 'scoped@example.test', current_timestamp);
+                    insert into club_members(student_id, full_name, email, batch)
+                    values ('SE000099', 'Scoped Member', 'scoped@example.test', 'K20');
+                    """);
+            sql.execute("set role projectf_app");
+            try (var row = sql.executeQuery(
+                    "select projectf_private.find_confirmed_auth_user_id('scoped@example.test')")) {
+                assertTrue(row.next());
+                assertEquals("00000000-0000-4000-8000-000000000099", row.getString(1));
+            }
+            try (var row = sql.executeQuery("""
+                    select projectf_private.claim_club_member_account(
+                        '00000000-0000-4000-8000-000000000099', 'scoped@example.test')
+                    """)) {
+                assertTrue(row.next());
+                assertEquals(1, row.getInt(1));
+            }
+            SQLException hidden = assertThrows(SQLException.class, () -> sql.executeQuery("select id from auth.users"));
+            assertEquals("42501", hidden.getSQLState());
+            SQLException denied = assertThrows(SQLException.class, () ->
+                    sql.execute("update auth.users set email = 'changed@example.test' where false"));
+            assertEquals("42501", denied.getSQLState());
+        }
+        try (Connection connection = connection(); Statement sql = connection.createStatement()) {
+            sql.execute("set role authenticated");
+            SQLException denied = assertThrows(SQLException.class, () ->
+                    sql.executeQuery("select projectf_private.find_confirmed_auth_user_id('scoped@example.test')"));
+            assertEquals("42501", denied.getSQLState());
         }
     }
 

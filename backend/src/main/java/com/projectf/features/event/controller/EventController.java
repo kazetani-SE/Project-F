@@ -9,6 +9,7 @@ import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventRequest;
 import com.projectf.features.event.dto.request.UpdateEventSeriesRequest;
 import com.projectf.features.event.dto.request.UpdateEventStatusRequest;
+import com.projectf.features.event.dto.request.UpdateOrganizerRequest;
 import com.projectf.features.event.dto.response.EventResponse;
 import com.projectf.features.event.dto.response.EventRoleResponse;
 import com.projectf.features.event.dto.response.EventSeriesDetailResponse;
@@ -99,13 +100,13 @@ public class EventController {
     }
 
     @PutMapping("/events/{eventId}")
-    @PreAuthorize("@accessPolicy.isAdmin(authentication) or @accessPolicy.isEventLead(#eventId, authentication)")
+    @PreAuthorize("@accessPolicy.canManageEvent(#eventId, authentication)")
     public ApiResponse<EventResponse> update(@PathVariable UUID eventId, @Valid @RequestBody UpdateEventRequest request) {
         return ApiResponse.ok(events.update(eventId, request));
     }
 
     @PatchMapping("/events/{eventId}/status")
-    @PreAuthorize("@accessPolicy.isAdmin(authentication) or @accessPolicy.isEventLead(#eventId, authentication)")
+    @PreAuthorize("@accessPolicy.canManageEvent(#eventId, authentication)")
     public ApiResponse<EventResponse> updateStatus(
             @PathVariable UUID eventId, @Valid @RequestBody UpdateEventStatusRequest request) {
         return ApiResponse.ok(events.updateStatus(eventId, request));
@@ -127,6 +128,13 @@ public class EventController {
     public ApiResponse<OrganizerResponse> assign(
             @PathVariable UUID eventId, @Valid @RequestBody AssignOrganizerRequest request) {
         return ApiResponse.ok(events.assign(eventId, request));
+    }
+
+    @PutMapping("/events/{eventId}/organizers/{memberId}")
+    @PreAuthorize(ADMIN_RULE)
+    public ApiResponse<OrganizerResponse> updateOrganizer(@PathVariable UUID eventId, @PathVariable UUID memberId,
+            @Valid @RequestBody UpdateOrganizerRequest request) {
+        return ApiResponse.ok(events.updateOrganizer(eventId, memberId, request));
     }
 
     @DeleteMapping("/events/{eventId}/organizers/{memberId}")

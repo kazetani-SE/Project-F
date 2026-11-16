@@ -20,6 +20,8 @@ export const eventService = {
         (await apiClient.get<ApiResponse<OrganizerResponse[]>>(`/events/${id}/organizers`)).data.data,
     assign: async (id: string, payload: OrganizerFields) =>
         (await apiClient.post<ApiResponse<OrganizerResponse>>(`/events/${id}/organizers`, payload)).data.data,
+    updateOrganizer: async (id: string, memberId: string, payload: Omit<OrganizerFields, 'memberId'>) =>
+        (await apiClient.put<ApiResponse<OrganizerResponse>>(`/events/${id}/organizers/${memberId}`, payload)).data.data,
     remove: async (id: string, memberId: string) => apiClient.delete(`/events/${id}/organizers/${memberId}`),
 };
 

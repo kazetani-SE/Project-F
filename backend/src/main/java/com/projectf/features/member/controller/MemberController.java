@@ -77,13 +77,7 @@ public class MemberController {
     @PostMapping("/{id}/credentials/provision")
     @PreAuthorize(ADMIN_RULE)
     public ApiResponse<String> provisionCredentials(@PathVariable UUID id) {
-        String status;
-        try {
-            status = credentials.provision(members.get(id));
-        } catch (org.springframework.mail.MailException exception) {
-            status = "EMAIL_FAILED";
-        }
-        return ApiResponse.ok(status);
+        return ApiResponse.ok(credentials.provision(members.get(id)));
     }
 
     @GetMapping

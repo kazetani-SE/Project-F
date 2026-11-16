@@ -1,7 +1,7 @@
 package com.projectf;
 
 import com.projectf.common.enums.ClubRole;
-import com.projectf.features.member.service.VerifiedEmail;
+import com.projectf.features.auth.service.VerifiedEmail;
 import com.projectf.features.event.repository.EventOrganizerRepository;
 import com.projectf.features.event.entity.EventOrganizer;
 import com.projectf.features.event.entity.EventRole;

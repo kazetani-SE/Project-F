@@ -6,7 +6,6 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,18 +15,20 @@ public interface ClubMemberRepository extends JpaRepository<ClubMember, UUID>, J
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByEmailIgnoreCaseAndIdNot(String email, UUID id);
 
+    @Query(value = "select projectf_private.find_confirmed_auth_user_id(:email)", nativeQuery = true)
+    Optional<UUID> findConfirmedAuthUserIdByEmail(String email);
+
+    @Transactional
+    @Query(value = "select projectf_private.link_club_member_auth_if_absent(:memberId, :authUserId)",
+            nativeQuery = true)
+    int linkAuthUserIfAbsent(UUID memberId, UUID authUserId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select member from ClubMember member where member.id = :id")
     Optional<ClubMember> findByIdForUpdate(UUID id);
 
     @Transactional
-    @Modifying
     // Kiểm tra lại email, trạng thái xác nhận và hồ sơ chưa liên kết trong cùng câu lệnh cập nhật.
-    @Query(value = """
-            update public.club_members member set auth_user_id = :authUserId
-            where lower(member.email) = lower(:email) and member.is_active and member.auth_user_id is null
-                and exists (select 1 from auth.users auth_user where auth_user.id = :authUserId
-                    and lower(auth_user.email) = lower(:email) and auth_user.email_confirmed_at is not null)
-            """, nativeQuery = true)
+    @Query(value = "select projectf_private.claim_club_member_account(:authUserId, :email)", nativeQuery = true)
     int claimAccount(UUID authUserId, String email);
 }

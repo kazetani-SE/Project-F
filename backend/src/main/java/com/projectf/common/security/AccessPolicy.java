@@ -2,8 +2,8 @@ package com.projectf.common.security;
 
 import com.projectf.common.enums.ClubRole;
 import com.projectf.common.exception.ApiException;
-import com.projectf.features.event.service.EventMembership;
 import com.projectf.features.event.entity.EventRole;
+import com.projectf.features.event.repository.EventOrganizerRepository;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.service.MemberService;
 import java.util.Optional;
@@ -17,11 +17,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccessPolicy {
     private final MemberService members;
-    private final EventMembership membership;
+    private final EventOrganizerRepository organizers;
 
-    public AccessPolicy(MemberService members, EventMembership membership) {
+    public AccessPolicy(MemberService members, EventOrganizerRepository organizers) {
         this.members = members;
-        this.membership = membership;
+        this.organizers = organizers;
     }
 
     public boolean isActiveMember(Authentication authentication) {
@@ -39,7 +39,7 @@ public class AccessPolicy {
 
     public boolean canAccessEvent(UUID eventId, Authentication authentication) {
         return findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
-                || membership.hasAssignment(eventId, member.id())).orElse(false);
+                || organizers.existsByEventIdAndMemberId(eventId, member.id())).orElse(false);
     }
 
     public boolean canAccessEvent(String eventId, Authentication authentication) {
@@ -53,8 +53,25 @@ public class AccessPolicy {
     }
 
     public boolean isEventLead(UUID eventId, Authentication authentication) {
-        return findActiveMember(authentication).map(member -> membership.hasRole(eventId, member.id(), EventRole.LEAD_HEADER))
+        return findActiveMember(authentication).map(member -> hasRole(eventId, member.id(), EventRole.LEAD_HEADER))
                 .orElse(false);
+    }
+
+    public boolean canManageEvent(UUID eventId, Authentication authentication) {
+        return findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
+                || hasRole(eventId, member.id(), EventRole.LEAD_HEADER)).orElse(false);
+    }
+
+    public boolean hasEventRole(UUID eventId, Authentication authentication, String role) {
+        boolean allowed;
+        try {
+            EventRole eventRole = EventRole.valueOf(role);
+            allowed = findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
+                    || hasRole(eventId, member.id(), eventRole)).orElse(false);
+        } catch (IllegalArgumentException exception) {
+            allowed = false;
+        }
+        return allowed;
     }
 
     public UUID currentMemberId() {
@@ -64,9 +81,14 @@ public class AccessPolicy {
 
     public void requireEvent(UUID eventId) {
         // Dữ liệu nội bộ theo mùa chỉ dành cho Ban Chủ nhiệm hoặc BTC của chính mùa đó.
-        if (!isAdmin() && !membership.hasAssignment(eventId, currentMemberId())) {
+        if (!canAccessEvent(eventId, SecurityContextHolder.getContext().getAuthentication())) {
             throw forbidden();
         }
+    }
+
+    private boolean hasRole(UUID eventId, UUID memberId, EventRole role) {
+        return organizers.findByEventIdAndMemberId(eventId, memberId)
+                .map(organizer -> organizer.getRole() == role).orElse(false);
     }
 
     public static boolean hasAdminRole(ClubRole role) {
