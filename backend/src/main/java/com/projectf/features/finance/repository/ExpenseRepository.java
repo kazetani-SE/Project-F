@@ -17,5 +17,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 
     List<Expense> findByBudgetItemId(UUID budgetItemId);
 
+    boolean existsByBudgetItemIdAndStatus(UUID budgetItemId, ApprovalStatus status);
+
     Optional<Expense> findByIdAndEventId(UUID id, UUID eventId);
 }
