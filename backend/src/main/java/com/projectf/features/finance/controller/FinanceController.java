@@ -3,6 +3,7 @@ package com.projectf.features.finance.controller;
 import com.projectf.common.enums.ApprovalStatus;
 import com.projectf.common.response.ApiResponse;
 import com.projectf.features.finance.dto.request.AutoProjectBudgetRequest;
+import com.projectf.features.finance.dto.request.BenchmarkAiResearchRequest;
 import com.projectf.features.finance.dto.request.CategoryReplacementOptionsRequest;
 import com.projectf.features.finance.dto.request.CreateBenchmarkRequest;
 import com.projectf.features.finance.dto.request.CreateBudgetCategoryRequest;
@@ -15,7 +16,9 @@ import com.projectf.features.finance.dto.request.UpdateBenchmarkRequest;
 import com.projectf.features.finance.dto.request.UpdateBudgetCategoryRequest;
 import com.projectf.features.finance.dto.request.UpdateBudgetItemRequest;
 import com.projectf.features.finance.dto.request.UpdateExpenseRequest;
+import com.projectf.features.finance.dto.response.BenchmarkAiSuggestionResponse;
 import com.projectf.features.finance.dto.response.BenchmarkResponse;
+import com.projectf.features.finance.dto.response.BillScanResponse;
 import com.projectf.features.finance.dto.response.BudgetCategoryResponse;
 import com.projectf.features.finance.dto.response.BudgetItemResponse;
 import com.projectf.features.finance.dto.response.CategoryReplacementOptionsResponse;
@@ -23,13 +26,18 @@ import com.projectf.features.finance.dto.response.EventBudgetSummaryResponse;
 import com.projectf.features.finance.dto.response.ExpenseReceiptResponse;
 import com.projectf.features.finance.dto.response.ExpenseResponse;
 import com.projectf.features.finance.dto.response.ProjectedBudgetResponse;
+import com.projectf.features.finance.service.BenchmarkAiResearchService;
 import com.projectf.features.finance.service.BenchmarkService;
+import com.projectf.features.finance.service.BillScanService;
 import com.projectf.features.finance.service.BudgetItemService;
 import com.projectf.features.finance.service.ExpenseService;
+import com.projectf.features.finance.service.support.FinanceGeminiGateway;
+
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,9 +47,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Tag(name = "Finance", description = "Quản lý danh mục, định mức, dự toán, phát sinh và báo cáo ngân sách")
@@ -53,6 +64,9 @@ public class FinanceController {
     private final BudgetItemService budgetItemService;
     private final BenchmarkService benchmarkService;
     private final ExpenseService expenseService;
+    private final BenchmarkAiResearchService aiResearchService;
+    private final FinanceGeminiGateway geminiGateway;
+    private final BillScanService billScanService;
 
     // ========================================================================
     // 1. DANH MỤC KINH PHÍ (BUDGET CATEGORIES)
@@ -289,5 +303,27 @@ public class FinanceController {
     public ResponseEntity<ApiResponse<EventBudgetSummaryResponse>> getBudgetSummary(
             @PathVariable UUID eventId) {
         return ResponseEntity.ok(ApiResponse.ok(budgetItemService.getBudgetSummary(eventId)));
+    }
+
+    // ========================================================================
+    // 7. AI
+    // ========================================================================
+    @PostMapping("/ai-research")
+    public ResponseEntity<BenchmarkAiSuggestionResponse> researchBenchmark(
+            @Valid @RequestBody BenchmarkAiResearchRequest request) {
+        return ResponseEntity.ok(aiResearchService.researchMarketBenchmark(request));
+    }
+
+    @GetMapping("/ping")
+    public Map<String, Object> ping(
+            @RequestParam(required = false) String model,
+            @RequestParam(defaultValue = "false") boolean useSearch) {
+        return geminiGateway.ping(model, useSearch);
+    }
+
+    @PostMapping(value = "/scan-bill", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<BillScanResponse>> scanBill(
+            @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.ok(billScanService.scan(file)));
     }
 }
