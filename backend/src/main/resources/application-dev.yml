@@ -19,7 +19,7 @@ spring:
 
 benchmark:
   ai:
-    mode: ${BENCHMARK_AI_MODE:cache}
+    mode: ${BENCHMARK_AI_MODE:cache} # cache for mock and live for real
     cache-file: ${BENCHMARK_AI_CACHE_FILE:classpath:cache/benchmark-ai-cache.json}
 
 logging:

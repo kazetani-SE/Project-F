@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.Normalizer;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,7 +28,9 @@ public class BenchmarkCacheStore {
             @Value("${benchmark.ai.cache-file:classpath:cache/benchmark-ai-cache.json}") Resource cacheFile) {
 
         if (!cacheFile.exists()) {
-            log.warn("Không tìm thấy file cache benchmark: {}", cacheFile);
+            if (log.isWarnEnabled()) {
+                log.warn("Không tìm thấy file cache benchmark: {}", cacheFile);
+            }
             return;
         }
 
@@ -45,22 +48,30 @@ public class BenchmarkCacheStore {
                     byNameAndUnit.put(key(itemName, unit), value);
                     byName.putIfAbsent(normalize(itemName), value);
                 } catch (Exception e) {
-                    log.warn("Bỏ qua 1 dòng cache lỗi: {}", e.getMessage());
+                    if (log.isWarnEnabled()) {
+                        log.warn("Bỏ qua 1 dòng cache lỗi: {}", e.getMessage());
+                    }
                 }
             }
-            log.info("Đã nạp {} benchmark mẫu từ {}", byNameAndUnit.size(), cacheFile);
+            if (log.isInfoEnabled()) {
+                log.info("Đã nạp {} benchmark mẫu từ {}", byNameAndUnit.size(), cacheFile);
+            }
         } catch (IOException e) {
-            log.error("Không đọc được file cache benchmark: {}", e.getMessage(), e);
+            if (log.isErrorEnabled()) {
+                log.error("Không đọc được file cache benchmark: {}", e.getMessage(), e);
+            }
         }
     }
 
     /** Khớp chính xác (tên + đơn vị) trước, không có thì khớp theo tên. */
     public Optional<BenchmarkAiSuggestionResponse> find(String itemName, String unit) {
-        BenchmarkAiSuggestionResponse exact = byNameAndUnit.get(key(itemName, unit));
-        if (exact != null) {
-            return Optional.of(exact);
+        BenchmarkAiSuggestionResponse result = byNameAndUnit.get(key(itemName, unit));
+
+        if (result == null) {
+            result = byName.get(normalize(itemName));
         }
-        return Optional.ofNullable(byName.get(normalize(itemName)));
+
+        return Optional.ofNullable(result);
     }
 
     private static String key(String name, String unit) {
@@ -68,13 +79,17 @@ public class BenchmarkCacheStore {
     }
 
     // bỏ dấu, hạ chữ thường, gộp khoảng trắng: "Thuê Sân" == "thue san"
-    private static String normalize(String s) {
-        if (s == null) {
-            return "";
+    private static String normalize(String str) {
+        String result = "";
+
+        if (str != null) {
+            String trimmedLower = str.trim().toLowerCase(Locale.ROOT);
+            String normalized = Normalizer.normalize(trimmedLower, Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")
+                    .replace('đ', 'd');
+            result = normalized.replaceAll("\\s+", " ");
         }
-        String n = Normalizer.normalize(s.trim().toLowerCase(), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replace('đ', 'd');
-        return n.replaceAll("\\s+", " ");
+
+        return result;
     }
 }

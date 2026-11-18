@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Set;
 
 @Slf4j
@@ -50,7 +51,9 @@ public class BillScanServiceImpl implements BillScanService {
                     "Chỉ hỗ trợ ảnh JPEG, PNG, WEBP, HEIC/HEIF hoặc PDF.");
         }
 
-        log.info("Quét bill: mime='{}', size={} bytes", mimeType, file.getSize());
+        if (log.isInfoEnabled()) {
+            log.info("Quét bill: mime='{}', size={} bytes", mimeType, file.getSize());
+        }
 
         GenerateContentConfig config = GenerateContentConfig.builder()
                 .maxOutputTokens(4096)
@@ -65,26 +68,30 @@ public class BillScanServiceImpl implements BillScanService {
     }
 
     private String normalizeMime(String contentType) {
-        if (contentType == null) {
-            return null;
+        String result = null;
+        if (contentType != null) {
+            String mime = contentType.trim().toLowerCase(Locale.ROOT);
+            int semicolon = mime.indexOf(';');
+            if (semicolon > 0) {
+                mime = mime.substring(0, semicolon).trim();
+            }
+            result = "image/jpg".equals(mime) ? "image/jpeg" : mime;
         }
-        String mime = contentType.trim().toLowerCase();
-        int semicolon = mime.indexOf(';');
-        if (semicolon > 0) {
-            mime = mime.substring(0, semicolon).trim();
-        }
-        return "image/jpg".equals(mime) ? "image/jpeg" : mime;
+        return result;
     }
 
     private String stripMarkdownCodeFence(String text) {
         String trimmed = text.trim();
+        String result = trimmed;
+
         if (trimmed.startsWith("```")) {
             int firstNewline = trimmed.indexOf('\n');
             int lastFence = trimmed.lastIndexOf("```");
             if (firstNewline > 0 && lastFence > firstNewline) {
-                return trimmed.substring(firstNewline + 1, lastFence).trim();
+                result = trimmed.substring(firstNewline + 1, lastFence).trim();
             }
         }
-        return trimmed;
+
+        return result;
     }
 }

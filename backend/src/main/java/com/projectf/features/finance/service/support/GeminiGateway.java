@@ -23,6 +23,7 @@ import com.google.genai.types.Tool;
 public class GeminiGateway {
 
     public static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
+    private static final String KEY_SUCCESS = "success";
 
     @Value("${gemini.api.key:${GEMINI_API_KEY:}}")
     private String apiKey;
@@ -60,37 +61,37 @@ public class GeminiGateway {
         result.put("useSearch", useSearch);
 
         if (apiKey == null || apiKey.isBlank()) {
-            result.put("success", false);
+            result.put(KEY_SUCCESS, false);
             result.put("error", "Chưa cấu hình GEMINI_API_KEY");
-            return result;
-        }
+        } else {
+            long start = System.currentTimeMillis();
+            try (Client client = Client.builder().apiKey(apiKey).build()) {
+                GenerateContentConfig.Builder cfg = GenerateContentConfig.builder()
+                        .maxOutputTokens(256);
 
-        long start = System.currentTimeMillis();
-        try (Client client = Client.builder().apiKey(apiKey).build()) {
-            GenerateContentConfig.Builder cfg = GenerateContentConfig.builder()
-                    .maxOutputTokens(256);
+                if (useSearch) {
+                    cfg.tools(List.of(Tool.builder()
+                            .googleSearch(GoogleSearch.builder().build())
+                            .build()));
+                }
 
-            if (useSearch) {
-                cfg.tools(List.of(Tool.builder()
-                        .googleSearch(GoogleSearch.builder().build())
-                        .build()));
+                GenerateContentResponse res = client.models.generateContent(modelName, "Trả lời đúng 1 từ: OK",
+                        cfg.build());
+
+                result.put(KEY_SUCCESS, true);
+                result.put("response", res.text());
+            } catch (ApiException e) {
+                result.put(KEY_SUCCESS, false);
+                result.put("httpCode", e.code());
+                result.put("error", e.getMessage());
+            } catch (Exception e) {
+                result.put(KEY_SUCCESS, false);
+                result.put("error", e.getMessage());
+            } finally {
+                result.put("elapsedMs", System.currentTimeMillis() - start);
             }
-
-            GenerateContentResponse res = client.models.generateContent(modelName, "Trả lời đúng 1 từ: OK",
-                    cfg.build());
-
-            result.put("success", true);
-            result.put("response", res.text());
-        } catch (ApiException e) {
-            result.put("success", false);
-            result.put("httpCode", e.code());
-            result.put("error", e.getMessage());
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        } finally {
-            result.put("elapsedMs", System.currentTimeMillis() - start);
         }
+
         return result;
     }
 

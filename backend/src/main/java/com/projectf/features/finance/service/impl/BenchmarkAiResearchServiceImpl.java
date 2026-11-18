@@ -57,20 +57,23 @@ public class BenchmarkAiResearchServiceImpl implements BenchmarkAiResearchServic
                 Quy tắc:
                 - Chỉ thực hiện tối đa 1 lượt tìm kiếm Google, chọn ngay 1 đơn vị/sản phẩm phù hợp đầu tiên có giá công khai (VNĐ). Không so sánh nhiều nơi.
                 - Trả về DUY NHẤT 1 JSON hợp lệ (không markdown, không giải thích):
-                {"itemName":"%s","unit":"%s","suggestedUnitPrice":0,"supplierName":"Tên shop","supplierLink":"https://...","referenceNote":"1 câu ngắn gọn về giá/nguồn"}
+                {"itemName":"%s","unit":"%s","estUnitPrice":0,"supplierName":"Tên shop","supplierLink":"https://...","referenceNote":"1 câu ngắn gọn về giá/nguồn"}
                 """
                 .formatted(location, itemName, unit, itemName, unit);
     }
 
     private String stripMarkdownCodeFence(String text) {
         String trimmed = text.trim();
+        String result = trimmed;
+
         if (trimmed.startsWith("```")) {
             int firstNewline = trimmed.indexOf('\n');
             int lastFence = trimmed.lastIndexOf("```");
             if (firstNewline > 0 && lastFence > firstNewline) {
-                return trimmed.substring(firstNewline + 1, lastFence).trim();
+                result = trimmed.substring(firstNewline + 1, lastFence).trim();
             }
         }
-        return trimmed;
+
+        return result;
     }
 }

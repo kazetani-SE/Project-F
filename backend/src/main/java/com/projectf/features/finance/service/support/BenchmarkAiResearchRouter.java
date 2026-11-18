@@ -9,6 +9,8 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Locale;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -34,14 +36,19 @@ public class BenchmarkAiResearchRouter implements BenchmarkAiResearchService {
     @PostConstruct
     void init() {
         try {
-            mode = Mode.valueOf(modeConfig.trim().toUpperCase());
+            mode = Mode.valueOf(modeConfig.trim().toUpperCase(Locale.ROOT));
         } catch (Exception e) {
-            log.warn("benchmark.ai.mode='{}' không hợp lệ, dùng mặc định CACHE", modeConfig);
+            if (log.isWarnEnabled()) {
+                log.warn("benchmark.ai.mode='{}' không hợp lệ, dùng mặc định CACHE", modeConfig);
+            }
             mode = Mode.CACHE;
         }
-        log.info("Benchmark AI đang chạy ở chế độ: {}", mode);
+        if (log.isInfoEnabled()) {
+            log.info("Benchmark AI đang chạy ở chế độ: {}", mode);
+        }
     }
 
+    @Override
     public BenchmarkAiSuggestionResponse researchMarketBenchmark(BenchmarkAiResearchRequest request) {
         return switch (mode) {
             case CACHE -> fromCache(request);
@@ -50,7 +57,9 @@ public class BenchmarkAiResearchRouter implements BenchmarkAiResearchService {
                 try {
                     yield liveService.researchMarketBenchmark(request);
                 } catch (RuntimeException e) {
-                    log.warn("AI live lỗi, thử lấy từ cache: {}", e.getMessage());
+                    if (log.isWarnEnabled()) {
+                        log.warn("AI live lỗi, thử lấy từ cache: {}", e.getMessage());
+                    }
                     yield cacheStore.find(request.itemName(), request.unit()).orElseThrow(() -> e);
                 }
             }
@@ -60,7 +69,9 @@ public class BenchmarkAiResearchRouter implements BenchmarkAiResearchService {
     private BenchmarkAiSuggestionResponse fromCache(BenchmarkAiResearchRequest request) {
         return cacheStore.find(request.itemName(), request.unit())
                 .map(r -> {
-                    log.info("[CACHE] Trả dữ liệu mẫu cho '{}'", request.itemName());
+                    if (log.isInfoEnabled()) {
+                        log.info("[CACHE] Trả dữ liệu mẫu cho '{}'", request.itemName());
+                    }
                     return r;
                 })
                 .orElseThrow(() -> new IllegalStateException(

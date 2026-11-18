@@ -42,9 +42,9 @@ class FinanceAiTest {
 
     private static final String CACHE_JSON = """
             [
-              {"itemName":"Thuê sân bóng đá mini 5 người","unit":"giờ","suggestedUnitPrice":230000,
+              {"itemName":"Thuê sân bóng đá mini 5 người","unit":"giờ","estUnitPrice":230000,
                "supplierName":"Từ cache","supplierLink":"https://cache.vn","referenceNote":"cache"},
-              {"itemName":"Áo thun đồng phục CLB","unit":"cái","suggestedUnitPrice":85000,
+              {"itemName":"Áo thun đồng phục CLB","unit":"cái","estUnitPrice":85000,
                "supplierName":"Shop B","supplierLink":"https://b.vn","referenceNote":"note B"}
             ]
             """;
@@ -101,7 +101,7 @@ class FinanceAiTest {
             var store = storeFrom("""
                     [
                       {"unit":"giờ"},
-                      {"itemName":"Áo thun đồng phục CLB","unit":"cái","suggestedUnitPrice":85000,
+                      {"itemName":"Áo thun đồng phục CLB","unit":"cái","estUnitPrice":85000,
                        "supplierName":"Shop B","supplierLink":"https://b.vn","referenceNote":"note B"}
                     ]
                     """);
@@ -126,7 +126,7 @@ class FinanceAiTest {
     class RouterTests {
 
         private static final String LIVE_JSON = """
-                {"itemName":"Thuê sân bóng đá mini 5 người","unit":"giờ","suggestedUnitPrice":999000,
+                {"itemName":"Thuê sân bóng đá mini 5 người","unit":"giờ","estUnitPrice":999000,
                  "supplierName":"Từ AI live","supplierLink":"https://live.vn","referenceNote":"live"}
                 """;
 
