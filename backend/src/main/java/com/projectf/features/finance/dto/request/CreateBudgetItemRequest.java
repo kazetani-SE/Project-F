@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.URL;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -24,5 +25,21 @@ public record CreateBudgetItemRequest(
 
         @NotNull(message = "Đơn giá dự kiến là bắt buộc") @PositiveOrZero(message = "Đơn giá dự kiến phải lớn hơn hoặc bằng 0") BigDecimal estUnitPrice,
 
-        String notes) {
+        String notes,
+
+        @Size(max = 200, message = "Tên nhà cung cấp tối đa 200 ký tự") String supplierName,
+
+        @URL(message = "Đường dẫn nhà cung cấp không hợp lệ") String supplierLink) {
+
+    public CreateBudgetItemRequest(
+            UUID categoryId,
+            UUID benchmarkId,
+            UUID mediaAsset,
+            String itemName,
+            BigDecimal quantity,
+            String unit,
+            BigDecimal estUnitPrice,
+            String notes) {
+        this(categoryId, benchmarkId, mediaAsset, itemName, quantity, unit, estUnitPrice, notes, null, null);
+    }
 }

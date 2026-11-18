@@ -11,10 +11,13 @@ import java.util.UUID;
 
 @Repository
 public interface BudgetItemRepository extends JpaRepository<BudgetItem, UUID> {
-    List<BudgetItem> findByEventId(UUID eventId);
-    List<BudgetItem> findByEventIdAndApprovalStatus(UUID eventId, ApprovalStatus status);
-    boolean existsByCategoryId(UUID categoryId);
+  List<BudgetItem> findByEventId(UUID eventId);
 
   Optional<BudgetItem> findByIdAndEventId(UUID id, UUID eventId);
+
+  List<BudgetItem> findByEventIdAndApprovalStatus(UUID eventId, ApprovalStatus status);
+
+  boolean existsByCategoryId(UUID categoryId);
+
   boolean existsByEventId(UUID eventId);
 }

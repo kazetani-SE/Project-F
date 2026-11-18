@@ -57,8 +57,8 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierName(request.supplierName());
-        entity.setSupplierLink(request.supplierLink());
+        entity.setSupplierName(blankToNull(request.supplierName()));
+        entity.setSupplierLink(blankToNull(request.supplierLink()));
         return entity;
     }
 
@@ -67,8 +67,12 @@ public class FinanceMapper {
         entity.setItemName(request.itemName().trim());
         entity.setUnit(request.unit().trim());
         entity.setCurMarketPrice(request.curMarketPrice());
-        entity.setSupplierName(request.supplierName());
-        entity.setSupplierLink(request.supplierLink());
+        entity.setSupplierName(blankToNull(request.supplierName()));
+        entity.setSupplierLink(blankToNull(request.supplierLink()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     public BenchmarkResponse toResponse(ItemPriceBenchmark entity) {
@@ -111,6 +115,16 @@ public class FinanceMapper {
     }
 
     public BudgetItemResponse toResponse(BudgetItem entity) {
+        return toResponse(entity, null);
+    }
+
+    public BudgetItemResponse toResponse(BudgetItem entity, ItemPriceBenchmark benchmark) {
+        BudgetItemResponse.BenchmarkInfo benchmarkInfo = benchmark == null ? null
+                : new BudgetItemResponse.BenchmarkInfo(
+                        benchmark.getSupplierName(),
+                        benchmark.getSupplierLink(),
+                        benchmark.getLastUpdatedAt());
+
         return new BudgetItemResponse(
                 entity.getId(),
                 entity.getEventId(),
@@ -127,7 +141,8 @@ public class FinanceMapper {
                 entity.getApprovedBy(),
                 entity.getApprovedAt(),
                 entity.getRejectionReason(),
-                entity.getCreatedAt());
+                entity.getCreatedAt(),
+                benchmarkInfo);
     }
 
     // --- Expense ---
@@ -156,6 +171,11 @@ public class FinanceMapper {
     }
 
     public ExpenseResponse toResponse(Expense entity, List<ExpenseReceiptResponse> receipts) {
+        return toResponse(entity, receipts, null);
+    }
+
+    public ExpenseResponse toResponse(Expense entity, List<ExpenseReceiptResponse> receipts,
+            BudgetItem budgetItem) {
         return new ExpenseResponse(
                 entity.getId(),
                 entity.getEventId(),
@@ -172,7 +192,20 @@ public class FinanceMapper {
                 entity.getPaymentDate(),
                 entity.getNotes(),
                 entity.getCreatedAt(),
-                receipts != null ? receipts : Collections.emptyList());
+                receipts != null ? receipts : Collections.emptyList(),
+                toLinkedBudgetItem(budgetItem));
+    }
+
+    private ExpenseResponse.LinkedBudgetItem toLinkedBudgetItem(BudgetItem item) {
+        return item == null ? null
+                : new ExpenseResponse.LinkedBudgetItem(
+                        item.getId(),
+                        item.getItemName(),
+                        item.getUnit(),
+                        item.getQuantity(),
+                        item.getEstUnitPrice(),
+                        item.getTotalEstAmount(),
+                        item.getApprovalStatus());
     }
 
     // --- ExpenseReceipt ---
