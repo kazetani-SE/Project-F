@@ -20,7 +20,7 @@ import com.google.genai.types.Tool;
 
 @Slf4j
 @Component
-public class GeminiGateway {
+public class FinanceGeminiGateway {
 
     public static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
     private static final String KEY_SUCCESS = "success";
