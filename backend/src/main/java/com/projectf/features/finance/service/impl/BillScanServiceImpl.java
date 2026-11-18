@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.GenerateContentConfig;
 import com.projectf.features.finance.dto.response.BillScanResponse;
 import com.projectf.features.finance.service.BillScanService;
-import com.projectf.features.finance.service.support.GeminiGateway;
+import com.projectf.features.finance.service.support.FinanceGeminiGateway;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class BillScanServiceImpl implements BillScanService {
              "items":[{"name":"","quantity":1,"unitPrice":0,"amount":0}]}
             """;
 
-    private final GeminiGateway gemini;
+    private final FinanceGeminiGateway gemini;
     private final ObjectMapper objectMapper;
 
     @Override

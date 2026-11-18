@@ -9,7 +9,7 @@ import com.google.genai.types.Tool;
 import com.projectf.features.finance.dto.request.BenchmarkAiResearchRequest;
 import com.projectf.features.finance.dto.response.BenchmarkAiSuggestionResponse;
 import com.projectf.features.finance.service.BenchmarkAiResearchService;
-import com.projectf.features.finance.service.support.GeminiGateway;
+import com.projectf.features.finance.service.support.FinanceGeminiGateway;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class BenchmarkAiResearchServiceImpl implements BenchmarkAiResearchService {
 
-    private final GeminiGateway gemini;
+    private final FinanceGeminiGateway gemini;
     private final ObjectMapper objectMapper;
 
     @Override

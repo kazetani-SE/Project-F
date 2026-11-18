@@ -9,7 +9,7 @@ import com.projectf.features.finance.service.impl.BenchmarkAiResearchServiceImpl
 import com.projectf.features.finance.service.impl.BillScanServiceImpl;
 import com.projectf.features.finance.service.support.BenchmarkAiResearchRouter;
 import com.projectf.features.finance.service.support.BenchmarkCacheStore;
-import com.projectf.features.finance.service.support.GeminiGateway;
+import com.projectf.features.finance.service.support.FinanceGeminiGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -232,7 +232,7 @@ class FinanceAiTest {
                 """;
 
         @Mock
-        GeminiGateway gemini;
+        FinanceGeminiGateway gemini;
 
         BillScanServiceImpl service;
 

@@ -31,7 +31,7 @@ import com.projectf.features.finance.service.BenchmarkService;
 import com.projectf.features.finance.service.BillScanService;
 import com.projectf.features.finance.service.BudgetItemService;
 import com.projectf.features.finance.service.ExpenseService;
-import com.projectf.features.finance.service.support.GeminiGateway;
+import com.projectf.features.finance.service.support.FinanceGeminiGateway;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -65,7 +65,7 @@ public class FinanceController {
     private final BenchmarkService benchmarkService;
     private final ExpenseService expenseService;
     private final BenchmarkAiResearchService aiResearchService;
-    private final GeminiGateway geminiGateway;
+    private final FinanceGeminiGateway geminiGateway;
     private final BillScanService billScanService;
 
     // ========================================================================
