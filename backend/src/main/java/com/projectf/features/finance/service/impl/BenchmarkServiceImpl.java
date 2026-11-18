@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -56,8 +57,8 @@ public class BenchmarkServiceImpl implements BenchmarkService {
   @Transactional(readOnly = true)
   public BenchmarkResponse getBenchmarkById(UUID id) {
     return benchmarkRepo.findById(id)
-            .map(mapper::toResponse)
-            .orElseThrow(() -> notFound(BENCHMARK, id));
+        .map(mapper::toResponse)
+        .orElseThrow(() -> notFound(BENCHMARK, id));
   }
 
   @Override
@@ -77,7 +78,7 @@ public class BenchmarkServiceImpl implements BenchmarkService {
   @Override
   public BenchmarkResponse updateBenchmark(UUID id, UpdateBenchmarkRequest request) {
     ItemPriceBenchmark entity = benchmarkRepo.findById(id)
-            .orElseThrow(() -> notFound(BENCHMARK, id));
+        .orElseThrow(() -> notFound(BENCHMARK, id));
 
     if (!categoryRepo.existsById(request.categoryId())) {
       throw linkedNotExist("Danh mục kinh phí liên kết", request.categoryId());
@@ -88,6 +89,7 @@ public class BenchmarkServiceImpl implements BenchmarkService {
       throw alreadyExists("Đơn giá benchmark khác cho '" + itemName + "' với đơn vị '" + unit + "'");
     }
     mapper.updateEntity(entity, request);
+    entity.setLastUpdatedAt(OffsetDateTime.now());
     return mapper.toResponse(benchmarkRepo.save(entity));
   }
 

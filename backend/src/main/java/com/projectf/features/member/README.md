@@ -1,5 +1,6 @@
-# Ghi chú cho team: feature member (Phase 0)
+# Quản lý thành viên CLB
 
-- `ClubMember` ánh xạ đúng bảng `club_members` trong V1. `student_id` và `email` có ràng buộc unique ở database; service sau này cần xử lý xung đột rõ ràng.
-- `is_active`, `created_at` do PostgreSQL cấp mặc định khi insert. Khi triển khai nghiệp vụ ngừng hoạt động, cập nhật đồng bộ `is_active` và `inactive_at` trong một transaction.
-- DTO request/response và mapper không trả entity trực tiếp ra API. Controller và `service/impl` chưa có logic, theo đúng phạm vi bộ khung.
+- [Đặc tả API §2.1](../../../../../../../../docs/API_SPECIFICATION.md#21-quản-lý-thành-viên-clb-club_members) quy định danh sách có bộ lọc và phân trang, xem hồ sơ, thêm, sửa và đổi trạng thái. Request đổi trạng thái dùng `isActive`, còn hồ sơ trả về dùng `active`.
+- PostgreSQL bảo vệ tính duy nhất của email và MSSV khi so sánh không phân biệt hoa thường. API trả `409 DUPLICATE_RESOURCE` khi có xung đột.
+- Khi đổi trạng thái, service khóa bản ghi và cập nhật `is_active` cùng `inactive_at` trong một transaction. Kích hoạt lại xóa mốc ngừng hoạt động.
+- `auth_user_id` liên kết tài khoản Supabase với hồ sơ CLB. Spring lấy quyền từ hồ sơ đang hoạt động. Chủ nhiệm và Phó chủ nhiệm được ghi, thành viên thường được đọc.

@@ -6,18 +6,26 @@ import com.projectf.features.event.entity.Event;
 import com.projectf.features.event.repository.EventRepository;
 import com.projectf.features.finance.dto.request.AutoProjectBudgetRequest;
 import com.projectf.features.finance.dto.request.CategoryReplacementRequest;
+import com.projectf.features.finance.dto.request.CreateBudgetItemRequest;
+import com.projectf.features.finance.dto.request.ReviewBudgetItemRequest;
 import com.projectf.features.finance.dto.request.UpdateBudgetCategoryRequest;
+import com.projectf.features.finance.dto.request.UpdateBudgetItemRequest;
+import com.projectf.features.finance.dto.request.UpdateBenchmarkRequest;
+import com.projectf.features.finance.dto.response.BenchmarkResponse;
 import com.projectf.features.finance.dto.response.BudgetItemResponse;
 import com.projectf.features.finance.dto.response.CategoryReplacementOptionsResponse;
 import com.projectf.features.finance.entity.BudgetCategory;
 import com.projectf.features.finance.entity.BudgetItem;
+import com.projectf.features.finance.entity.ItemPriceBenchmark;
 import com.projectf.features.finance.entity.ProjectedBudgetView;
 import com.projectf.features.finance.mapper.FinanceMapper;
 import com.projectf.features.finance.repository.BudgetCategoryRepository;
 import com.projectf.features.finance.repository.BudgetItemRepository;
 import com.projectf.features.finance.repository.EventBudgetSummaryViewRepository;
 import com.projectf.features.finance.repository.ItemPriceBenchmarkRepository;
+import com.projectf.features.finance.repository.ExpenseRepository;
 import com.projectf.features.finance.repository.ProjectedBudgetViewRepository;
+import com.projectf.features.finance.service.impl.BenchmarkServiceImpl;
 import com.projectf.features.finance.service.impl.BudgetItemServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +58,8 @@ class FinanceFoundationTest {
     @Mock
     private ItemPriceBenchmarkRepository benchmarkRepo;
     @Mock
+    private ExpenseRepository expenseRepo;
+    @Mock
     private EventBudgetSummaryViewRepository summaryViewRepo;
     @Mock
     private ProjectedBudgetViewRepository projectedViewRepo;
@@ -63,7 +73,7 @@ class FinanceFoundationTest {
     @BeforeEach
     void setUp() {
         service = new BudgetItemServiceImpl(eventRepo, categoryRepo, budgetItemRepo,
-                benchmarkRepo, summaryViewRepo, projectedViewRepo, new FinanceMapper());
+                benchmarkRepo, expenseRepo, summaryViewRepo, projectedViewRepo, new FinanceMapper());
     }
 
     // ---------------------------------------------------------------- helpers
@@ -402,5 +412,198 @@ class FinanceFoundationTest {
         assertEquals(deletedId, res.deletedCategories().get(0).id());
         assertEquals(1, res.activeCategories().size());
         assertEquals(activeId, res.activeCategories().get(0).id());
+    }
+
+    // ------------------------------------------------- locking by approved expense
+
+    @Test
+    void budgetItemLockedByApprovedExpenseRejectsUpdateReviewDelete() {
+        UUID itemId = UUID.randomUUID();
+        BudgetItem item = new BudgetItem();
+        item.setId(itemId);
+        item.setEventId(eventId);
+        item.setCategoryId(UUID.randomUUID());
+        item.setItemName("Bút dạ");
+        item.setQuantity(new java.math.BigDecimal("10"));
+        item.setUnit("Cây");
+        item.setEstUnitPrice(new java.math.BigDecimal("5000"));
+        item.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(eventRepo.findById(eventId)).thenReturn(Optional.of(event(eventId, seriesId)));
+        when(budgetItemRepo.findByIdAndEventId(itemId, eventId)).thenReturn(Optional.of(item));
+        when(expenseRepo.existsByBudgetItemIdAndStatus(itemId, ApprovalStatus.APPROVED)).thenReturn(true);
+
+        // Update should throw
+        var updateReq = new UpdateBudgetItemRequest(item.getCategoryId(), null, null, "Bút dạ mới",
+                new java.math.BigDecimal("15"), "Cây", new java.math.BigDecimal("6000"), null);
+        var exUpdate = assertThrows(IllegalArgumentException.class,
+                () -> service.updateBudgetItem(eventId, itemId, updateReq));
+        assertTrue(exUpdate.getMessage().contains("APPROVED"));
+
+        // Review should throw
+        var reviewReq = new ReviewBudgetItemRequest(ApprovalStatus.PENDING, null, null);
+        var exReview = assertThrows(IllegalArgumentException.class,
+                () -> service.reviewBudgetItem(eventId, itemId, reviewReq));
+        assertTrue(exReview.getMessage().contains("APPROVED"));
+
+        // Delete should throw
+        var exDelete = assertThrows(IllegalArgumentException.class,
+                () -> service.deleteBudgetItem(eventId, itemId));
+        assertTrue(exDelete.getMessage().contains("APPROVED"));
+    }
+
+    // ------------------------------------------------- auto-create / link benchmark
+
+    @Test
+    void createBudgetItemWithoutBenchmark_throwsIfSupplierNameMissing() {
+        UUID catId = UUID.randomUUID();
+        when(eventRepo.findById(eventId)).thenReturn(Optional.of(event(eventId, seriesId)));
+        when(categoryRepo.findById(catId)).thenReturn(Optional.of(category(catId, "Hậu cần", false)));
+
+        var reqWithoutSupplier = new CreateBudgetItemRequest(catId, null, null, "Bàn ghế",
+                new java.math.BigDecimal("2"), "Bộ", new java.math.BigDecimal("100000"), "Notes", null, null);
+
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> service.createBudgetItem(eventId, reqWithoutSupplier));
+        assertTrue(ex.getMessage().contains("nhà cung cấp"));
+    }
+
+    @Test
+    void createBudgetItemWithoutBenchmark_createsNewBenchmarkIfNotExist() {
+        UUID catId = UUID.randomUUID();
+        when(eventRepo.findById(eventId)).thenReturn(Optional.of(event(eventId, seriesId)));
+        when(categoryRepo.findById(catId)).thenReturn(Optional.of(category(catId, "Hậu cần", false)));
+        when(benchmarkRepo.findByItemNameAndUnitTrimmedIgnoreCase(anyString(), anyString())).thenReturn(List.of());
+
+        UUID newBmId = UUID.randomUUID();
+        when(benchmarkRepo.save(any(ItemPriceBenchmark.class))).thenAnswer(inv -> {
+            ItemPriceBenchmark b = inv.getArgument(0);
+            b.setId(newBmId);
+            b.setLastUpdatedAt(OffsetDateTime.now());
+            return b;
+        });
+        when(budgetItemRepo.save(any(BudgetItem.class))).thenAnswer(inv -> {
+            BudgetItem bi = inv.getArgument(0);
+            bi.setId(UUID.randomUUID());
+            return bi;
+        });
+
+        var req = new CreateBudgetItemRequest(catId, null, null, " Bàn ghế gấp ",
+                new java.math.BigDecimal("2"), " Bộ ", new java.math.BigDecimal("150000"), null, " Cửa hàng nội thất A ", "https://noithat.vn");
+
+        BudgetItemResponse response = service.createBudgetItem(eventId, req);
+
+        assertNotNull(response);
+        assertEquals(newBmId, response.benchmarkId());
+        assertNotNull(response.benchmark());
+        assertEquals("Cửa hàng nội thất A", response.benchmark().supplierName());
+        assertEquals("https://noithat.vn", response.benchmark().supplierLink());
+
+        ArgumentCaptor<ItemPriceBenchmark> captor = ArgumentCaptor.forClass(ItemPriceBenchmark.class);
+        verify(benchmarkRepo).save(captor.capture());
+        assertEquals("Bàn ghế gấp", captor.getValue().getItemName());
+        assertEquals("Bộ", captor.getValue().getUnit());
+        assertEquals("Cửa hàng nội thất A", captor.getValue().getSupplierName());
+    }
+
+    @Test
+    void createBudgetItemWithoutBenchmark_linksExistingBenchmarkTrimmedIgnoreCase() {
+        UUID catId = UUID.randomUUID();
+        UUID existingBmId = UUID.randomUUID();
+        ItemPriceBenchmark existingBm = new ItemPriceBenchmark();
+        existingBm.setId(existingBmId);
+        existingBm.setItemName("Nước suối 500ml");
+        existingBm.setUnit("Chai");
+        existingBm.setCurMarketPrice(new java.math.BigDecimal("5000"));
+        existingBm.setSupplierName("Đại lý nước giải khát");
+        existingBm.setLastUpdatedAt(OffsetDateTime.now());
+
+        when(eventRepo.findById(eventId)).thenReturn(Optional.of(event(eventId, seriesId)));
+        when(categoryRepo.findById(catId)).thenReturn(Optional.of(category(catId, "Hậu cần", false)));
+        when(benchmarkRepo.findByItemNameAndUnitTrimmedIgnoreCase(
+                argThat(s -> s != null && s.equalsIgnoreCase("Nước suối 500ml")),
+                argThat(s -> s != null && s.equalsIgnoreCase("chai"))
+        )).thenReturn(List.of(existingBm));
+
+        when(budgetItemRepo.save(any(BudgetItem.class))).thenAnswer(inv -> {
+            BudgetItem bi = inv.getArgument(0);
+            bi.setId(UUID.randomUUID());
+            return bi;
+        });
+
+        var req = new CreateBudgetItemRequest(catId, null, null, "  Nước suối 500ml  ",
+                new java.math.BigDecimal("20"), "  chai  ", new java.math.BigDecimal("5000"), null, "Tiệm tạp hóa X", null);
+
+        BudgetItemResponse response = service.createBudgetItem(eventId, req);
+
+        assertNotNull(response);
+        assertEquals(existingBmId, response.benchmarkId());
+        verify(benchmarkRepo, never()).save(any(ItemPriceBenchmark.class));
+    }
+
+    @Test
+    void getBudgetItemById_includesBenchmarkInfo() {
+        UUID itemId = UUID.randomUUID();
+        UUID bmId = UUID.randomUUID();
+
+        BudgetItem item = new BudgetItem();
+        item.setId(itemId);
+        item.setEventId(eventId);
+        item.setCategoryId(UUID.randomUUID());
+        item.setItemName("Áo thun đồng phục");
+        item.setQuantity(new java.math.BigDecimal("50"));
+        item.setUnit("Cái");
+        item.setEstUnitPrice(new java.math.BigDecimal("90000"));
+        item.setBenchmarkId(bmId);
+
+        ItemPriceBenchmark bm = new ItemPriceBenchmark();
+        bm.setId(bmId);
+        bm.setItemName("Áo thun đồng phục");
+        bm.setUnit("Cái");
+        bm.setSupplierName("Xưởng may F");
+        bm.setSupplierLink("https://xuongmay.com");
+        bm.setLastUpdatedAt(OffsetDateTime.now());
+
+        when(eventRepo.findById(eventId)).thenReturn(Optional.of(event(eventId, seriesId)));
+        when(budgetItemRepo.findByIdAndEventId(itemId, eventId)).thenReturn(Optional.of(item));
+        when(benchmarkRepo.findById(bmId)).thenReturn(Optional.of(bm));
+
+        BudgetItemResponse res = service.getBudgetItemById(eventId, itemId);
+
+        assertNotNull(res.benchmark());
+        assertEquals("Xưởng may F", res.benchmark().supplierName());
+        assertEquals("https://xuongmay.com", res.benchmark().supplierLink());
+        assertNotNull(res.benchmark().lastUpdatedAt());
+    }
+
+    @Test
+    void updateBenchmark_updatesLastUpdatedAt() {
+        UUID bmId = UUID.randomUUID();
+        UUID catId = UUID.randomUUID();
+        OffsetDateTime oldTime = OffsetDateTime.now().minusDays(5);
+
+        ItemPriceBenchmark bm = new ItemPriceBenchmark();
+        bm.setId(bmId);
+        bm.setCategoryId(catId);
+        bm.setItemName("Bút dạ");
+        bm.setUnit("Cây");
+        bm.setCurMarketPrice(new java.math.BigDecimal("5000"));
+        bm.setSupplierName("Nhà sách Cũ");
+        bm.setLastUpdatedAt(oldTime);
+
+        when(benchmarkRepo.findById(bmId)).thenReturn(Optional.of(bm));
+        when(categoryRepo.existsById(catId)).thenReturn(true);
+        when(benchmarkRepo.existsByItemNameIgnoreCaseAndUnitIgnoreCaseAndIdNot("Bút dạ", "Cây", bmId)).thenReturn(false);
+        when(benchmarkRepo.save(any(ItemPriceBenchmark.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BenchmarkServiceImpl bmService = new BenchmarkServiceImpl(benchmarkRepo, categoryRepo, new FinanceMapper());
+        var updateReq = new UpdateBenchmarkRequest(catId, "Bút dạ", "Cây", new java.math.BigDecimal("6000"),
+                "Nhà sách Mới", "https://nhasach.com");
+
+        BenchmarkResponse res = bmService.updateBenchmark(bmId, updateReq);
+
+        assertNotNull(res);
+        assertEquals("Nhà sách Mới", res.supplierName());
+        assertTrue(res.lastUpdatedAt().isAfter(oldTime));
     }
 }

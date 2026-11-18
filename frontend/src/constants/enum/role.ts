@@ -8,13 +8,10 @@ export const CLUB_ROLE_LABEL: Record<ClubRole, string> = {
 };
 
 export const EVENT_ROLE_LABEL: Record<EventRole, string> = {
-    HEAD_ORGANIZER: 'Trưởng BTC',
-    VICE_ORGANIZER: 'Phó BTC',
-    LEAD_FINANCE: 'Trưởng ban Tài chính',
-    LEAD_LOGISTICS: 'Trưởng ban Hậu cần',
-    LEAD_MEDIA: 'Trưởng ban Truyền thông',
-    LEAD_CONTENT: 'Trưởng ban Nội dung',
-    LEAD_EXTERNAL: 'Trưởng ban Đối ngoại',
+    LEAD_HEADER: 'Trưởng BTC',
+    HR: 'Ban Nhân sự',
+    PLAN: 'Ban Kế hoạch',
+    MEDIA: 'Ban Truyền thông',
     MEMBER: 'Thành viên BTC',
 };
 export const STORAGE_KEY_ACTIVE_EVENT = 'pf.activeEventId';

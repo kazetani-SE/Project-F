@@ -14,4 +14,9 @@ public interface ItemPriceBenchmarkRepository extends JpaRepository<ItemPriceBen
     boolean existsByItemNameIgnoreCaseAndUnitIgnoreCase(String itemName, String unit);
     boolean existsByItemNameIgnoreCaseAndUnitIgnoreCaseAndIdNot(String itemName, String unit, UUID id);
     boolean existsByCategoryId(UUID categoryId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT b FROM ItemPriceBenchmark b WHERE LOWER(TRIM(b.itemName)) = LOWER(TRIM(:itemName)) AND LOWER(TRIM(b.unit)) = LOWER(TRIM(:unit))")
+    List<ItemPriceBenchmark> findByItemNameAndUnitTrimmedIgnoreCase(
+            @org.springframework.data.repository.query.Param("itemName") String itemName,
+            @org.springframework.data.repository.query.Param("unit") String unit);
 }
