@@ -3,7 +3,6 @@ import { Outlet, useLocation, useMatch } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import {useActiveEvent} from "../../context/activeEventContext.ts";
-import {AuthProvider} from "../../context/AuthProvider.tsx";
 import {ActiveEventProvider} from "../../context/ActiveEventProvider.tsx";
 
 // Vào thẳng /events/:eventId/... (deep link, F5) thì tự chọn sự kiện đó
@@ -41,10 +40,8 @@ function Shell() {
 
 export default function MainLayout() {
     return (
-        <AuthProvider>
-            <ActiveEventProvider>
-                <Shell />
-            </ActiveEventProvider>
-        </AuthProvider>
+        <ActiveEventProvider>
+            <Shell />
+        </ActiveEventProvider>
     );
 }
