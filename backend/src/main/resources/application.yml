@@ -2,6 +2,9 @@ server:
   port: ${PORT}
   servlet:
     context-path: /api
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 spring:
   application:
@@ -58,6 +61,11 @@ springdoc:
     display-request-duration: true
     try-it-out-enabled: true
     filter: true
+
+benchmark:
+  ai:
+    mode: ${BENCHMARK_AI_MODE:cache} # cache for mock and live for real
+    cache-file: ${BENCHMARK_AI_CACHE_FILE:classpath:cache/benchmark-ai-cache.json}
 
 logging:
   level:
