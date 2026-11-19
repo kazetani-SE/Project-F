@@ -16,12 +16,12 @@ export const ROUTE_PATHS = {
     EVENT_ORGANIZERS: '/events/:eventId/organizers',
     EVENT_DOCUMENTS: '/events/:eventId/documents',
     EVENT_KNOWLEDGE: '/events/:eventId/knowledge',
-    OVERVIEW: 'overview',
+    OVERVIEW: '/overview',
     FINANCE_DASHBOARD: 'finance/dashboard',
     FINANCE_BUDGETS: '/events/:eventId/finance/budgets',
     FINANCE_EXPENSES: '/events/:eventId/finance/expenses',
     FINANCE_BENCHMARKS: '/events/:eventId/finance/benchmarks',
-    PLAYGROUND: 'playground',
+    PLAYGROUND: '/playground',
     ALL: '*',
 } as const;
 

@@ -6,6 +6,17 @@ Frontend dùng Supabase Auth để đăng nhập và gửi access token tới Sp
 
 Backend xác minh JWT qua JWKS nên Supabase local cần khóa ký bất đối xứng. Trước lần `supabase start` đầu tiên, tạo `supabase/signing_keys.json` bằng `npx supabase gen signing-key > supabase/signing_keys.json`. File chứa khóa **riêng tư**, đã được Git ignore; mỗi máy tự tạo và không đưa vào commit. Nếu đã có file và đã dùng Auth local, giữ nguyên để các phiên hiện tại không bị vô hiệu hóa. Cấu hình redirect `/reset-password` và tắt tự đăng ký nằm trong `config.toml`.
 
+### Gửi email đặt lại mật khẩu khi chạy local
+
+`config.toml` đang dùng Gmail SMTP cho Supabase Auth local; Mailpit (`localhost:54324`) đã tắt. Mỗi thành viên cần cấu hình trên máy của mình:
+
+1. Sao chép `backend/.env.example` thành `backend/.env` nếu chưa có. File `backend/.env` đã được Git ignore.
+2. Với tài khoản gửi `projectfclub.mail@gmail.com`, bật xác minh 2 bước và tạo **App Password** tại [Google App Passwords](https://myaccount.google.com/apppasswords). Người quản lý tài khoản gửi cần cấp thông tin này cho thành viên qua kênh bảo mật. Điền vào `PROJECTF_SMTP_APP_PASSWORD=` trong `backend/.env`; không dùng mật khẩu đăng nhập Gmail và không đưa App Password vào Git, frontend hoặc chat.
+3. Sau khi thay cấu hình SMTP, chạy `npx supabase stop` để giữ dữ liệu local, rồi chạy `.\supabase\start-local.ps1` từ thư mục root. Những lần sau dùng script này để khởi động Supabase local vì Supabase CLI không tự đọc `backend/.env`.
+4. Chạy frontend, dùng trang **Quên mật khẩu** với email đã tồn tại trong Supabase Auth local. Kiểm tra Inbox/Spam; liên kết trong thư mở `http://localhost:5173/reset-password` trên **chính máy đang chạy ứng dụng**. Email gửi cho người ở máy khác vẫn chứa `localhost`, nên họ không mở được link local của bạn.
+
+Cấu hình SMTP trên Supabase Dashboard cloud độc lập với Supabase local. Các biến `SPRING_MAIL_*` trong `backend/.env` phục vụ email do Spring Boot gửi, không điều khiển email reset của Supabase Auth.
+
 Để chạy test migration trên PostgreSQL riêng khi Testcontainers không kết nối được Docker Desktop, đặt `PROJECTF_MIGRATION_TEST_POSTGRES_URL`, `PROJECTF_MIGRATION_TEST_POSTGRES_USER`, `PROJECTF_MIGRATION_TEST_POSTGRES_PASSWORD` trỏ tới **database trống dùng một lần** rồi chạy `mvn -Dtest=SupabaseMigrationTest test`. Test PostgreSQL nghiệp vụ dùng bộ biến tương tự với tiền tố `PROJECTF_TEST_POSTGRES_` và cũng cần database trống riêng.
 
 ## Migration cần áp

@@ -8,7 +8,7 @@ import { LoginPage } from '../../src/pages/auth/LoginPage';
 import { ResetPasswordPage } from '../../src/pages/auth/ResetPasswordPage';
 import { RequireAuth } from '../../src/components/layout/RequireAuth';
 import { RequireAdmin } from '../../src/components/layout/RequireAdmin';
-import { statusOptions } from '../../src/pages/events/statusOptions';
+import { statusOptions } from '../../src/utils/events/statusOptions';
 
 afterEach(cleanup);
 

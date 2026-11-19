@@ -9,7 +9,7 @@ export function LogoutButton() {
     const navigate = useNavigate();
     const { busy, error, mutate } = useMutation();
     return <div>
-        <button className="whitespace-nowrap rounded px-2 py-1 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+        <button className="w-full whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             disabled={busy} onClick={() => void mutate(async () => {
                 await signOut();
                 navigate(ROUTE_PATHS.LOGIN, { replace: true });

@@ -8,12 +8,13 @@ import { ActiveEventProvider } from '../../src/context/ActiveEventProvider';
 import EventAccess from '../../src/components/layout/EventAccess';
 import MainLayout from '../../src/components/layout/MainLayout';
 import { ToastProvider } from '../../src/components/ui/ToastProvider';
-import { MemberDetailPage, MembersPage } from '../../src/pages/members/MemberPages';
-import { EventStatusForm } from '../../src/pages/events/EventStatusForm';
-import { EventsPage } from '../../src/pages/events/EventPages';
-import { eventRoutes } from '../../src/pages/events/routes';
-import { OrganizerSection } from '../../src/pages/organizers/OrganizerSection';
-import { SeriesDetailPage } from '../../src/pages/events/SeriesPages';
+import { MemberDetailPage } from '../../src/pages/members/MemberDetailPage';
+import { MembersPage } from '../../src/pages/members/MembersPage';
+import { EventStatusForm } from '../../src/components/events/EventStatusForm';
+import { EventsPage } from '../../src/pages/events/EventsPage';
+import { eventRoutes } from '../../src/app/router/events';
+import { OrganizerSection } from '../../src/components/organizers/OrganizerSection';
+import { SeriesDetailPage } from '../../src/pages/events/SeriesDetailPage';
 import { memberService } from '../../src/services/memberService';
 import { eventService, seriesService } from '../../src/services/eventService';
 import { shellService } from '../../src/services/shellService';
@@ -196,7 +197,9 @@ it.each([
     ['VICEPRESIDENT', 'Event contents'],
     ['MEMBER', 'Forbidden route'],
 ] as const)('handles a null event role for a %s', async (clubRole, visibleText) => {
-    vi.spyOn(shellService, 'listEvents').mockResolvedValue([]);
+    vi.spyOn(shellService, 'listEvents').mockResolvedValue([{
+        id: event.id, name: event.title, seasonLabel: event.seasonName, status: event.status,
+    }]);
     vi.spyOn(shellService, 'fetchRole').mockResolvedValue(null);
     localStorage.setItem(STORAGE_KEY_ACTIVE_EVENT, event.id);
     render(<AuthContext value={auth(clubRole)}><MemoryRouter initialEntries={['/events/event-1/overview']}>

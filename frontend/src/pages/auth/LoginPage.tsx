@@ -4,7 +4,7 @@ import { useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { button, ErrorNotice, field, link } from '../../components/ui/CrudUi';
 import { useMock } from '../../services/supabaseClient';
-import { AuthCard } from './AuthCard';
+import { AuthCard } from '../../components/auth/AuthCard';
 
 function redirectPath(state: unknown) {
     const from = (state as { from?: string } | null)?.from;
