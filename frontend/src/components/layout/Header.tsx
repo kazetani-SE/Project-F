@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, Menu, Search } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, Menu, Search } from 'lucide-react';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';
 import {useActiveEvent} from "../../context/activeEventContext.ts";
 import {useAuth} from "../../context/authContext.ts";
@@ -83,20 +83,28 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                     <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
                 </button>
 
-                <div className="flex items-center gap-3 pl-2">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-800 text-xs font-bold text-white shadow-sm">
-                        {user ? initials(user.fullName) : '?'}
+                <details className="relative">
+                    <summary
+                        aria-label="Mở menu tài khoản"
+                        className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-100 [&::-webkit-details-marker]:hidden"
+                    >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-800 text-xs font-bold text-white shadow-sm">
+                            {user ? initials(user.fullName) : '?'}
+                        </span>
+                        <span className="hidden flex-col text-left sm:flex">
+                            <span className="text-sm font-semibold leading-tight text-slate-900">{user?.fullName ?? '…'}</span>
+                            {user && (
+                                <span className="mt-0.5 inline-block rounded bg-amber-400 px-2 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wider text-amber-950">
+                                    {CLUB_ROLE_LABEL[user.clubRole]}
+                                </span>
+                            )}
+                        </span>
+                        <ChevronDown size={16} className="hidden text-slate-500 sm:block" aria-hidden="true" />
+                    </summary>
+                    <div className="absolute right-0 top-full z-50 mt-2 min-w-40 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                        <LogoutButton />
                     </div>
-                    <div className="hidden flex-col text-left sm:flex">
-                        <span className="text-sm font-semibold leading-tight text-slate-900">{user?.fullName ?? '…'}</span>
-                        {user && (
-                            <span className="mt-0.5 inline-block rounded bg-amber-400 px-2 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wider text-amber-950">
-                {CLUB_ROLE_LABEL[user.clubRole]}
-              </span>
-                        )}
-                    </div>
-                </div>
-                <LogoutButton />
+                </details>
             </div>
         </header>
     );

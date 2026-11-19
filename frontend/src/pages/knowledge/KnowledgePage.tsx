@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertTriangle, HelpCircle, MessageSquare, ChevronRight, Sparkles } from 'lucide-react';
-import { IncidentSection } from './components/IncidentSection';
-import { FaqSection } from './components/FaqSection';
-import { FeedbackSection } from './components/FeedbackSection';
+import { IncidentSection } from '../../components/knowledge/IncidentSection';
+import { FaqSection } from '../../components/knowledge/FaqSection';
+import { FeedbackSection } from '../../components/knowledge/FeedbackSection';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getIncidentsByEvent, getFaqsBySeries, getFeedbacksByEvent } from '../../services/knowledgeService';
 

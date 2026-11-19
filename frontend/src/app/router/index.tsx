@@ -1,21 +1,22 @@
-import { Navigate, type RouteObject } from 'react-router-dom';
-import { ROUTE_PATHS } from './route.ts';
-import PlaygroundPage from '../../pages/playground/PlaygroundPage.tsx';
-import DocumentsPage from '../../pages/documents/DocumentsPage.tsx';
-import KnowledgePage from '../../pages/knowledge/KnowledgePage.tsx';
-import FinanceDashboardPage from '../../pages/finance/dashboard/FinanceDashboardPage.tsx';
-import BudgetItemsPage from '../../pages/finance/budgets/BudgetItemsPage.tsx';
-import ExpensesPage from '../../pages/finance/expenses/ExpensesPage.tsx';
-import BenchmarkPage from '../../pages/finance/benchmarks/BenchmarkPage.tsx';
+import { createBrowserRouter } from 'react-router-dom';
+import { RequireAuth } from '../../components/layout/RequireAuth';
+import MainLayout from '../../components/layout/MainLayout';
+import { authRoutes } from './auth';
+import { eventRoutes } from './events';
+import { memberRoutes } from './members';
+import { organizerRoutes } from './organizers';
+import { ROUTE_PATHS } from './route';
+import { shellRoutes } from './shell';
 
-export const shellRoutes: RouteObject[] = [
-    { index: true, element: <Navigate to="/overview" replace /> },
-    { path: ROUTE_PATHS.OVERVIEW, element: <FinanceDashboardPage /> },
-    { path: ROUTE_PATHS.FINANCE_DASHBOARD, element: <FinanceDashboardPage /> },
-    { path: ROUTE_PATHS.FINANCE_BUDGETS, element: <BudgetItemsPage /> },
-    { path: ROUTE_PATHS.FINANCE_EXPENSES, element: <ExpensesPage /> },
-    { path: ROUTE_PATHS.FINANCE_BENCHMARKS, element: <BenchmarkPage /> },
-    { path: ROUTE_PATHS.EVENT_DOCUMENTS, element: <DocumentsPage /> },
-    { path: ROUTE_PATHS.EVENT_KNOWLEDGE, element: <KnowledgePage /> },
-    { path: ROUTE_PATHS.ALL, element: <PlaygroundPage /> },
-];
+// Các route công khai nằm ngoài RequireAuth; mọi trang nghiệp vụ dùng chung MainLayout.
+export const router = createBrowserRouter([
+    ...authRoutes,
+    {
+        element: <RequireAuth />,
+        children: [{
+            path: ROUTE_PATHS.ROOT,
+            element: <MainLayout />,
+            children: [...memberRoutes, ...eventRoutes, ...organizerRoutes, ...shellRoutes],
+        }],
+    },
+]);
