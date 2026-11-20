@@ -1,9 +1,9 @@
-import { useMock } from './supabaseClient';
+import { useMock } from './supabaseClient.ts';
 import axios, { AxiosError } from 'axios';
 import type {ApiError} from "../types/common/api.ts";
 
 export const apiClient = axios.create({
-    baseURL: useMock ? '/api/v1' : (import.meta.env.VITE_API_BASE_URL ?? '/api/v1'),
+    baseURL: useMock ? '/api/v1' : (import.meta.env?.VITE_API_BASE_URL ?? '/api/v1'),
     timeout: 15000,
 });
 
