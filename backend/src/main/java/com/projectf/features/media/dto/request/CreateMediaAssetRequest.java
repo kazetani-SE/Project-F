@@ -1,5 +1,6 @@
 package com.projectf.features.media.dto.request;
 
+import com.projectf.common.enums.ApprovalStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -17,6 +18,11 @@ public record CreateMediaAssetRequest(
 
         String designFileUrl,
 
-        String previewImageUrl
+        String previewImageUrl,
+
+        ApprovalStatus approvalStatus
 ) {
+    public CreateMediaAssetRequest(String assetType, String title, String specifications, String designFileUrl, String previewImageUrl) {
+        this(assetType, title, specifications, designFileUrl, previewImageUrl, null);
+    }
 }
