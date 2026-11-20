@@ -14,6 +14,8 @@ public interface MediaAssetService {
 
     MediaAssetResponse createMediaAsset(UUID eventId, CreateMediaAssetRequest request);
 
+    MediaAssetResponse updateMediaAsset(UUID assetId, CreateMediaAssetRequest request);
+
     MediaAssetResponse updatePrintStatus(UUID assetId, UpdatePrintStatusRequest request);
 
     MediaAssetResponse updateApproval(UUID assetId, MediaApprovalRequest request);

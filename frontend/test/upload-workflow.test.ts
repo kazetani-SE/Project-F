@@ -43,6 +43,21 @@ test('Bug Repro: File validation correctly checks size and MIME type without upl
     } as File;
 
     assert.doesNotThrow(() => validateUploadFile(validFile, 'DOCUMENT'));
+
+    // 4. Dropped file with Windows generic or zip-compressed MIME type
+    const droppedDocx = {
+        name: 'ke_hoach_chi_tiet.docx',
+        size: 2 * 1024 * 1024,
+        type: 'application/x-zip-compressed',
+    } as File;
+    assert.doesNotThrow(() => validateUploadFile(droppedDocx, 'DOCUMENT'));
+
+    const droppedPptx = {
+        name: 'slide_thuyet_trinh.pptx',
+        size: 5 * 1024 * 1024,
+        type: 'application/octet-stream',
+    } as File;
+    assert.doesNotThrow(() => validateUploadFile(droppedPptx, 'DOCUMENT'));
 });
 
 test('Bug Repro: Staged upload must abort and NEVER call Database save if S3 upload fails', async () => {

@@ -1,18 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { FileText, Image, ChevronRight, Layers } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { FileText, Image, Plus } from 'lucide-react';
 import { DocumentTab } from './components/DocumentTab';
 import { MediaAssetTab } from './components/MediaAssetTab';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getDocumentsByEvent } from '../../services/documentService';
 import { getMediaAssetsByEvent } from '../../services/mediaService';
 
+type DocumentsTab = 'DOCUMENTS' | 'MEDIA';
+
+const TAB_PARAM_MAP: Record<string, DocumentsTab> = {
+    documents: 'DOCUMENTS',
+    media: 'MEDIA',
+};
+
+const TAB_TO_PARAM: Record<DocumentsTab, string> = {
+    DOCUMENTS: 'documents',
+    MEDIA: 'media',
+};
+
 export const DocumentsPage: React.FC = () => {
     const { eventId: paramEventId } = useParams<{ eventId: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { currentEvent } = useActiveEvent();
-    const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'MEDIA'>('DOCUMENTS');
+
+    const initialTabParam = (searchParams.get('tab') || '').toLowerCase();
+    const [activeTab, setActiveTab] = useState<DocumentsTab>(
+        TAB_PARAM_MAP[initialTabParam] || 'DOCUMENTS',
+    );
     const [docCount, setDocCount] = useState<number | null>(null);
     const [mediaCount, setMediaCount] = useState<number | null>(null);
+    const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+
+    const handleTabChange = (tab: DocumentsTab) => {
+        setActiveTab(tab);
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('tab', TAB_TO_PARAM[tab]);
+        setSearchParams(nextParams, { replace: true });
+    };
+
+    useEffect(() => {
+        const currentParam = (searchParams.get('tab') || '').toLowerCase();
+        const mapped = TAB_PARAM_MAP[currentParam];
+        if (mapped && mapped !== activeTab) {
+            setActiveTab(mapped);
+        }
+    }, [searchParams, activeTab]);
 
     const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
 
@@ -36,63 +69,66 @@ export const DocumentsPage: React.FC = () => {
         return () => {
             isMounted = false;
         };
-    }, [eventId, activeTab]);
+    }, [eventId]);
 
     return (
         <div className="space-y-6">
-            {/* Header & Breadcrumb */}
-            <div>
-                <nav className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                    <Link to="/events" className="hover:text-emerald-600 transition-colors">
-                        Sự kiện
-                    </Link>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="text-slate-600 font-medium">
-                        {currentEvent?.name || 'Chi tiết sự kiện'}
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="font-semibold text-emerald-600">Tài liệu & Ấn phẩm</span>
-                </nav>
+            {/* Header & Breadcrumb matching Figma design */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                        <Link to="/events" className="hover:text-emerald-600 transition-colors">
+                            Sự kiện
+                        </Link>
+                        <span>/</span>
+                        <span className="text-slate-500">
+                            {currentEvent?.name || 'Tech-Camp - Season Fall 2026'}
+                        </span>
+                        <span>/</span>
+                        <span className="text-slate-600">Tài liệu & Ấn phẩm</span>
+                    </nav>
 
-                <div className="mt-2.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                                Tài Liệu & Ấn Phẩm Truyền Thông
-                            </h1>
-                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                                Task 3 Slice
-                            </span>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Quản lý hồ sơ kế hoạch đề án đa phiên bản và theo dõi tiến độ thiết kế / in ấn ấn phẩm trực tiếp qua Amazon S3.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
-                        <Layers className="h-4 w-4" />
-                        <span>Mã sự kiện: <code className="font-mono">{eventId}</code></span>
+                    <div className="mt-1">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                            Tài liệu & Ấn phẩm
+                        </h1>
                     </div>
                 </div>
+
+                {activeTab === 'MEDIA' && (
+                    <button
+                        type="button"
+                        onClick={() => setIsMediaModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-800 transition-colors shrink-0"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Thêm ấn phẩm</span>
+                    </button>
+                )}
             </div>
 
             {/* Tab Buttons matching Figma */}
-            <div className="flex border-b border-slate-200">
+            <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
-                    onClick={() => setActiveTab('DOCUMENTS')}
-                    className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition-colors ${
+                    type="button"
+                    onClick={() => handleTabChange('DOCUMENTS')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                         activeTab === 'DOCUMENTS'
-                            ? 'border-emerald-600 text-emerald-700'
+                            ? 'border-emerald-600 text-emerald-700 font-semibold'
                             : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     }`}
                 >
-                    <FileText className="h-4 w-4" />
-                    <span>Tài liệu đề án & Kế hoạch</span>
+                    <FileText
+                        className={`h-4 w-4 ${
+                            activeTab === 'DOCUMENTS' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                    />
+                    <span>Tài liệu kế hoạch</span>
                     {docCount != null && (
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 activeTab === 'DOCUMENTS'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-slate-100 text-slate-600'
                             }`}
                         >
@@ -102,20 +138,25 @@ export const DocumentsPage: React.FC = () => {
                 </button>
 
                 <button
-                    onClick={() => setActiveTab('MEDIA')}
-                    className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition-colors ${
+                    type="button"
+                    onClick={() => handleTabChange('MEDIA')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                         activeTab === 'MEDIA'
-                            ? 'border-emerald-600 text-emerald-700'
+                            ? 'border-emerald-600 text-emerald-700 font-semibold'
                             : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     }`}
                 >
-                    <Image className="h-4 w-4" />
-                    <span>Ấn phẩm thiết kế & In ấn</span>
+                    <Image
+                        className={`h-4 w-4 ${
+                            activeTab === 'MEDIA' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                    />
+                    <span>Ấn phẩm truyền thông</span>
                     {mediaCount != null && (
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 activeTab === 'MEDIA'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-slate-100 text-slate-600'
                             }`}
                         >
@@ -128,9 +169,14 @@ export const DocumentsPage: React.FC = () => {
             {/* Tab Contents */}
             <div>
                 {activeTab === 'DOCUMENTS' ? (
-                    <DocumentTab eventId={eventId} />
+                    <DocumentTab eventId={eventId} onCountChange={setDocCount} />
                 ) : (
-                    <MediaAssetTab eventId={eventId} />
+                    <MediaAssetTab
+                        eventId={eventId}
+                        onCountChange={setMediaCount}
+                        isCreateModalOpen={isMediaModalOpen}
+                        onCloseCreateModal={() => setIsMediaModalOpen(false)}
+                    />
                 )}
             </div>
         </div>

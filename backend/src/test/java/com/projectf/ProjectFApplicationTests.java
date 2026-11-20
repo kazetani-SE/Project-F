@@ -9,6 +9,7 @@ import com.projectf.features.knowledge.repository.FeedbackRepository;
 import com.projectf.features.knowledge.repository.IncidentRepository;
 import com.projectf.features.media.repository.MediaAssetRepository;
 import com.projectf.features.member.repository.ClubMemberRepository;
+import com.projectf.features.member.service.MemberCredentialService;
 import com.projectf.features.finance.repository.BudgetCategoryRepository;
 import com.projectf.features.finance.repository.BudgetItemRepository;
 import com.projectf.features.finance.repository.EventBudgetSummaryViewRepository;
@@ -49,6 +50,9 @@ class ProjectFApplicationTests {
 
     @MockBean
     private ClubMemberRepository clubMemberRepository;
+
+    @MockBean
+    private MemberCredentialService memberCredentialService;
 
     @MockBean
     private BudgetCategoryRepository budgetCategoryRepository;

@@ -1,5 +1,5 @@
-import { apiClient } from './apiClient';
-import type { ApiResponse } from '../types/common/api';
+import { apiClient } from './apiClient.ts';
+import type { ApiResponse } from '../types/common/api.ts';
 import type {
     IncidentResponse,
     CreateIncidentRequest,
@@ -16,18 +16,36 @@ import type {
     DraftIncidentAiResponse,
     KnowledgeChatRequest,
     KnowledgeChatResponse,
-} from '../types/models/knowledge';
+} from '../types/models/knowledge.ts';
+
+// In-flight request cache for deduplication
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+function dedupeInFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const existing = inFlightRequests.get(key);
+    if (existing) {
+        return existing as Promise<T>;
+    }
+    const promise = fn().finally(() => {
+        inFlightRequests.delete(key);
+    });
+    inFlightRequests.set(key, promise);
+    return promise;
+}
 
 // --- Incidents ---
-export async function getIncidentsByEvent(eventId: string): Promise<IncidentResponse[]> {
-    const res = await apiClient.get<ApiResponse<IncidentResponse[]>>(`/events/${eventId}/incidents`);
-    return res.data.data;
+export function getIncidentsByEvent(eventId: string): Promise<IncidentResponse[]> {
+    return dedupeInFlight(`incidents:${eventId}`, async () => {
+        const res = await apiClient.get<ApiResponse<IncidentResponse[]>>(`/events/${eventId}/incidents`);
+        return res.data.data;
+    });
 }
 
 export async function createIncident(
     eventId: string,
     data: CreateIncidentRequest,
 ): Promise<IncidentResponse> {
+    inFlightRequests.delete(`incidents:${eventId}`);
     const res = await apiClient.post<ApiResponse<IncidentResponse>>(
         `/events/${eventId}/incidents`,
         data,
@@ -36,14 +54,17 @@ export async function createIncident(
 }
 
 export async function getIncidentById(incidentId: string): Promise<IncidentResponse> {
-    const res = await apiClient.get<ApiResponse<IncidentResponse>>(`/incidents/${incidentId}`);
-    return res.data.data;
+    return dedupeInFlight(`incident:${incidentId}`, async () => {
+        const res = await apiClient.get<ApiResponse<IncidentResponse>>(`/incidents/${incidentId}`);
+        return res.data.data;
+    });
 }
 
 export async function deleteIncident(
     incidentId: string,
     eventId?: string,
 ): Promise<void> {
+    if (eventId) inFlightRequests.delete(`incidents:${eventId}`);
     const path = eventId
         ? `/events/${eventId}/incidents/${incidentId}`
         : `/incidents/${incidentId}`;
@@ -51,28 +72,62 @@ export async function deleteIncident(
 }
 
 // --- FAQs ---
-export async function getFaqsBySeries(
+export function getFaqsBySeries(
     seriesId: string,
     category?: string,
 ): Promise<FaqResponse[]> {
-    const res = await apiClient.get<ApiResponse<FaqResponse[]>>(
-        `/event-series/${seriesId}/faqs`,
-        {
-            params: category ? { category } : undefined,
-        },
-    );
-    return res.data.data;
+    return dedupeInFlight(`faqs:${seriesId}:${category ?? 'ALL'}`, async () => {
+        const res = await apiClient.get<ApiResponse<FaqResponse[]>>(
+            `/event-series/${seriesId}/faqs`,
+            {
+                params: category ? { category } : undefined,
+            },
+        );
+        return res.data.data;
+    });
 }
 
 export async function createFaq(
     seriesId: string,
     data: CreateFaqRequest,
 ): Promise<FaqResponse> {
+    for (const key of inFlightRequests.keys()) {
+        if (key.startsWith(`faqs:${seriesId}:`)) {
+            inFlightRequests.delete(key);
+        }
+    }
     const res = await apiClient.post<ApiResponse<FaqResponse>>(
         `/event-series/${seriesId}/faqs`,
         data,
     );
     return res.data.data;
+}
+
+export async function createFaqsBatch(
+    seriesId: string,
+    data: CreateFaqRequest[],
+): Promise<FaqResponse[]> {
+    if (!data || data.length === 0) return [];
+    for (const key of inFlightRequests.keys()) {
+        if (key.startsWith(`faqs:${seriesId}:`)) {
+            inFlightRequests.delete(key);
+        }
+    }
+    try {
+        const res = await apiClient.post<ApiResponse<FaqResponse[]>>(
+            `/event-series/${seriesId}/faqs/batch`,
+            data,
+        );
+        return res.data.data;
+    } catch {
+        // Fallback gọi tuần tự hoặc song song nếu endpoint batch chưa khả dụng
+        const created: FaqResponse[] = [];
+        for (const item of data) {
+            const single = await createFaq(seriesId, item);
+            created.push(single);
+        }
+        return created;
+    }
 }
 
 export async function updateFaqPin(
@@ -98,24 +153,30 @@ export async function deleteFaq(
 }
 
 // --- Feedbacks ---
-export async function getFeedbacksByEvent(eventId: string): Promise<FeedbackResponse[]> {
-    const res = await apiClient.get<ApiResponse<FeedbackResponse[]>>(`/events/${eventId}/feedbacks`);
-    return res.data.data;
+export function getFeedbacksByEvent(eventId: string): Promise<FeedbackResponse[]> {
+    return dedupeInFlight(`feedbacks:${eventId}`, async () => {
+        const res = await apiClient.get<ApiResponse<FeedbackResponse[]>>(`/events/${eventId}/feedbacks`);
+        return res.data.data;
+    });
 }
 
-export async function getFeedbackSummaryByEvent(
+export function getFeedbackSummaryByEvent(
     eventId: string,
 ): Promise<FeedbackSummaryResponse> {
-    const res = await apiClient.get<ApiResponse<FeedbackSummaryResponse>>(
-        `/events/${eventId}/feedbacks/summary`,
-    );
-    return res.data.data;
+    return dedupeInFlight(`feedbacks-summary:${eventId}`, async () => {
+        const res = await apiClient.get<ApiResponse<FeedbackSummaryResponse>>(
+            `/events/${eventId}/feedbacks/summary`,
+        );
+        return res.data.data;
+    });
 }
 
 export async function submitFeedback(
     eventId: string,
     data: CreateFeedbackRequest,
 ): Promise<FeedbackResponse> {
+    inFlightRequests.delete(`feedbacks:${eventId}`);
+    inFlightRequests.delete(`feedbacks-summary:${eventId}`);
     const res = await apiClient.post<ApiResponse<FeedbackResponse>>(
         `/events/${eventId}/feedbacks`,
         data,
@@ -127,6 +188,8 @@ export async function submitFeedbacksBatch(
     eventId: string,
     data: CreateFeedbackRequest[],
 ): Promise<FeedbackResponse[]> {
+    inFlightRequests.delete(`feedbacks:${eventId}`);
+    inFlightRequests.delete(`feedbacks-summary:${eventId}`);
     const res = await apiClient.post<ApiResponse<FeedbackResponse[]>>(
         `/events/${eventId}/feedbacks/batch`,
         data,
@@ -138,6 +201,10 @@ export async function deleteFeedback(
     feedbackId: string,
     eventId?: string,
 ): Promise<void> {
+    if (eventId) {
+        inFlightRequests.delete(`feedbacks:${eventId}`);
+        inFlightRequests.delete(`feedbacks-summary:${eventId}`);
+    }
     const path = eventId
         ? `/events/${eventId}/feedbacks/${feedbackId}`
         : `/feedbacks/${feedbackId}`;

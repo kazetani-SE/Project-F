@@ -30,6 +30,7 @@ export interface CreateMediaAssetRequest {
     specifications?: string | null;
     designFileUrl?: string | null;
     previewImageUrl?: string | null;
+    approvalStatus?: ApprovalStatus;
 }
 
 export interface UpdatePrintStatusRequest {
@@ -42,12 +43,12 @@ export interface MediaApprovalRequest {
 }
 
 export const MEDIA_ASSET_TYPE_LABELS: Record<MediaAssetType, string> = {
-    POSTER: 'Áp phích (Poster)',
-    BANNER: 'Băng rôn (Banner)',
+    POSTER: 'Poster',
+    BANNER: 'Banner',
     STANDEE: 'Standee',
-    BACKDROP: 'Phông nền (Backdrop)',
-    BADGE: 'Thẻ đeo ban tổ chức',
-    TRAILER: 'Video Trailer',
-    SOCIAL_POST: 'Bài đăng mạng xã hội',
+    BACKDROP: 'Backdrop',
+    BADGE: 'Thẻ đeo',
+    TRAILER: 'Trailer',
+    SOCIAL_POST: 'Bài đăng MXH',
     OTHER: 'Ấn phẩm khác',
 };

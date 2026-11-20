@@ -1,6 +1,19 @@
 export const ROUTE_PATHS = {
     ROOT: '/',
+    LOGIN: '/login',
+    FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/reset-password',
+    FORBIDDEN: '/403',
+    MEMBERS: '/members',
+    MEMBER_NEW: '/members/new',
+    MEMBER_DETAIL: '/members/:id',
+    SERIES: '/series',
+    SERIES_DETAIL: '/series/:id',
     EVENTS: '/events',
+    EVENT_NEW: '/events/new',
+    EVENT_DETAIL: '/events/:eventId',
+    EVENT_OVERVIEW: '/events/:eventId/overview',
+    EVENT_ORGANIZERS: '/events/:eventId/organizers',
     EVENT_DOCUMENTS: '/events/:eventId/documents',
     EVENT_KNOWLEDGE: '/events/:eventId/knowledge',
     OVERVIEW: 'overview',
@@ -13,6 +26,9 @@ export const ROUTE_PATHS = {
 } as const;
 
 export const ROUTES = {
+    member: (id: string) => `/members/${id}`,
+    series: (id: string) => `/series/${id}`,
+    overview: (eventId: string) => `/events/${eventId}/overview`,
     documents: (eventId: string) => `/events/${eventId}/documents`,
     knowledge: (eventId: string) => `/events/${eventId}/knowledge`,
 

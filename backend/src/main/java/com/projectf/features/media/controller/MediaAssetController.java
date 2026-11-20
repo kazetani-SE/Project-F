@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -52,6 +53,16 @@ public class MediaAssetController {
     ) {
         MediaAssetResponse response = mediaAssetService.createMediaAsset(eventId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
+
+    @PutMapping({"/events/{eventId}/media-assets/{assetId}", "/media-assets/{assetId}"})
+    public ResponseEntity<ApiResponse<MediaAssetResponse>> updateMediaAsset(
+            @PathVariable(value = EVENT_ID, required = false) UUID eventId,
+            @PathVariable(ASSET_ID) UUID assetId,
+            @Valid @RequestBody CreateMediaAssetRequest request
+    ) {
+        MediaAssetResponse response = mediaAssetService.updateMediaAsset(assetId, request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @GetMapping("/media-assets/{assetId}")

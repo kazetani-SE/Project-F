@@ -4,6 +4,7 @@ import {
     uploadBinaryToS3,
 } from '../services/storageService';
 import { validateUploadFile } from '../services/uploadWorkflow';
+import { getErrorMessage } from '../utils/errorHelper';
 import {
     type StorageCategory,
     type UploadedFileResult,
@@ -30,8 +31,7 @@ export function useS3Upload() {
             try {
                 validateUploadFile(file, category);
             } catch (validationErr: unknown) {
-                const msg =
-                    validationErr instanceof Error ? validationErr.message : 'Tệp tải lên không hợp lệ';
+                const msg = getErrorMessage(validationErr, 'Tệp tải lên không hợp lệ');
                 setError(msg);
                 throw validationErr;
             }
@@ -66,8 +66,7 @@ export function useS3Upload() {
                 setUploadedFile(result);
                 return result;
             } catch (err: unknown) {
-                const errorMessage =
-                    err instanceof Error ? err.message : 'Đã có lỗi xảy ra trong quá trình tải tệp';
+                const errorMessage = getErrorMessage(err, 'Đã có lỗi xảy ra trong quá trình tải tệp');
                 setError(errorMessage);
                 throw err;
             } finally {

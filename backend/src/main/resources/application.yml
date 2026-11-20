@@ -1,15 +1,28 @@
 server:
-  port: ${PORT}
+  port: ${PORT:8080}
   servlet:
     context-path: /api
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 spring:
   application:
     name: project-f-club-backend
 
-  # Profile gốc chỉ nạp duy nhất file .env gốc của backend
+  mail:
+    host: ${SPRING_MAIL_HOST:127.0.0.1}
+    port: ${SPRING_MAIL_PORT:54325}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SPRING_MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+
+  # IntelliJ có thể chạy từ thư mục gốc dự án hoặc backend; nạp .env ở cả hai vị trí.
   config:
     import:
+      - optional:file:backend/.env[.properties]
       - optional:file:.env[.properties]
 
   profiles:
@@ -70,6 +83,11 @@ springdoc:
     display-request-duration: true
     try-it-out-enabled: true
     filter: true
+
+benchmark:
+  ai:
+    mode: ${BENCHMARK_AI_MODE:cache} # cache for mock and live for real
+    cache-file: ${BENCHMARK_AI_CACHE_FILE:classpath:cache/benchmark-ai-cache.json}
 
 logging:
   level:

@@ -14,13 +14,19 @@ import java.util.UUID;
 public interface ExpenseService {
   // Expense management
   List<ExpenseResponse> getExpensesByEvent(UUID eventId, ApprovalStatus status);
-  ExpenseResponse getExpenseById(UUID id);
-  ExpenseResponse createExpense(CreateExpenseRequest request);
-  ExpenseResponse updateExpense(UUID id, UpdateExpenseRequest request);
-  ExpenseResponse reviewExpense(UUID id, ReviewExpenseRequest request);
-  void deleteExpense(UUID id);
+
+  ExpenseResponse getExpenseById(UUID eventId, UUID id);
+
+  ExpenseResponse createExpense(UUID eventId, CreateExpenseRequest request);
+
+  ExpenseResponse updateExpense(UUID eventId, UUID id, UpdateExpenseRequest request);
+
+  ExpenseResponse reviewExpense(UUID eventId, UUID id, ReviewExpenseRequest request);
+
+  void deleteExpense(UUID eventId, UUID id);
 
   // Receipt management
-  ExpenseReceiptResponse addReceipt(UUID expenseId, CreateReceiptRequest request);
-  void deleteReceipt(UUID expenseId, UUID receiptId);
+  ExpenseReceiptResponse addReceipt(UUID eventId, UUID expenseId, CreateReceiptRequest request);
+
+  void deleteReceipt(UUID eventId, UUID expenseId, UUID receiptId);
 }

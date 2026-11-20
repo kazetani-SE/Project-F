@@ -28,9 +28,10 @@ import {
 
 interface Props {
     eventId: string;
+    onCountChange?: (count: number) => void;
 }
 
-export const IncidentSection: React.FC<Props> = ({ eventId }) => {
+export const IncidentSection: React.FC<Props> = ({ eventId, onCountChange }) => {
     const { user } = useAuth();
     const [incidents, setIncidents] = useState<IncidentResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -66,12 +67,13 @@ export const IncidentSection: React.FC<Props> = ({ eventId }) => {
         try {
             const data = await getIncidentsByEvent(eventId);
             setIncidents(data);
+            onCountChange?.(data.length);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Không thể tải nhật ký sự cố');
         } finally {
             setIsLoading(false);
         }
-    }, [eventId]);
+    }, [eventId, onCountChange]);
 
     useEffect(() => {
         fetchIncidents();

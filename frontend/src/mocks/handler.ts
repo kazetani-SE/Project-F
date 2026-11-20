@@ -1,14 +1,11 @@
 import { delay, http, HttpResponse, passthrough } from 'msw';
+import { managementHandlers } from './management';
 import {
-    MOCK_EVENTS,
-    MOCK_ROLES,
-    MOCK_USER,
     MOCK_DOCUMENTS,
     MOCK_MEDIA_ASSETS,
     MOCK_INCIDENTS,
     MOCK_FAQS,
     MOCK_FEEDBACKS,
-    MOCK_FEEDBACK_SUMMARY,
 } from './data';
 import type { CreateDocumentRequest, DocumentApprovalRequest, DocumentResponse } from '../types/models/document';
 import type {
@@ -43,19 +40,7 @@ let feedbacksState: FeedbackResponse[] = [...MOCK_FEEDBACKS];
 const aiFeedbackReportsState: Record<string, FeedbackAiReportResponse> = {};
 
 export const handlers = [
-    // --- Auth & Events ---
-    http.get(`${BASE}/auth/me`, async () => {
-        await delay(200);
-        return ok(MOCK_USER);
-    }),
-    http.get(`${BASE}/events`, async () => {
-        await delay(300);
-        return ok(MOCK_EVENTS);
-    }),
-    http.get(`${BASE}/events/:eventId/my-role`, async ({ params }) => {
-        await delay(600);
-        return ok({ role: MOCK_ROLES[params.eventId as string] ?? null });
-    }),
+    ...managementHandlers,
 
     // --- Storage Service ---
     http.post(`${BASE}/storage/presigned-upload`, async ({ request }) => {
@@ -94,6 +79,11 @@ export const handlers = [
             objectKey,
             expiresInMinutes: 15,
         });
+    }),
+
+    http.delete(`${BASE}/storage/file`, async () => {
+        await delay(200);
+        return ok(null);
     }),
 
     // Mock direct S3 PUT binary upload
@@ -162,6 +152,20 @@ export const handlers = [
         return ok(updated);
     }),
 
+    http.delete(`${BASE}/events/:eventId/documents/:documentId`, async ({ params }) => {
+        await delay(250);
+        const docId = params.documentId as string;
+        documentsState = documentsState.filter((d) => d.id !== docId);
+        return ok(null);
+    }),
+
+    http.delete(`${BASE}/documents/:documentId`, async ({ params }) => {
+        await delay(250);
+        const docId = params.documentId as string;
+        documentsState = documentsState.filter((d) => d.id !== docId);
+        return ok(null);
+    }),
+
     // --- Media Assets ---
     http.get(`${BASE}/events/:eventId/media-assets`, async ({ params, request }) => {
         await delay(300);
@@ -191,7 +195,7 @@ export const handlers = [
             designFileUrl: body.designFileUrl ?? null,
             previewImageUrl: body.previewImageUrl ?? null,
             isPrinted: false,
-            approvalStatus: 'PENDING',
+            approvalStatus: body.approvalStatus || 'PENDING',
             approvedBy: null,
             createdAt: new Date().toISOString(),
         };
@@ -216,6 +220,20 @@ export const handlers = [
         return ok(updated);
     }),
 
+    http.delete(`${BASE}/events/:eventId/media-assets/:assetId`, async ({ params }) => {
+        await delay(250);
+        const assetId = params.assetId as string;
+        mediaAssetsState = mediaAssetsState.filter((m) => m.id !== assetId);
+        return ok(null);
+    }),
+
+    http.delete(`${BASE}/media-assets/:assetId`, async ({ params }) => {
+        await delay(250);
+        const assetId = params.assetId as string;
+        mediaAssetsState = mediaAssetsState.filter((m) => m.id !== assetId);
+        return ok(null);
+    }),
+
     http.patch(`${BASE}/events/:eventId/media-assets/:assetId/approval`, async ({ params, request }) => {
         await delay(300);
         const assetId = params.assetId as string;
@@ -227,6 +245,52 @@ export const handlers = [
                     ...m,
                     approvalStatus: body.approvalStatus,
                     approvedBy: body.approvedBy,
+                };
+            }
+            return m;
+        });
+
+        const updated = mediaAssetsState.find((m) => m.id === assetId);
+        return ok(updated);
+    }),
+
+    http.put(`${BASE}/events/:eventId/media-assets/:assetId`, async ({ params, request }) => {
+        await delay(300);
+        const assetId = params.assetId as string;
+        const body = (await request.json()) as CreateMediaAssetRequest;
+
+        mediaAssetsState = mediaAssetsState.map((m) => {
+            if (m.id === assetId) {
+                return {
+                    ...m,
+                    assetType: body.assetType,
+                    title: body.title,
+                    specifications: body.specifications ?? m.specifications,
+                    designFileUrl: body.designFileUrl ?? m.designFileUrl,
+                    previewImageUrl: body.previewImageUrl ?? m.previewImageUrl,
+                };
+            }
+            return m;
+        });
+
+        const updated = mediaAssetsState.find((m) => m.id === assetId);
+        return ok(updated);
+    }),
+
+    http.put(`${BASE}/media-assets/:assetId`, async ({ params, request }) => {
+        await delay(300);
+        const assetId = params.assetId as string;
+        const body = (await request.json()) as CreateMediaAssetRequest;
+
+        mediaAssetsState = mediaAssetsState.map((m) => {
+            if (m.id === assetId) {
+                return {
+                    ...m,
+                    assetType: body.assetType,
+                    title: body.title,
+                    specifications: body.specifications ?? m.specifications,
+                    designFileUrl: body.designFileUrl ?? m.designFileUrl,
+                    previewImageUrl: body.previewImageUrl ?? m.previewImageUrl,
                 };
             }
             return m;
@@ -299,6 +363,25 @@ export const handlers = [
         return ok(newFaq);
     }),
 
+    http.post(`${BASE}/event-series/:seriesId/faqs/batch`, async ({ params, request }) => {
+        await delay(400);
+        const seriesId = params.seriesId as string;
+        const body = (await request.json()) as CreateFaqRequest[];
+
+        const createdFaqs: FaqResponse[] = body.map((item, index) => ({
+            id: `faq-${Date.now()}-${index}`,
+            seriesId,
+            question: item.question,
+            answer: item.answer,
+            category: item.category,
+            isPinned: item.isPinned ?? false,
+            updatedAt: new Date().toISOString(),
+        }));
+
+        faqsState = [...createdFaqs, ...faqsState];
+        return ok(createdFaqs);
+    }),
+
     http.patch(`${BASE}/event-series/:seriesId/faqs/:faqId/pin`, async ({ params, request }) => {
         await delay(250);
         const faqId = params.faqId as string;
@@ -323,9 +406,39 @@ export const handlers = [
         return ok(feedbacks.length > 0 ? feedbacks : feedbacksState);
     }),
 
-    http.get(`${BASE}/events/:eventId/feedbacks/summary`, async () => {
-        await delay(300);
-        return ok(MOCK_FEEDBACK_SUMMARY);
+    http.get(`${BASE}/events/:eventId/feedbacks/summary`, async ({ params }) => {
+        await delay(250);
+        const eventId = params.eventId as string;
+        const eventFeedbacks = feedbacksState.filter((f) => f.eventId === eventId);
+        const list = eventFeedbacks.length > 0 ? eventFeedbacks : feedbacksState;
+        const total = list.length;
+        const ratingBreakdown: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        let sum = 0;
+        for (const fb of list) {
+            const score = Math.min(5, Math.max(1, Math.round(fb.ratingScore)));
+            ratingBreakdown[score] = (ratingBreakdown[score] || 0) + 1;
+            sum += score;
+        }
+        const averageRating = total > 0 ? Number((sum / total).toFixed(2)) : 0;
+        return ok({
+            totalFeedbacks: total,
+            averageRating,
+            ratingBreakdown,
+        });
+    }),
+
+    http.delete(`${BASE}/events/:eventId/feedbacks/:feedbackId`, async ({ params }) => {
+        await delay(200);
+        const feedbackId = params.feedbackId as string;
+        feedbacksState = feedbacksState.filter((f) => f.id !== feedbackId);
+        return ok(null);
+    }),
+
+    http.delete(`${BASE}/feedbacks/:feedbackId`, async ({ params }) => {
+        await delay(200);
+        const feedbackId = params.feedbackId as string;
+        feedbacksState = feedbacksState.filter((f) => f.id !== feedbackId);
+        return ok(null);
     }),
 
     http.post(`${BASE}/events/:eventId/feedbacks`, async ({ params, request }) => {

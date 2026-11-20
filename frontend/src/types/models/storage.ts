@@ -31,14 +31,14 @@ export interface UploadedFileResult {
 export const STORAGE_LIMITS: Record<StorageCategory, number> = {
     RECEIPT: 15 * 1024 * 1024,   // 15 MB
     DOCUMENT: 50 * 1024 * 1024,  // 50 MB
-    MEDIA: 50 * 1024 * 1024,     // 50 MB
+    MEDIA: 100 * 1024 * 1024,    // 100 MB (Hỗ trợ file in ấn đồ họa .tif, .psd)
     FEEDBACK: 50 * 1024 * 1024,  // 50 MB
 };
 
 export const STORAGE_LIMIT_LABELS: Record<StorageCategory, string> = {
     RECEIPT: '15 MB',
     DOCUMENT: '50 MB',
-    MEDIA: '50 MB',
+    MEDIA: '100 MB',
     FEEDBACK: '50 MB',
 };
 
@@ -60,6 +60,8 @@ export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
         'image/webp',
         'image/svg+xml',
         'image/gif',
+        'image/tiff',
+        'image/x-tiff',
         'video/mp4',
         'application/pdf',
     ],

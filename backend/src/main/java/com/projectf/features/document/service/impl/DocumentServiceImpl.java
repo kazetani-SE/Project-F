@@ -8,15 +8,21 @@ import com.projectf.features.document.entity.EventDocument;
 import com.projectf.features.document.mapper.DocumentMapper;
 import com.projectf.features.document.repository.DocumentRepository;
 import com.projectf.features.document.service.DocumentService;
+import com.projectf.features.storage.service.StorageService;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentServiceImpl.class);
 
     private static final Set<String> VALID_TYPES = Set.of(
             "MASTER_PLAN",
@@ -29,10 +35,17 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository docRepo;
     private final DocumentMapper docMapper;
+    private final StorageService storageService;
 
-    public DocumentServiceImpl(DocumentRepository docRepo, DocumentMapper docMapper) {
+    @Autowired
+    public DocumentServiceImpl(DocumentRepository docRepo, DocumentMapper docMapper, StorageService storageService) {
         this.docRepo = docRepo;
         this.docMapper = docMapper;
+        this.storageService = storageService;
+    }
+
+    public DocumentServiceImpl(DocumentRepository docRepo, DocumentMapper docMapper) {
+        this(docRepo, docMapper, null);
     }
 
     @Override
@@ -143,6 +156,17 @@ public class DocumentServiceImpl implements DocumentService {
             docRepo.saveAll(children);
         }
 
+        String fileUrl = doc.getFileUrl();
         docRepo.delete(doc);
+
+        if (storageService != null && fileUrl != null && !fileUrl.isBlank()) {
+            try {
+                storageService.deleteFile(fileUrl);
+            } catch (Exception ex) {
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn("Không thể xóa tệp S3 của tài liệu [id={}, fileUrl={}]: {}", documentId, fileUrl, ex.getMessage());
+                }
+            }
+        }
     }
 }
