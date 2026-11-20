@@ -76,12 +76,29 @@ const TRIVIAL_ANSWERS = new Set([
     'không có',
     'ko có',
     'không ạ',
+    'ko ạ',
     'dạ không',
     'dạ ko',
+    'dạ không ạ',
+    'dạ ko ạ',
+    'dạ không có',
+    'không có ạ',
+    'không có gì',
+    'ko có gì',
     'chưa',
     'chưa có',
     'hiện tại là chưa',
     'hiện tại chưa',
+    'bình thường',
+    'ổn',
+    'ok',
+    'okay',
+    'tốt',
+    'rất tốt',
+    'tuyệt vời',
+    'quá tuyệt vời',
+    'hoàn hảo',
+    'quá hoàn hảo',
     'no',
     'none',
     'nothing',
@@ -95,7 +112,7 @@ const TRIVIAL_ANSWERS = new Set([
 ]);
 
 /**
- * Kiểm tra xem một câu trả lời tự luận có phải là câu trả lời "Không / No / Nothing" ngắn gọn hay không
+ * Kiểm tra xem một câu trả lời tự luận có phải là câu trả lời "Không / No / Nothing / Quá hoàn hảo (không có gì phàn nàn)" hay không
  */
 export function isTrivialSuggestionAnswer(text: string): boolean {
     const cleaned = text
@@ -104,7 +121,61 @@ export function isTrivialSuggestionAnswer(text: string): boolean {
         .replace(/[!?.]+$/g, '')
         .trim();
     if (!cleaned) return true;
-    return TRIVIAL_ANSWERS.has(cleaned);
+    if (TRIVIAL_ANSWERS.has(cleaned)) return true;
+
+    // Nhận diện các mẫu câu bắt đầu bằng "Dạ không, ...", "Không có gì, ...", "Ko có, mọi thứ rất tốt..."
+    if (
+        /^(dạ\s*)?(không|ko|chưa)(\s*có)?(\s*gì)?(\s*ạ)?(\s*[,.-]\s*(quá\s*|rất\s*|mọi\s*thứ\s*)?(hoàn\s*hảo|tuyệt\s*vời|tốt|ổn|ok).*)?$/i.test(
+            cleaned,
+        )
+    ) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Phân loại ý nghĩa của một câu hỏi tự luận (SUGGESTION):
+ * - 'HIGHLIGHT': Hỏi về điểm làm tốt, điều ấn tượng, điều hài lòng nhất về sự kiện
+ * - 'IMPROVEMENT': Hỏi về điểm BTC/Sự kiện cần khắc phục, hạn chế, góp ý cải thiện cho sự kiện
+ * - 'SELF_OR_OTHER': Câu hỏi tự đánh giá bản thân ứng viên/thí sinh ("Bản thân bạn cần cải thiện gì?", "Mục tiêu của bạn?") hoặc câu hỏi mở khác
+ */
+export function classifySuggestionQuestionType(
+    question: string,
+): 'HIGHLIGHT' | 'IMPROVEMENT' | 'SELF_OR_OTHER' {
+    const q = question.trim().toLowerCase();
+
+    // 1. Nếu câu hỏi hướng về BẢN THÂN người điền (ứng viên / thí sinh tự đánh giá mình, kỹ năng cá nhân, mong muốn học hỏi)
+    // Ví dụ: "Bạn nghĩ bản thân cần cải thiện gì?", "Kỹ năng bạn cần cải thiện sau cuộc thi?", "Bạn cần cải thiện điều gì ở bản thân?"
+    const isSelfReflection =
+        /(bản\s*thân|cá\s*nhân\s*bạn|kỹ\s*năng\s*của\s*bạn|kiến\s*thức\s*của\s*bạn|bạn\s*cần\s*cải\s*thiện|bạn\s*muốn\s*cải\s*thiện|bạn\s*học\s*được\s*gì|mục\s*tiêu\s*của\s*bạn|điểm\s*yếu\s*của\s*bạn)/i.test(
+            q,
+        ) && !/(ban\s*tổ\s*chức|\bbtc\b|sự\s*kiện|chương\s*trình|cuộc\s*thi\s*cần)/i.test(q);
+
+    if (isSelfReflection) {
+        return 'SELF_OR_OTHER';
+    }
+
+    // 2. Câu hỏi về Điểm làm tốt / Điều thích nhất / Ấn tượng nhất
+    if (
+        /(điểm\s*làm\s*tốt|điều\s*bạn\s*thích|thích\s*nhất|hài\s*lòng\s*nhất|điểm\s*sáng|ấn\s*tượng\s*nhất|impressive|highlight|ưu\s*điểm)/i.test(
+            q,
+        )
+    ) {
+        return 'HIGHLIGHT';
+    }
+
+    // 3. Câu hỏi rõ ràng về Điểm cần khắc phục / Góp ý cho BTC / Sự kiện / Cuộc thi
+    if (
+        /(cần\s*khắc\s*phục|điểm\s*chưa\s*tốt|chưa\s*hài\s*lòng|hạn\s*chế|góp\s*ý|đề\s*xuất|kiến\s*nghị|btc\s*cần|sự\s*kiện\s*cần|chương\s*trình\s*cần|cuộc\s*thi\s*cần|cải\s*thiện\s*cho\s*(btc|ban\s*tổ\s*chức|sự\s*kiện|cuộc\s*thi|chương\s*trình)|khó\s*khăn\s*gì|vấn\s*đề\s*gì|least\s*satisfying)/i.test(
+            q,
+        )
+    ) {
+        return 'IMPROVEMENT';
+    }
+
+    // 4. Các câu hỏi tự luận mở khác -> giữ nguyên tiêu đề câu hỏi gốc để không bị gán nhầm nhãn "CẦN KHẮC PHỤC"
+    return 'SELF_OR_OTHER';
 }
 
 /**
@@ -175,6 +246,84 @@ function filterValidRespondentRows(
     }
 
     return { validRows, skippedSummaryRows };
+}
+
+/**
+ * Phân tích và chuyển đổi URL Google Sheets, OneDrive hoặc liên kết tệp trực tuyến sang Direct Export URL (.xlsx / .csv)
+ */
+export function resolveSpreadsheetExportUrl(rawUrl: string): {
+    exportUrl: string;
+    fileName: string;
+    platform: 'Google Forms' | 'Microsoft Forms' | 'CSV / Excel';
+    spreadsheetId: string | null;
+} {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) {
+        throw new Error('Vui lòng nhập đường dẫn (URL) hợp lệ.');
+    }
+
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(trimmed);
+    } catch {
+        throw new Error('Định dạng đường dẫn (URL) không hợp lệ. Vui lòng dán link bắt đầu bằng https://');
+    }
+
+    // Kiểm tra nếu người dùng dán nhầm link điền form trực tiếp (forms.gle / docs.google.com/forms / forms.office.com)
+    if (
+        parsedUrl.hostname === 'forms.gle' ||
+        parsedUrl.pathname.includes('/forms/d/') ||
+        parsedUrl.hostname === 'forms.office.com'
+    ) {
+        throw new Error(
+            'Đây là link điền Form công khai (bị Google/Microsoft khóa quyền đọc câu trả lời). Vui lòng mở tab "Câu trả lời" (Responses) trong Form -> Bấm "Liên kết với Trang tính" (Link to Sheets) và dán link Google Sheets / OneDrive Excel vào đây.',
+        );
+    }
+
+    // 1. Google Sheets URL: https://docs.google.com/spreadsheets/d/<ID>/edit#gid=<GID>
+    const gsheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (gsheetMatch) {
+        const spreadsheetId = gsheetMatch[1];
+        const gidMatch = trimmed.match(/[?#&]gid=(\d+)/);
+        const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+        const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx${gidParam}`;
+        return {
+            exportUrl,
+            fileName: `Google_Forms_Responses_${spreadsheetId.slice(0, 8)}.xlsx`,
+            platform: 'Google Forms',
+            spreadsheetId,
+        };
+    }
+
+    // 2. OneDrive / SharePoint / Office Online Excel link
+    if (
+        parsedUrl.hostname.includes('onedrive.live.com') ||
+        parsedUrl.hostname.includes('1drv.ms') ||
+        parsedUrl.hostname.includes('sharepoint.com')
+    ) {
+        const exportUrl = trimmed.includes('download=1')
+            ? trimmed
+            : `${trimmed}${trimmed.includes('?') ? '&' : '?'}download=1`;
+        return {
+            exportUrl,
+            fileName: 'Microsoft_Forms_Responses.xlsx',
+            platform: 'Microsoft Forms',
+            spreadsheetId: null,
+        };
+    }
+
+    // 3. Direct link to .xlsx, .xls, .csv
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    const lastSegment = pathParts[pathParts.length - 1] || 'khao_sat_online.xlsx';
+    const hasValidExt = /\.(xlsx|xls|csv)$/i.test(lastSegment);
+    const fileName = hasValidExt ? decodeURIComponent(lastSegment) : `${decodeURIComponent(lastSegment)}.xlsx`;
+
+    return {
+        exportUrl: trimmed,
+        fileName,
+        platform: 'CSV / Excel',
+        spreadsheetId: null,
+    };
 }
 
 /**
@@ -406,6 +555,14 @@ export function normalizeSourceType(
     return defaultSource;
 }
 
+export interface TransformFeedbackBatchOptions {
+    formTitle?: string;
+    formPlatform?: string;
+    formUrl?: string;
+    importedBy?: string;
+    skippedRows?: number;
+}
+
 /**
  * Chuyển đổi các dòng Excel thành danh sách CreateFeedbackRequest theo cấu hình câu hỏi đa tiêu chí
  */
@@ -414,6 +571,7 @@ export function transformRowsWithQuestionConfigs(
     columnConfigs: QuestionColumnConfig[],
     fileUrl: string,
     defaultSource: FeedbackSourceType = 'ATTENDEE',
+    options?: TransformFeedbackBatchOptions,
 ): CreateFeedbackRequest[] {
     return rawRows
         .map((row) => {
@@ -486,16 +644,17 @@ export function transformRowsWithQuestionConfigs(
                 dbRatingScore = Math.min(5, Math.max(1, Math.round(scoreOn5)));
             }
 
-            // Tự động trích xuất highlightContent & improvementContent tiêu biểu từ các câu trả lời có ý nghĩa
+            // Tự động trích xuất highlightContent & improvementContent CHỈ KHI câu hỏi thực sự hỏi về Điểm làm tốt hoặc Điểm BTC cần khắc phục.
+            // Các câu hỏi tự đánh giá bản thân hoặc câu hỏi khác giữ nguyên trong mảng suggestions kèm tiêu đề câu hỏi gốc.
             const meaningfulHighlights: string[] = [];
             const meaningfulImprovements: string[] = [];
 
             for (const s of suggestions) {
                 if (isTrivialSuggestionAnswer(s.answer)) continue;
-                const qLower = s.question.toLowerCase();
-                if (/(impressive|thích|hài lòng|điểm sáng|ấn tượng)/i.test(qLower)) {
+                const qType = classifySuggestionQuestionType(s.question);
+                if (qType === 'HIGHLIGHT') {
                     meaningfulHighlights.push(s.answer);
-                } else {
+                } else if (qType === 'IMPROVEMENT') {
                     meaningfulImprovements.push(s.answer);
                 }
             }
@@ -504,6 +663,13 @@ export function transformRowsWithQuestionConfigs(
                 _schemaVersion: 2,
                 _overallRawScore: overallRawScore,
                 _overallScaleMax: overallScaleMax,
+                ...(options?.formTitle ? { _formTitle: options.formTitle } : {}),
+                ...(options?.formPlatform ? { _formPlatform: options.formPlatform } : {}),
+                ...(options?.formUrl ? { _formUrl: options.formUrl } : {}),
+                ...(options?.importedBy ? { _importedBy: options.importedBy } : {}),
+                ...(typeof options?.skippedRows === 'number'
+                    ? { _skippedRows: options.skippedRows }
+                    : {}),
                 metadata,
                 ratings,
                 suggestions,
@@ -608,13 +774,19 @@ export function extractStructuredFeedback(fb: FeedbackResponse): ExtractedFeedba
         }
     }
 
-    if (fb.highlightContent && suggestions.length === 0) {
-        suggestions.push({
+    if (
+        fb.highlightContent &&
+        !suggestions.some((s) => s.answer === fb.highlightContent)
+    ) {
+        suggestions.unshift({
             question: 'Điểm sáng nổi bật (Highlight)',
             answer: fb.highlightContent,
         });
     }
-    if (fb.improvementContent && suggestions.length === 0) {
+    if (
+        fb.improvementContent &&
+        !suggestions.some((s) => s.answer === fb.improvementContent)
+    ) {
         suggestions.push({
             question: 'Đề xuất cải tiến (Improvement)',
             answer: fb.improvementContent,

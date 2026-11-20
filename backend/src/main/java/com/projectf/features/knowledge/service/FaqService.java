@@ -13,6 +13,8 @@ public interface FaqService {
 
     FaqResponse createFaq(UUID seriesId, CreateFaqRequest request);
 
+    List<FaqResponse> createFaqsBatch(UUID seriesId, List<CreateFaqRequest> requests);
+
     FaqResponse updatePinStatus(UUID faqId, UpdateFaqPinRequest request);
 
     void deleteFaq(UUID faqId);

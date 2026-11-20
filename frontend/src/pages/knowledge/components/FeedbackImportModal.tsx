@@ -13,16 +13,24 @@ import {
     Tag,
     EyeOff,
     BarChart3,
+    Link2,
+    Upload,
+    Globe,
+    HelpCircle,
 } from 'lucide-react';
 import { useS3Upload } from '../../../hooks/useS3Upload';
 import { FileUploader } from '../../../components/common/FileUploader';
 import { submitFeedbacksBatch } from '../../../services/knowledgeService';
+import { useAuth } from '../../../context/authContext';
+import { useActiveEvent } from '../../../context/activeEventContext';
+import { useSuccessToast } from '../../../components/ui/toastContext';
 import {
     parseExcelFile,
     autoClassifyColumns,
     transformRowsWithQuestionConfigs,
     parseNumericScore,
     isTrivialSuggestionAnswer,
+    resolveSpreadsheetExportUrl,
     type ParsedSheetData,
     type QuestionColumnConfig,
 } from '../../../utils/excelParser';
@@ -74,10 +82,25 @@ export const FeedbackImportModal: React.FC<Props> = ({
     const sheetSelectId = useId();
     const sourceSelectId = useId();
     const globalScaleSelectId = useId();
+    const formTitleInputId = useId();
+    const formPlatformSelectId = useId();
+    const formUrlInputId = useId();
+    const sheetUrlInputId = useId();
+
+    const { user } = useAuth();
+    const { currentEvent } = useActiveEvent();
+    const showToast = useSuccessToast();
 
     const [step, setStep] = useState<1 | 2>(1);
+    const [inputMethod, setInputMethod] = useState<'FILE' | 'LINK'>('FILE');
+    const [sheetLinkInput, setSheetLinkInput] = useState<string>('');
+    const [isFetchingLink, setIsFetchingLink] = useState<boolean>(false);
+
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [defaultSource, setDefaultSource] = useState<FeedbackSourceType>('ATTENDEE');
+    const [formTitle, setFormTitle] = useState<string>('');
+    const [formPlatform, setFormPlatform] = useState<string>('Google Forms');
+    const [formUrl, setFormUrl] = useState<string>('');
 
     // Excel parsed data
     const [isParsing, setIsParsing] = useState(false);
@@ -96,12 +119,18 @@ export const FeedbackImportModal: React.FC<Props> = ({
     useEffect(() => {
         if (!isOpen) {
             setStep(1);
+            setInputMethod('FILE');
+            setSheetLinkInput('');
+            setIsFetchingLink(false);
             setSelectedFile(null);
             setParsedData(null);
             setSelectedSheet('');
             setColumnConfigs([]);
             setErrorMessage(null);
             setIsSubmitting(false);
+            setFormTitle('');
+            setFormPlatform('Google Forms');
+            setFormUrl('');
         }
     }, [isOpen]);
 
@@ -122,12 +151,85 @@ export const FeedbackImportModal: React.FC<Props> = ({
             setSelectedSheet(data.currentSheet);
             const classified = autoClassifyColumns(data.headers, data.rawRows);
             setColumnConfigs(classified);
+            const eventName = currentEvent?.name || 'Sự kiện';
+            const lowerName = file.name.toLowerCase();
+            if (lowerName.includes('btc') || lowerName.includes('organizer')) {
+                setDefaultSource('ORGANIZER');
+                setFormTitle(`Đánh giá nội bộ BTC · ${eventName}`);
+            } else if (lowerName.includes('tai_tro') || lowerName.includes('sponsor')) {
+                setDefaultSource('SPONSOR');
+                setFormTitle(`Phản hồi đối tác tài trợ · ${eventName}`);
+            } else if (lowerName.includes('dien_gia') || lowerName.includes('speaker')) {
+                setDefaultSource('SPEAKER');
+                setFormTitle(`Phản hồi diễn giả & mentor · ${eventName}`);
+            } else {
+                setFormTitle(`Khảo sát ${FEEDBACK_SOURCE_LABELS[defaultSource].toLowerCase()} · ${eventName}`);
+            }
+            if (lowerName.includes('ms_forms') || lowerName.includes('microsoft')) {
+                setFormPlatform('Microsoft Forms');
+            } else {
+                setFormPlatform('Google Forms');
+            }
         } catch (err: unknown) {
             setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc tệp Excel/CSV');
             setParsedData(null);
             setColumnConfigs([]);
         } finally {
             setIsParsing(false);
+        }
+    };
+
+    // Handle fetching directly from Google Sheets / OneDrive / Direct XLSX-CSV link
+    const handleFetchFromLink = async () => {
+        setErrorMessage(null);
+        let resolved: ReturnType<typeof resolveSpreadsheetExportUrl>;
+        try {
+            resolved = resolveSpreadsheetExportUrl(sheetLinkInput);
+        } catch (err: unknown) {
+            setErrorMessage(
+                err instanceof Error ? err.message : 'Đường dẫn trang tính không hợp lệ.',
+            );
+            return;
+        }
+
+        setIsFetchingLink(true);
+        try {
+            const response = await fetch(resolved.exportUrl);
+            if (!response.ok) {
+                throw new Error(
+                    `Không thể tải trang tính (HTTP ${response.status}). Hãy đảm bảo quyền chia sẻ đã bật "Bất kỳ ai có liên kết đều có thể xem".`,
+                );
+            }
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('text/html')) {
+                throw new Error(
+                    'Trang tính này đang ở chế độ Riêng tư (Private). Vui lòng mở Google Sheets / OneDrive -> Bấm "Chia sẻ" (Share) -> Chọn "Bất kỳ ai có liên kết đều có thể xem" (Anyone with the link can view).',
+                );
+            }
+
+            const blob = await response.blob();
+            const fetchedFile = new File([blob], resolved.fileName, {
+                type:
+                    blob.type ||
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
+            await handleFileSelect(fetchedFile);
+            setFormPlatform(resolved.platform);
+            setFormUrl(sheetLinkInput.trim());
+        } catch (err: unknown) {
+            const rawMsg = err instanceof Error ? err.message : '';
+            if (rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError')) {
+                setErrorMessage(
+                    'Trình duyệt không thể tải trực tiếp liên kết này (do trang tính chưa bật chia sẻ công khai "Bất kỳ ai có liên kết" hoặc bị chặn CORS). Hãy kiểm tra quyền Chia sẻ của Google Sheets hoặc tải tệp .xlsx về máy.',
+                );
+            } else {
+                setErrorMessage(
+                    rawMsg || 'Không thể lấy dữ liệu từ đường dẫn đã nhập.',
+                );
+            }
+        } finally {
+            setIsFetchingLink(false);
         }
     };
 
@@ -260,6 +362,15 @@ export const FeedbackImportModal: React.FC<Props> = ({
                 columnConfigs,
                 fileUrl,
                 defaultSource,
+                {
+                    formTitle:
+                        formTitle.trim() ||
+                        `Khảo sát ${FEEDBACK_SOURCE_LABELS[defaultSource].toLowerCase()} · ${currentEvent?.name || 'Sự kiện'}`,
+                    formPlatform,
+                    formUrl: formUrl.trim() || undefined,
+                    importedBy: user?.fullName || 'Người dùng hiện tại',
+                    skippedRows: parsedData.skippedSummaryRows,
+                },
             );
 
             if (requests.length === 0) {
@@ -270,6 +381,7 @@ export const FeedbackImportModal: React.FC<Props> = ({
             await submitFeedbacksBatch(eventId, requests);
 
             // 4. Refresh parent view and close
+            showToast(`Đã import thành công ${requests.length} phản hồi khảo sát!`);
             await onSuccess();
             onClose();
         } catch (err: unknown) {
@@ -328,26 +440,149 @@ export const FeedbackImportModal: React.FC<Props> = ({
 
                     {step === 1 && (
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                    Chọn tệp kết quả xuất từ Form (Google Forms, Microsoft Forms, CSV) *
-                                </label>
-                                <FileUploader
-                                    category="FEEDBACK"
-                                    selectedFile={selectedFile}
-                                    onFileSelect={handleFileSelect}
-                                    isUploading={isParsing}
-                                    progress={0}
-                                    error={null}
-                                    description="Hỗ trợ .xlsx, .xls, .csv (Tối đa 15MB theo quy định bảo mật hệ thống)"
-                                />
+                            {/* Segmented Input Method Switcher: Upload File vs Paste Google Sheets / Online Link */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
+                                <span className="text-xs font-semibold text-slate-700">
+                                    Phương thức lấy dữ liệu khảo sát:
+                                </span>
+                                <div className="inline-flex items-center rounded-xl bg-slate-100 p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setInputMethod('FILE');
+                                            setErrorMessage(null);
+                                        }}
+                                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                            inputMethod === 'FILE'
+                                                ? 'bg-white text-emerald-700 shadow-2xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Upload className="h-3.5 w-3.5" />
+                                        <span>Tải tệp từ máy (.xlsx, .csv)</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setInputMethod('LINK');
+                                            setErrorMessage(null);
+                                        }}
+                                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                            inputMethod === 'LINK'
+                                                ? 'bg-white text-emerald-700 shadow-2xs'
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        <Link2 className="h-3.5 w-3.5" />
+                                        <span>Dán link Google Sheets / OneDrive</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            {isParsing && (
+                            {inputMethod === 'FILE' ? (
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                        Chọn tệp kết quả xuất từ Form (Google Forms, Microsoft Forms, CSV) *
+                                    </label>
+                                    <FileUploader
+                                        category="FEEDBACK"
+                                        selectedFile={selectedFile}
+                                        onFileSelect={handleFileSelect}
+                                        isUploading={isParsing}
+                                        progress={0}
+                                        error={null}
+                                        description="Hỗ trợ .xlsx, .xls, .csv (Tối đa 15MB theo quy định bảo mật hệ thống)"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3.5">
+                                    <div>
+                                        <label
+                                            htmlFor={sheetUrlInputId}
+                                            className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-1.5"
+                                        >
+                                            <Globe className="h-3.5 w-3.5 text-emerald-600" />
+                                            <span>
+                                                Đường dẫn Google Sheets hoặc OneDrive Excel liên kết với Form *
+                                            </span>
+                                        </label>
+
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <input
+                                                id={sheetUrlInputId}
+                                                type="url"
+                                                value={sheetLinkInput}
+                                                onChange={(e) => setSheetLinkInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleFetchFromLink();
+                                                    }
+                                                }}
+                                                placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
+                                                className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleFetchFromLink}
+                                                disabled={
+                                                    !sheetLinkInput.trim() ||
+                                                    isFetchingLink ||
+                                                    isParsing
+                                                }
+                                                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-800 transition-colors disabled:opacity-50 shrink-0"
+                                            >
+                                                {isFetchingLink ? (
+                                                    <>
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        <span>Đang tải bảng tính...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Link2 className="h-3.5 w-3.5" />
+                                                        <span>Lấy dữ liệu từ Link</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick 2-step guide on how to get the link from Google Forms / MS Forms */}
+                                    <div className="rounded-lg bg-white border border-slate-200/80 p-3 text-[11px] text-slate-600 space-y-1.5">
+                                        <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                            <HelpCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                            <span>
+                                                Cách lấy link kéo dữ liệu trực tiếp (không cần tải file về máy):
+                                            </span>
+                                        </div>
+                                        <ol className="list-decimal list-inside space-y-1 text-slate-600 pl-0.5">
+                                            <li>
+                                                Trong <strong>Google Forms</strong> (tab{' '}
+                                                <em>Câu trả lời / Responses</em>), bấm{' '}
+                                                <strong>Liên kết với Trang tính (Link to Sheets)</strong>.
+                                            </li>
+                                            <li>
+                                                Mở file Google Sheets đó, bấm nút{' '}
+                                                <strong>Chia sẻ (Share)</strong> ở góc phải &rarr;
+                                                chọn{' '}
+                                                <strong className="text-emerald-700">
+                                                    Bất kỳ ai có liên kết đều có thể xem (Anyone with
+                                                    the link can view)
+                                                </strong>{' '}
+                                                rồi copy link dán vào ô trên.
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(isParsing || isFetchingLink) && (
                                 <div className="flex items-center justify-center gap-2 py-4 text-xs font-semibold text-emerald-700">
                                     <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                                     <span>
-                                        Đang đọc bảng tính, phân loại câu hỏi và nhận diện thang điểm...
+                                        {isFetchingLink
+                                            ? 'Đang kết nối và kéo dữ liệu trực tiếp từ liên kết trang tính...'
+                                            : 'Đang đọc bảng tính, phân loại câu hỏi và nhận diện thang điểm...'}
                                     </span>
                                 </div>
                             )}
@@ -394,27 +629,82 @@ export const FeedbackImportModal: React.FC<Props> = ({
                                         </div>
                                     )}
 
-                                    <div>
-                                        <label
-                                            htmlFor={sourceSelectId}
-                                            className="block text-xs font-medium text-slate-700 mb-1"
-                                        >
-                                            Nhóm đối tượng khảo sát:
-                                        </label>
-                                        <select
-                                            id={sourceSelectId}
-                                            value={defaultSource}
-                                            onChange={(e) =>
-                                                setDefaultSource(e.target.value as FeedbackSourceType)
-                                            }
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
-                                        >
-                                            {Object.entries(FEEDBACK_SOURCE_LABELS).map(([k, v]) => (
-                                                <option key={k} value={k}>
-                                                    {v} ({k})
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label
+                                                htmlFor={formTitleInputId}
+                                                className="block text-xs font-medium text-slate-700 mb-1"
+                                            >
+                                                Tên đợt / Form khảo sát:
+                                            </label>
+                                            <input
+                                                id={formTitleInputId}
+                                                type="text"
+                                                value={formTitle}
+                                                onChange={(e) => setFormTitle(e.target.value)}
+                                                placeholder="VD: Khảo sát người tham dự · Orientation Day K21"
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label
+                                                htmlFor={sourceSelectId}
+                                                className="block text-xs font-medium text-slate-700 mb-1"
+                                            >
+                                                Nhóm đối tượng khảo sát:
+                                            </label>
+                                            <select
+                                                id={sourceSelectId}
+                                                value={defaultSource}
+                                                onChange={(e) =>
+                                                    setDefaultSource(e.target.value as FeedbackSourceType)
+                                                }
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                            >
+                                                {Object.entries(FEEDBACK_SOURCE_LABELS).map(([k, v]) => (
+                                                    <option key={k} value={k}>
+                                                        {v} ({k})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label
+                                                htmlFor={formPlatformSelectId}
+                                                className="block text-xs font-medium text-slate-700 mb-1"
+                                            >
+                                                Nền tảng thu thập:
+                                            </label>
+                                            <select
+                                                id={formPlatformSelectId}
+                                                value={formPlatform}
+                                                onChange={(e) => setFormPlatform(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                            >
+                                                <option value="Google Forms">Google Forms</option>
+                                                <option value="Microsoft Forms">Microsoft Forms</option>
+                                                <option value="CSV / Excel">CSV / Excel</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label
+                                                htmlFor={formUrlInputId}
+                                                className="block text-xs font-medium text-slate-700 mb-1"
+                                            >
+                                                Đường dẫn Form gốc (Tùy chọn):
+                                            </label>
+                                            <input
+                                                id={formUrlInputId}
+                                                type="url"
+                                                value={formUrl}
+                                                onChange={(e) => setFormUrl(e.target.value)}
+                                                placeholder="https://docs.google.com/forms/..."
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}

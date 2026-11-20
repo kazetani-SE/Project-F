@@ -53,6 +53,19 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional
+    public List<FaqResponse> createFaqsBatch(UUID seriesId, List<CreateFaqRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        List<EventFaq> entities = requests.stream()
+                .map(req -> faqMapper.toEntity(seriesId, req))
+                .toList();
+        List<EventFaq> saved = faqRepository.saveAll(entities);
+        return saved.stream().map(faqMapper::toResponse).toList();
+    }
+
+    @Override
+    @Transactional
     public FaqResponse updatePinStatus(UUID faqId, UpdateFaqPinRequest request) {
         EventFaq faq = faqRepository.findById(faqId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy FAQ với ID: " + faqId));
