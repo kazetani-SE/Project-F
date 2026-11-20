@@ -10,8 +10,6 @@ interface UseFinanceDashboardOptions {
 
 export function useFinanceDashboard({
     eventId,
-    fallbackEventTitle = 'Sự kiện hiện hành',
-    fallbackSeasonLabel = 'Mùa hiện tại',
 }: UseFinanceDashboardOptions) {
     const [summary, setSummary] = useState<EventBudgetSummary | null>(null);
     const [loading, setLoading] = useState(false);
@@ -27,23 +25,16 @@ export function useFinanceDashboard({
         setError(null);
         try {
             const data = await financeService.getBudgetSummary(eventId);
-            setSummary(data);
-        } catch {
-            // Fallback hiển thị dữ liệu ước tính nếu SQL View DB chưa có dữ liệu mẫu
-            setSummary({
-                eventId,
-                eventTitle: fallbackEventTitle,
-                seasonName: fallbackSeasonLabel,
-                allocatedFund: 25000000,
-                totalBudgetEstimated: 22500000,
-                totalActualSpent: 16800000,
-                remainingAllocatedFund: 8200000,
-                varianceAgainstEstimate: 5700000,
-            });
+            setSummary(data ?? null);
+        } catch (err: unknown) {
+            const errorObj = err as { message?: string };
+            const msg = errorObj?.message || 'Không thể tải dữ liệu tổng hợp tài chính từ hệ thống.';
+            setError(msg);
+            setSummary(null);
         } finally {
             setLoading(false);
         }
-    }, [eventId, fallbackEventTitle, fallbackSeasonLabel]);
+    }, [eventId]);
 
     useEffect(() => {
         loadSummary();
@@ -56,7 +47,8 @@ export function useFinanceDashboard({
 
     const estimatedPercentage = useMemo(() => {
         if (!summary || summary.allocatedFund <= 0) return 0;
-        return Math.min(100, Math.round((summary.totalBudgetEstimated / summary.allocatedFund) * 100));
+        const est = summary.totalBudgetEst ?? summary.totalBudgetEstimated ?? 0;
+        return Math.min(100, Math.round((est / summary.allocatedFund) * 100));
     }, [summary]);
 
     return {
@@ -68,4 +60,3 @@ export function useFinanceDashboard({
         reloadSummary: loadSummary,
     };
 }
-

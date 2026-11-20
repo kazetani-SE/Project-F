@@ -1,20 +1,35 @@
 import React from 'react';
-import { Wallet, Calculator, Receipt, CheckCircle2 } from 'lucide-react';
+import { Wallet, Calculator, Receipt, CheckCircle2, RefreshCw } from 'lucide-react';
 import { KpiCard } from '../components/KpiCard';
 import type { EventBudgetSummary } from '../../../../types/models/finance';
 
 interface DashboardKpiPartProps {
     summary: EventBudgetSummary | null;
+    loading?: boolean;
     spentPercentage: number;
     estimatedPercentage: number;
 }
 
 export const DashboardKpiPart: React.FC<DashboardKpiPartProps> = ({
     summary,
+    loading = false,
     spentPercentage,
     estimatedPercentage,
 }) => {
-    const isOverBudget = (summary?.remainingAllocatedFund ?? 0) < 0;
+    if (loading && !summary) {
+        return (
+            <div className="flex h-32 items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-2 text-slate-500">
+                    <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
+                    <span className="text-sm font-medium">Đang cập nhật số liệu thời gian thực...</span>
+                </div>
+            </div>
+        );
+    }
+
+    const estimatedBudget = summary?.totalBudgetEst ?? summary?.totalBudgetEstimated ?? 0;
+    const remainingFund = summary?.remainingFund ?? summary?.remainingAllocatedFund ?? 0;
+    const isOverBudget = remainingFund < 0;
 
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -29,7 +44,7 @@ export const DashboardKpiPart: React.FC<DashboardKpiPartProps> = ({
 
             <KpiCard
                 title="Dự Trù Đã Duyệt"
-                amount={summary?.totalBudgetEstimated ?? 0}
+                amount={estimatedBudget}
                 icon={<Calculator className="h-5 w-5" />}
                 iconBgClass="bg-purple-50"
                 iconTextClass="text-purple-600"
@@ -47,7 +62,7 @@ export const DashboardKpiPart: React.FC<DashboardKpiPartProps> = ({
 
             <KpiCard
                 title="Quỹ Khả Dụng Còn Lại"
-                amount={summary?.remainingAllocatedFund ?? 0}
+                amount={remainingFund}
                 icon={<CheckCircle2 className="h-5 w-5" />}
                 iconBgClass="bg-emerald-50"
                 iconTextClass="text-emerald-600"
@@ -57,4 +72,3 @@ export const DashboardKpiPart: React.FC<DashboardKpiPartProps> = ({
         </div>
     );
 };
-

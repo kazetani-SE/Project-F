@@ -8,6 +8,8 @@ import { BudgetItemTablePart } from './parts/BudgetItemTablePart';
 import { CreateBudgetItemModalPart } from './parts/CreateBudgetItemModalPart';
 import { AutoProjectModalPart } from './parts/AutoProjectModalPart';
 import { RejectReasonModal } from '../components/RejectReasonModal';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
+import { ErrorModal } from '../components/ErrorModal';
 import type { BudgetItem } from '../../../types/models/finance';
 
 export default function BudgetItemsPage() {
@@ -20,6 +22,9 @@ export default function BudgetItemsPage() {
         filteredItems,
         totalEstimatedSum,
         loading,
+        isSubmitting,
+        errorMessage,
+        clearError,
         statusFilter,
         setStatusFilter,
         categoryFilter,
@@ -37,15 +42,28 @@ export default function BudgetItemsPage() {
         confirmAutoProject,
     } = useBudgetItems(currentEventId ?? undefined);
 
-    // Modals
+    // Form Modals
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [projectModalOpen, setProjectModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [targetRejectItem, setTargetRejectItem] = useState<BudgetItem | null>(null);
 
+    // Delete Confirmation Modal
+    const [deleteTargetItem, setDeleteTargetItem] = useState<BudgetItem | null>(null);
+
     const handleOpenRejectModal = (item: BudgetItem) => {
         setTargetRejectItem(item);
         setRejectModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteTargetItem) return;
+        try {
+            await deleteBudgetItem(deleteTargetItem.id);
+            setDeleteTargetItem(null);
+        } catch {
+            // ErrorModal will display the backend error
+        }
     };
 
     if (!currentEventId || !currentEvent) {
@@ -79,7 +97,7 @@ export default function BudgetItemsPage() {
                     <button
                         onClick={reloadData}
                         disabled={loading}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
                     >
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Làm mới
@@ -129,9 +147,10 @@ export default function BudgetItemsPage() {
             <BudgetItemTablePart
                 items={filteredItems}
                 categories={categories}
+                loading={loading}
                 onApprove={approveBudgetItem}
                 onReject={handleOpenRejectModal}
-                onDelete={deleteBudgetItem}
+                onDelete={(item) => setDeleteTargetItem(item)}
             />
 
             {/* Modals */}
@@ -139,6 +158,7 @@ export default function BudgetItemsPage() {
                 isOpen={createModalOpen}
                 categories={categories}
                 benchmarks={benchmarks}
+                isSubmitting={isSubmitting}
                 onClose={() => setCreateModalOpen(false)}
                 onSubmit={createBudgetItem}
             />
@@ -148,6 +168,7 @@ export default function BudgetItemsPage() {
                 availableEvents={otherEvents}
                 projectedPreview={projectedPreview}
                 loading={projectLoading}
+                isSubmitting={isSubmitting}
                 onClose={() => setProjectModalOpen(false)}
                 onSelectPreviousEvent={previewAutoProject}
                 onConfirm={confirmAutoProject}
@@ -160,10 +181,32 @@ export default function BudgetItemsPage() {
                 onClose={() => setRejectModalOpen(false)}
                 onConfirm={async (reason) => {
                     if (targetRejectItem) {
-                        await rejectBudgetItem(targetRejectItem.id, reason);
-                        setRejectModalOpen(false);
+                        try {
+                            await rejectBudgetItem(targetRejectItem.id, reason);
+                            setRejectModalOpen(false);
+                        } catch {
+                            // ErrorModal will display the backend error
+                        }
                     }
                 }}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmDeleteModal
+                isOpen={!!deleteTargetItem}
+                title="Xóa hạng mục dự trù"
+                itemName={deleteTargetItem?.itemName}
+                message={`Bạn có chắc chắn muốn xóa hạng mục ngân sách "${deleteTargetItem?.itemName}"? Lưu ý: Hạng mục đã phát sinh chi tiêu thực tế được duyệt sẽ không thể xóa.`}
+                isLoading={isSubmitting}
+                onClose={() => setDeleteTargetItem(null)}
+                onConfirm={handleConfirmDelete}
+            />
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={!!errorMessage}
+                message={errorMessage ?? ''}
+                onClose={clearError}
             />
         </div>
     );

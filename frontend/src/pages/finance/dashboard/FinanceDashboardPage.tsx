@@ -88,6 +88,7 @@ export default function FinanceDashboardPage() {
             {/* Layout Parts */}
             <DashboardKpiPart
                 summary={summary}
+                loading={loading}
                 spentPercentage={spentPercentage}
                 estimatedPercentage={estimatedPercentage}
             />

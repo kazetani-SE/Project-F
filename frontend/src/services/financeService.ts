@@ -3,9 +3,14 @@ import type { ApiResponse } from '../types/common/api';
 import type {
     ApprovalStatus,
     AutoProjectBudgetRequest,
+    BenchmarkAiResearchRequest,
+    BenchmarkAiSuggestionResponse,
     BenchmarkResponse,
+    BillScanResponse,
     BudgetCategory,
     BudgetItem,
+    CategoryReplacementOptionsRequest,
+    CategoryReplacementOptionsResponse,
     CreateBenchmarkRequest,
     CreateBudgetCategoryRequest,
     CreateBudgetItemRequest,
@@ -14,6 +19,7 @@ import type {
     EventBudgetSummary,
     Expense,
     ExpenseReceipt,
+    GeminiPingResponse,
     ProjectedBudgetItem,
     ReviewBudgetItemRequest,
     ReviewExpenseRequest,
@@ -174,5 +180,63 @@ export const financeService = {
     async getBudgetSummary(eventId: string): Promise<EventBudgetSummary> {
         const res = await apiClient.get<ApiResponse<EventBudgetSummary>>(`${getFinanceBase(eventId)}/summary`);
         return res.data.data;
+    },
+
+    // --- Thay thế danh mục (auto-projection flow) ---
+    async getCategoryReplacementOptions(
+        eventId: string,
+        body: CategoryReplacementOptionsRequest,
+    ): Promise<CategoryReplacementOptionsResponse> {
+        const res = await apiClient.post<ApiResponse<CategoryReplacementOptionsResponse>>(
+            `${getFinanceBase(eventId)}/budgets/replacement-options`,
+            body,
+        );
+        return res.data.data;
+    },
+
+    // =========================================================================
+    // AI
+    // =========================================================================
+
+    /**
+     * Nghiên cứu giá thị trường bằng AI.
+     * POST /v1/events/{eventId}/finance/ai-research
+     * Response KHÔNG bọc ApiResponse.
+     */
+    async aiResearchBenchmark(
+        eventId: string,
+        data: BenchmarkAiResearchRequest,
+    ): Promise<BenchmarkAiSuggestionResponse> {
+        const res = await apiClient.post<BenchmarkAiSuggestionResponse>(
+            `${getFinanceBase(eventId)}/ai-research`,
+            data,
+        );
+        return res.data;
+    },
+
+    /**
+     * Scan hóa đơn bằng AI (multipart/form-data).
+     * POST /v1/events/{eventId}/finance/scan-bill
+     */
+    async scanBill(eventId: string, file: File): Promise<BillScanResponse> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await apiClient.post<ApiResponse<BillScanResponse>>(
+            `${getFinanceBase(eventId)}/scan-bill`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } },
+        );
+        return res.data.data;
+    },
+
+    /**
+     * Ping Gemini gateway để kiểm tra kết nối AI.
+     * GET /v1/events/{eventId}/finance/ping
+     */
+    async pingGemini(eventId: string, model?: string, useSearch = false): Promise<GeminiPingResponse> {
+        const params: Record<string, string | boolean> = { useSearch };
+        if (model) params.model = model;
+        const res = await apiClient.get<GeminiPingResponse>(`${getFinanceBase(eventId)}/ping`, { params });
+        return res.data;
     },
 };

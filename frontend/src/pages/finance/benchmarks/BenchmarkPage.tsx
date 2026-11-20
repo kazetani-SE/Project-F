@@ -7,6 +7,8 @@ import { BenchmarkTablePart } from './parts/BenchmarkTablePart';
 import { CategoryGridPart } from './parts/CategoryGridPart';
 import { BenchmarkModalPart } from './parts/BenchmarkModalPart';
 import { CategoryModalPart } from './parts/CategoryModalPart';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
+import { ErrorModal } from '../components/ErrorModal';
 import type { ItemPriceBenchmark, BudgetCategory } from '../../../types/models/finance';
 
 export default function BenchmarkPage() {
@@ -18,6 +20,9 @@ export default function BenchmarkPage() {
         benchmarks,
         filteredBenchmarks,
         loading,
+        isSubmitting,
+        errorMessage,
+        clearError,
         statusMsg,
         setStatusMsg,
         searchKeyword,
@@ -33,12 +38,16 @@ export default function BenchmarkPage() {
         deleteBenchmark,
     } = useBenchmarkCatalog(currentEventId ?? undefined);
 
-    // Modal states
+    // Form Modals
     const [benchmarkModalOpen, setBenchmarkModalOpen] = useState(false);
     const [editingBenchmark, setEditingBenchmark] = useState<ItemPriceBenchmark | null>(null);
 
     const [categoryModalOpen, setCategoryModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<BudgetCategory | null>(null);
+
+    // Delete Confirmation Modals
+    const [deleteBenchmarkTarget, setDeleteBenchmarkTarget] = useState<ItemPriceBenchmark | null>(null);
+    const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<BudgetCategory | null>(null);
 
     const handleOpenBenchmarkModal = (bm?: ItemPriceBenchmark) => {
         setEditingBenchmark(bm ?? null);
@@ -48,6 +57,26 @@ export default function BenchmarkPage() {
     const handleOpenCategoryModal = (cat?: BudgetCategory) => {
         setEditingCategory(cat ?? null);
         setCategoryModalOpen(true);
+    };
+
+    const handleConfirmDeleteBenchmark = async () => {
+        if (!deleteBenchmarkTarget) return;
+        try {
+            await deleteBenchmark(deleteBenchmarkTarget.id);
+            setDeleteBenchmarkTarget(null);
+        } catch {
+            // ErrorModal will display the backend error
+        }
+    };
+
+    const handleConfirmDeleteCategory = async () => {
+        if (!deleteCategoryTarget) return;
+        try {
+            await deleteCategory(deleteCategoryTarget.id);
+            setDeleteCategoryTarget(null);
+        } catch {
+            // ErrorModal will display the backend error
+        }
     };
 
     return (
@@ -67,7 +96,7 @@ export default function BenchmarkPage() {
                     <button
                         onClick={reloadData}
                         disabled={loading}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
                     >
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Làm mới
@@ -143,24 +172,27 @@ export default function BenchmarkPage() {
                     <BenchmarkTablePart
                         benchmarks={filteredBenchmarks}
                         categories={categories}
+                        loading={loading}
                         onEdit={handleOpenBenchmarkModal}
-                        onDelete={deleteBenchmark}
+                        onDelete={(bm) => setDeleteBenchmarkTarget(bm)}
                     />
                 </div>
             ) : (
                 <CategoryGridPart
                     categories={categories}
                     benchmarks={benchmarks}
+                    loading={loading}
                     onEdit={handleOpenCategoryModal}
-                    onDelete={deleteCategory}
+                    onDelete={(cat) => setDeleteCategoryTarget(cat)}
                 />
             )}
 
-            {/* Modals */}
+            {/* Form Modals */}
             <BenchmarkModalPart
                 isOpen={benchmarkModalOpen}
                 initialData={editingBenchmark}
                 categories={categories}
+                isSubmitting={isSubmitting}
                 onClose={() => setBenchmarkModalOpen(false)}
                 onSubmit={async (data) => {
                     if (editingBenchmark) {
@@ -174,6 +206,7 @@ export default function BenchmarkPage() {
             <CategoryModalPart
                 isOpen={categoryModalOpen}
                 initialData={editingCategory}
+                isSubmitting={isSubmitting}
                 onClose={() => setCategoryModalOpen(false)}
                 onSubmit={async (data) => {
                     if (editingCategory) {
@@ -182,6 +215,34 @@ export default function BenchmarkPage() {
                         await createCategory(data);
                     }
                 }}
+            />
+
+            {/* Delete Confirmation Modals */}
+            <ConfirmDeleteModal
+                isOpen={!!deleteBenchmarkTarget}
+                title="Xóa vật tư benchmark"
+                itemName={deleteBenchmarkTarget?.itemName}
+                message={`Bạn có chắc chắn muốn xóa đơn giá benchmark "${deleteBenchmarkTarget?.itemName}"? Thao tác này sẽ xóa vĩnh viễn khỏi danh mục tham chiếu.`}
+                isLoading={isSubmitting}
+                onClose={() => setDeleteBenchmarkTarget(null)}
+                onConfirm={handleConfirmDeleteBenchmark}
+            />
+
+            <ConfirmDeleteModal
+                isOpen={!!deleteCategoryTarget}
+                title="Xóa danh mục kinh phí"
+                itemName={deleteCategoryTarget?.name}
+                message={`Bạn có chắc chắn muốn xóa danh mục "${deleteCategoryTarget?.name}"? Các vật tư liên quan có thể bị ảnh hưởng.`}
+                isLoading={isSubmitting}
+                onClose={() => setDeleteCategoryTarget(null)}
+                onConfirm={handleConfirmDeleteCategory}
+            />
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={!!errorMessage}
+                message={errorMessage ?? ''}
+                onClose={clearError}
             />
         </div>
     );

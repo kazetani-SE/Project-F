@@ -9,7 +9,7 @@ interface BudgetItemTableRowProps {
     categories: BudgetCategory[];
     onApprove: (item: BudgetItem) => void;
     onReject: (item: BudgetItem) => void;
-    onDelete: (id: string) => void;
+    onDelete: (item: BudgetItem) => void;
 }
 
 export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
@@ -19,7 +19,8 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
     onReject,
     onDelete,
 }) => {
-    const total = item.totalEstimatedAmount ?? (item.quantity * item.estimatedUnitPrice);
+    const unitPrice = item.estUnitPrice ?? item.estimatedUnitPrice ?? 0;
+    const total = item.totalEstAmount ?? item.totalEstimatedAmount ?? (item.quantity * unitPrice);
     const categoryName = categories.find(c => c.id === item.categoryId)?.name ?? 'Khác';
 
     return (
@@ -49,7 +50,7 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
                 {item.quantity} {item.unit}
             </td>
             <td className="px-4 py-3.5 text-slate-600">
-                {formatVND(item.estimatedUnitPrice)}
+                {formatVND(unitPrice)}
             </td>
             <td className="px-4 py-3.5 font-bold text-slate-900">
                 {formatVND(total)}
@@ -86,7 +87,7 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
                         </button>
                     )}
                     <button
-                        onClick={() => onDelete(item.id)}
+                        onClick={() => onDelete(item)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                         title="Xóa"
                     >
@@ -97,4 +98,3 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
         </tr>
     );
 };
-

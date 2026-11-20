@@ -6,7 +6,7 @@ interface CategoryCardProps {
     category: BudgetCategory;
     benchmarks: ItemPriceBenchmark[];
     onEdit: (cat: BudgetCategory) => void;
-    onDelete: (id: string) => void;
+    onDelete: (cat: BudgetCategory) => void;
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({
@@ -36,7 +36,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
                             <Edit2 className="h-3.5 w-3.5" />
                         </button>
                         <button
-                            onClick={() => onDelete(category.id)}
+                            onClick={() => onDelete(category)}
                             className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                             title="Xóa danh mục"
                         >
@@ -54,4 +54,3 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
         </div>
     );
 };
-

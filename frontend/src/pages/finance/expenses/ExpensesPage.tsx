@@ -9,7 +9,9 @@ import { CreateExpenseModalPart } from './parts/CreateExpenseModalPart';
 import { ReceiptsModalPart } from './parts/ReceiptsModalPart';
 import { ReceiptLightboxPart } from './parts/ReceiptLightboxPart';
 import { RejectReasonModal } from '../components/RejectReasonModal';
-import type { Expense } from '../../../types/models/finance';
+import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
+import { ErrorModal } from '../components/ErrorModal';
+import type { Expense, ExpenseReceipt } from '../../../types/models/finance';
 
 export default function ExpensesPage() {
     const { currentEvent, currentEventId } = useActiveEvent();
@@ -20,6 +22,9 @@ export default function ExpensesPage() {
         filteredExpenses,
         totalSpentSum,
         loading,
+        isSubmitting,
+        errorMessage,
+        clearError,
         statusFilter,
         setStatusFilter,
         notification,
@@ -30,9 +35,10 @@ export default function ExpensesPage() {
         rejectExpense,
         deleteExpense,
         addReceipt,
+        deleteReceipt,
     } = useExpenses(currentEventId ?? undefined);
 
-    // Modals
+    // Form Modals
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [receiptsModalOpen, setReceiptsModalOpen] = useState(false);
     const [currentExpenseForReceipts, setCurrentExpenseForReceipts] = useState<Expense | null>(null);
@@ -40,6 +46,10 @@ export default function ExpensesPage() {
 
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [targetRejectExpense, setTargetRejectExpense] = useState<Expense | null>(null);
+
+    // Delete Confirmation Modals
+    const [deleteExpenseTarget, setDeleteExpenseTarget] = useState<Expense | null>(null);
+    const [deleteReceiptTarget, setDeleteReceiptTarget] = useState<{ expenseId: string; receipt: ExpenseReceipt } | null>(null);
 
     const handleOpenReceiptsModal = (exp: Expense) => {
         setCurrentExpenseForReceipts(exp);
@@ -49,6 +59,34 @@ export default function ExpensesPage() {
     const handleOpenRejectModal = (exp: Expense) => {
         setTargetRejectExpense(exp);
         setRejectModalOpen(true);
+    };
+
+    const handleConfirmDeleteExpense = async () => {
+        if (!deleteExpenseTarget) return;
+        try {
+            await deleteExpense(deleteExpenseTarget.id);
+            setDeleteExpenseTarget(null);
+        } catch {
+            // Error modal will be displayed
+        }
+    };
+
+    const handleConfirmDeleteReceipt = async () => {
+        if (!deleteReceiptTarget) return;
+        try {
+            await deleteReceipt(deleteReceiptTarget.expenseId, deleteReceiptTarget.receipt.id);
+            // Update local modal state
+            setCurrentExpenseForReceipts(prev => {
+                if (!prev || prev.id !== deleteReceiptTarget.expenseId) return prev;
+                return {
+                    ...prev,
+                    receipts: (prev.receipts ?? []).filter(r => r.id !== deleteReceiptTarget.receipt.id),
+                };
+            });
+            setDeleteReceiptTarget(null);
+        } catch {
+            // Error modal will be displayed
+        }
     };
 
     if (!currentEventId || !currentEvent) {
@@ -80,7 +118,7 @@ export default function ExpensesPage() {
                     <button
                         onClick={reloadData}
                         disabled={loading}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
                     >
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Làm mới
@@ -123,16 +161,25 @@ export default function ExpensesPage() {
             <ExpenseTablePart
                 expenses={filteredExpenses}
                 budgetItems={budgetItems}
+                loading={loading}
                 onOpenReceipts={handleOpenReceiptsModal}
-                onApprove={approveExpense}
+                onApprove={async (exp) => {
+                    try {
+                        await approveExpense(exp);
+                    } catch {
+                        // Error modal will be displayed
+                    }
+                }}
                 onReject={handleOpenRejectModal}
-                onDelete={deleteExpense}
+                onDelete={(exp) => setDeleteExpenseTarget(exp)}
             />
 
             {/* Modals */}
             <CreateExpenseModalPart
                 isOpen={createModalOpen}
+                eventId={currentEventId ?? ''}
                 budgetItems={budgetItems}
+                isSubmitting={isSubmitting}
                 onClose={() => setCreateModalOpen(false)}
                 onSubmit={createExpense}
             />
@@ -140,14 +187,19 @@ export default function ExpensesPage() {
             <ReceiptsModalPart
                 isOpen={receiptsModalOpen}
                 expense={currentExpenseForReceipts}
+                isSubmitting={isSubmitting}
                 onClose={() => setReceiptsModalOpen(false)}
                 onAddReceipt={async (expId, data) => {
                     await addReceipt(expId, data);
-                    // update local state for current expense in modal
                     setCurrentExpenseForReceipts(prev => prev ? {
                         ...prev,
                         receipts: [...(prev.receipts ?? []), { id: 'rc_' + Date.now(), expenseId: expId, ...data }]
                     } : null);
+                }}
+                onDeleteReceipt={(receipt) => {
+                    if (currentExpenseForReceipts) {
+                        setDeleteReceiptTarget({ expenseId: currentExpenseForReceipts.id, receipt });
+                    }
                 }}
                 onViewImage={(url) => setLightboxImageUrl(url)}
             />
@@ -164,10 +216,43 @@ export default function ExpensesPage() {
                 onClose={() => setRejectModalOpen(false)}
                 onConfirm={async (reason) => {
                     if (targetRejectExpense) {
-                        await rejectExpense(targetRejectExpense.id, reason);
-                        setRejectModalOpen(false);
+                        try {
+                            await rejectExpense(targetRejectExpense.id, reason);
+                            setRejectModalOpen(false);
+                        } catch {
+                            // Error modal will be displayed
+                        }
                     }
                 }}
+            />
+
+            {/* Delete Expense Modal */}
+            <ConfirmDeleteModal
+                isOpen={!!deleteExpenseTarget}
+                title="Xóa khoản chi thực tế"
+                itemName={deleteExpenseTarget?.itemName}
+                message={`Bạn có chắc chắn muốn xóa khoản thực chi "${deleteExpenseTarget?.itemName}"? Thao tác này sẽ xóa đồng thời các hóa đơn chứng từ liên quan.`}
+                isLoading={isSubmitting}
+                onClose={() => setDeleteExpenseTarget(null)}
+                onConfirm={handleConfirmDeleteExpense}
+            />
+
+            {/* Delete Receipt Modal */}
+            <ConfirmDeleteModal
+                isOpen={!!deleteReceiptTarget}
+                title="Xóa chứng từ / hóa đơn"
+                itemName={deleteReceiptTarget?.receipt.receiptCode || deleteReceiptTarget?.receipt.supplierName || 'Hóa đơn'}
+                message="Bạn có chắc chắn muốn xóa chứng từ hóa đơn này khỏi khoản chi không?"
+                isLoading={isSubmitting}
+                onClose={() => setDeleteReceiptTarget(null)}
+                onConfirm={handleConfirmDeleteReceipt}
+            />
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={!!errorMessage}
+                message={errorMessage ?? ''}
+                onClose={clearError}
             />
         </div>
     );
