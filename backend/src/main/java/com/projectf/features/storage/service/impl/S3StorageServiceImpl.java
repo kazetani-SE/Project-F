@@ -113,37 +113,39 @@ public class S3StorageServiceImpl implements StorageService {
 
         long now = System.currentTimeMillis();
         CachedDownloadUrl cached = downloadUrlCache.get(cacheKey);
+        PresignedDownloadResponse response;
         if (cached != null && cached.expiresAtMillis() > now) {
-            return cached.response();
+            response = cached.response();
+        } else {
+            GetObjectRequest.Builder requestBuilder = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(cleanKey)
+                    .responseCacheControl("public, max-age=600, immutable");
+
+            if (versionId != null && !versionId.isBlank()) {
+                requestBuilder.versionId(versionId);
+            }
+
+            GetObjectRequest getObjectRequest = requestBuilder.build();
+
+            int expMinutes = 15;
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(expMinutes))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
+
+            response = new PresignedDownloadResponse(
+                    presigned.url().toString(),
+                    cleanKey,
+                    expMinutes
+            );
+
+            // Cache 10 phút trên Server để chuỗi URL không bị thay đổi chữ ký liên tục, giúp Trình duyệt nhận diện Disk Cache
+            downloadUrlCache.put(cacheKey, new CachedDownloadUrl(response, now + 10L * 60 * 1000));
         }
 
-        GetObjectRequest.Builder requestBuilder = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(cleanKey)
-                .responseCacheControl("public, max-age=600, immutable");
-
-        if (versionId != null && !versionId.isBlank()) {
-            requestBuilder.versionId(versionId);
-        }
-
-        GetObjectRequest getObjectRequest = requestBuilder.build();
-
-        int expMinutes = 15;
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(expMinutes))
-                .getObjectRequest(getObjectRequest)
-                .build();
-
-        PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
-
-        PresignedDownloadResponse response = new PresignedDownloadResponse(
-                presigned.url().toString(),
-                cleanKey,
-                expMinutes
-        );
-
-        // Cache 10 phút trên Server để chuỗi URL không bị thay đổi chữ ký liên tục, giúp Trình duyệt nhận diện Disk Cache
-        downloadUrlCache.put(cacheKey, new CachedDownloadUrl(response, now + 10L * 60 * 1000));
         return response;
     }
 

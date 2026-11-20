@@ -8,6 +8,7 @@ import com.projectf.features.media.entity.EventMediaAsset;
 import com.projectf.features.media.mapper.MediaAssetMapper;
 import com.projectf.features.media.repository.MediaAssetRepository;
 import com.projectf.features.media.service.MediaAssetService;
+import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.service.StorageService;
 import java.util.List;
 import java.util.Set;
@@ -120,32 +121,30 @@ public class MediaAssetServiceImpl implements MediaAssetService {
 
     private MediaAssetResponse enrichResponse(EventMediaAsset asset) {
         MediaAssetResponse res = mediaMapper.toResponse(asset);
-        if (storageService == null) {
-            return res;
-        }
-
-        String previewUrl = res.previewImageUrl();
-        if (previewUrl != null && !previewUrl.isBlank() && previewUrl.contains(".amazonaws.com/")) {
-            try {
-                var presigned = storageService.generatePresignedDownloadUrl(previewUrl);
-                if (presigned != null && presigned.downloadUrl() != null) {
-                    return new MediaAssetResponse(
-                            res.id(),
-                            res.eventId(),
-                            res.assetType(),
-                            res.title(),
-                            res.specifications(),
-                            res.designFileUrl(),
-                            presigned.downloadUrl(),
-                            res.isPrinted(),
-                            res.approvalStatus(),
-                            res.approvedBy(),
-                            res.createdAt()
-                    );
-                }
-            } catch (Exception ex) {
-                if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Không thể tạo pre-signed URL cho previewImageUrl [assetId={}, url={}]: {}", res.id(), previewUrl, ex.getMessage());
+        if (storageService != null) {
+            String previewUrl = res.previewImageUrl();
+            if (previewUrl != null && !previewUrl.isBlank() && previewUrl.contains(".amazonaws.com/")) {
+                try {
+                    PresignedDownloadResponse presigned = storageService.generatePresignedDownloadUrl(previewUrl);
+                    if (presigned != null && presigned.downloadUrl() != null) {
+                        res = new MediaAssetResponse(
+                                res.id(),
+                                res.eventId(),
+                                res.assetType(),
+                                res.title(),
+                                res.specifications(),
+                                res.designFileUrl(),
+                                presigned.downloadUrl(),
+                                res.isPrinted(),
+                                res.approvalStatus(),
+                                res.approvedBy(),
+                                res.createdAt()
+                        );
+                    }
+                } catch (Exception ex) {
+                    if (LOGGER.isWarnEnabled()) {
+                        LOGGER.warn("Không thể tạo pre-signed URL cho previewImageUrl [assetId={}, url={}]: {}", res.id(), previewUrl, ex.getMessage());
+                    }
                 }
             }
         }
