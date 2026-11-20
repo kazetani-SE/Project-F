@@ -25,6 +25,8 @@ export const CreateBudgetItemModalPart: React.FC<CreateBudgetItemModalPartProps>
     const [unit, setUnit] = useState('Cái');
     const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
     const [notes, setNotes] = useState('');
+    const [supplierName, setSupplierName] = useState('');
+    const [supplierLink, setSupplierLink] = useState('');
 
     useEffect(() => {
         if (isOpen) {
@@ -35,6 +37,8 @@ export const CreateBudgetItemModalPart: React.FC<CreateBudgetItemModalPartProps>
             setUnit('Cái');
             setEstimatedPrice(0);
             setNotes('');
+            setSupplierName('');
+            setSupplierLink('');
         }
     }, [isOpen, categories]);
 
@@ -49,12 +53,18 @@ export const CreateBudgetItemModalPart: React.FC<CreateBudgetItemModalPartProps>
             setItemName(bm.itemName);
             setUnit(bm.unit);
             setEstimatedPrice(bm.currentMarketPrice);
+            setSupplierName(bm.supplierReference ?? '');
+            setSupplierLink('');
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!categoryId || !itemName.trim()) return;
+        if (!selectedBenchmarkId && !supplierName.trim()) {
+            alert('Bắt buộc nhập nhà cung cấp khi không chọn đơn giá benchmark có sẵn.');
+            return;
+        }
 
         await onSubmit({
             categoryId,
@@ -64,6 +74,8 @@ export const CreateBudgetItemModalPart: React.FC<CreateBudgetItemModalPartProps>
             unit: unit.trim(),
             estimatedUnitPrice: estimatedPrice,
             notes: notes.trim() || undefined,
+            supplierName: !selectedBenchmarkId ? supplierName.trim() : undefined,
+            supplierLink: !selectedBenchmarkId && supplierLink.trim() ? supplierLink.trim() : undefined,
         });
         onClose();
     };
@@ -96,6 +108,35 @@ export const CreateBudgetItemModalPart: React.FC<CreateBudgetItemModalPartProps>
                             ))}
                         </select>
                     </div>
+
+                    {!selectedBenchmarkId && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-3">
+                            <span className="text-xs font-bold text-amber-900 block">
+                                Không chọn benchmark có sẵn: Bắt buộc cung cấp thông tin nơi mua để hệ thống tự động lưu benchmark thị trường
+                            </span>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700">Tên nhà cung cấp *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={supplierName}
+                                    onChange={(e) => setSupplierName(e.target.value)}
+                                    placeholder="VD: Nhà sách FAHASA, Xưởng in Đại Nam..."
+                                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700">Link tham khảo nơi mua (URL)</label>
+                                <input
+                                    type="url"
+                                    value={supplierLink}
+                                    onChange={(e) => setSupplierLink(e.target.value)}
+                                    placeholder="https://..."
+                                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-xs font-semibold text-slate-700">Danh mục kinh phí *</label>

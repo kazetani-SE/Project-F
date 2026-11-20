@@ -44,6 +44,12 @@ export interface UpdateBenchmarkRequest {
     supplierReference?: string;
 }
 
+export interface BudgetItemBenchmarkInfo {
+    supplierName?: string;
+    supplierLink?: string;
+    lastUpdatedAt?: string;
+}
+
 export interface BudgetItem {
     id: string;
     eventId: string;
@@ -61,6 +67,7 @@ export interface BudgetItem {
     approvedAt?: string;
     rejectionReason?: string;
     createdAt?: string;
+    benchmark?: BudgetItemBenchmarkInfo | null;
 }
 
 export interface CreateBudgetItemRequest {
@@ -72,6 +79,8 @@ export interface CreateBudgetItemRequest {
     unit: string;
     estimatedUnitPrice: number;
     notes?: string;
+    supplierName?: string;
+    supplierLink?: string;
 }
 
 export interface UpdateBudgetItemRequest {
@@ -83,6 +92,8 @@ export interface UpdateBudgetItemRequest {
     unit: string;
     estimatedUnitPrice: number;
     notes?: string;
+    supplierName?: string;
+    supplierLink?: string;
 }
 
 export interface ReviewBudgetItemRequest {

@@ -27,6 +27,23 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
             <td className="px-5 py-3.5">
                 <div className="font-semibold text-slate-900">{item.itemName}</div>
                 <div className="text-xs text-slate-400">{categoryName}</div>
+                {item.benchmark?.supplierName && (
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+                        <span className="text-slate-400">Nơi mua:</span>
+                        {item.benchmark.supplierLink ? (
+                            <a
+                                href={item.benchmark.supplierLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-700 underline hover:text-emerald-800"
+                            >
+                                {item.benchmark.supplierName}
+                            </a>
+                        ) : (
+                            <span className="font-medium text-slate-700">{item.benchmark.supplierName}</span>
+                        )}
+                    </div>
+                )}
             </td>
             <td className="px-4 py-3.5 text-slate-700">
                 {item.quantity} {item.unit}
