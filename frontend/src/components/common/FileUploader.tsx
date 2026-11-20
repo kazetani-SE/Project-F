@@ -6,6 +6,7 @@ import {
     ALLOWED_MIME_TYPES,
 } from '../../types/models/storage';
 import { validateUploadFile } from '../../services/uploadWorkflow';
+import { getErrorMessage } from '../../utils/errorHelper';
 
 interface FileUploaderProps {
     category: StorageCategory;
@@ -62,18 +63,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
     const defaultAccept =
         accept ||
-        ALLOWED_MIME_TYPES[category]
-            ?.map((m) => {
-                if (m.startsWith('image/')) return '.' + m.split('/')[1];
-                if (m === 'application/pdf') return '.pdf';
-                if (m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
-                if (m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return '.xlsx';
-                if (m === 'application/vnd.ms-excel') return '.xls';
-                if (m === 'text/csv' || m === 'application/csv') return '.csv';
-                if (m === 'text/plain') return '.txt';
-                return m;
-            })
-            .join(',');
+        (category === 'MEDIA'
+            ? '.png,.jpg,.jpeg,.webp,.pdf,.tif,.tiff,.mp4'
+            : ALLOWED_MIME_TYPES[category]
+                ?.map((m) => {
+                    if (m.startsWith('image/')) return '.' + m.split('/')[1];
+                    if (m === 'application/pdf') return '.pdf';
+                    if (m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
+                    if (m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return '.xlsx';
+                    if (m === 'application/vnd.ms-excel') return '.xls';
+                    if (m === 'text/csv' || m === 'application/csv') return '.csv';
+                    if (m === 'text/plain') return '.txt';
+                    return m;
+                })
+                .join(','));
 
     const handleFile = (file: File) => {
         setLocalError(null);
@@ -82,7 +85,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             validateUploadFile(file, category);
             onFileSelect?.(file);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Tệp không hợp lệ';
+            const msg = getErrorMessage(err, 'Tệp không hợp lệ');
             setLocalError(msg);
             onFileSelect?.(null);
         }
@@ -90,6 +93,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
+        e.stopPropagation();
         setIsDragOver(false);
         if (disabled || isUploading) return;
 
@@ -98,14 +102,26 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         }
     };
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!disabled && !isUploading) {
             setIsDragOver(true);
         }
     };
 
-    const handleDragLeave = () => {
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!disabled && !isUploading) {
+            setIsDragOver(true);
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
         setIsDragOver(false);
     };
 
@@ -141,6 +157,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             <div
                 onClick={() => !disabled && !isUploading && fileInputRef.current?.click()}
                 onDrop={handleDrop}
+                onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 className={`relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all ${

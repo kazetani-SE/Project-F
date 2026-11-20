@@ -10,6 +10,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,9 @@ public class S3StorageServiceImpl implements StorageService {
     private final String bucketName;
     private final String region;
     private final int expirationMinutes;
+    private final Map<String, CachedDownloadUrl> downloadUrlCache = new ConcurrentHashMap<>();
+
+    private record CachedDownloadUrl(PresignedDownloadResponse response, long expiresAtMillis) {}
 
     @Autowired
     public S3StorageServiceImpl(
@@ -104,10 +109,18 @@ public class S3StorageServiceImpl implements StorageService {
 
         String versionId = extractVersionId(objectKey);
         String cleanKey = extractObjectKey(objectKey);
+        String cacheKey = cleanKey + (versionId != null && !versionId.isBlank() ? "#" + versionId : "");
+
+        long now = System.currentTimeMillis();
+        CachedDownloadUrl cached = downloadUrlCache.get(cacheKey);
+        if (cached != null && cached.expiresAtMillis() > now) {
+            return cached.response();
+        }
 
         GetObjectRequest.Builder requestBuilder = GetObjectRequest.builder()
                 .bucket(bucketName)
-                .key(cleanKey);
+                .key(cleanKey)
+                .responseCacheControl("public, max-age=600, immutable");
 
         if (versionId != null && !versionId.isBlank()) {
             requestBuilder.versionId(versionId);
@@ -123,11 +136,15 @@ public class S3StorageServiceImpl implements StorageService {
 
         PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
 
-        return new PresignedDownloadResponse(
+        PresignedDownloadResponse response = new PresignedDownloadResponse(
                 presigned.url().toString(),
                 cleanKey,
                 expMinutes
         );
+
+        // Cache 10 phút trên Server để chuỗi URL không bị thay đổi chữ ký liên tục, giúp Trình duyệt nhận diện Disk Cache
+        downloadUrlCache.put(cacheKey, new CachedDownloadUrl(response, now + 10L * 60 * 1000));
+        return response;
     }
 
     @Override
@@ -137,6 +154,7 @@ public class S3StorageServiceImpl implements StorageService {
         }
 
         String cleanKey = extractObjectKey(objectKey);
+        downloadUrlCache.keySet().removeIf(k -> k.startsWith(cleanKey));
         if (s3Client != null) {
             try {
                 DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
