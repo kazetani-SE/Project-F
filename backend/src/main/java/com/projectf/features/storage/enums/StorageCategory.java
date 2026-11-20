@@ -8,18 +8,18 @@ public enum StorageCategory {
             Constants.MIME_JPEG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
-            Constants.MIME_PDF
-    )),
+            Constants.MIME_PDF,
+            Constants.MIME_DOCX,
+            Constants.MIME_XLSX)),
     DOCUMENT(50L * 1024 * 1024, "documents", Set.of(
             Constants.MIME_PDF,
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            Constants.MIME_DOCX,
             "application/msword",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            Constants.MIME_XLSX,
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.ms-powerpoint",
-            Constants.MIME_PLAIN
-    )),
+            Constants.MIME_PLAIN)),
     MEDIA(50L * 1024 * 1024, "media", Set.of(
             Constants.MIME_JPEG,
             Constants.MIME_PNG,
@@ -27,19 +27,17 @@ public enum StorageCategory {
             "image/svg+xml",
             "image/gif",
             "video/mp4",
-            Constants.MIME_PDF
-    )),
+            Constants.MIME_PDF)),
     FEEDBACK(50L * 1024 * 1024, "feedbacks", Set.of(
             Constants.MIME_JPEG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             Constants.MIME_PDF,
             Constants.MIME_PLAIN,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            Constants.MIME_XLSX,
             "application/vnd.ms-excel",
             "text/csv",
-            "application/csv"
-    ));
+            "application/csv"));
 
     private final long maxSizeBytes;
     private final String folderName;
@@ -73,5 +71,7 @@ public enum StorageCategory {
         private static final String MIME_WEBP = "image/webp";
         private static final String MIME_PDF = "application/pdf";
         private static final String MIME_PLAIN = "text/plain";
+        private static final String MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        private static final String MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     }
 }

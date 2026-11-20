@@ -1,13 +1,15 @@
 package com.projectf.features.finance.dto.response;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record BillScanResponse(
         String storeName,
-        String billDate,
+        String billDate, // yyyy-MM-dd hoặc null
+        String receiptCode,
+        String itemName, // dòng hàng ĐẦU TIÊN
+        Integer quantity,
+        Long unitPrice,
         Long totalAmount,
-        List<Item> items) {
-
-    public record Item(String name, Integer quantity, Long unitPrice, Long amount) {
-    }
+        String notes) { // tổng tiền cả hóa đơn
 }

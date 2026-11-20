@@ -42,8 +42,7 @@ public class S3StorageServiceImpl implements StorageService {
             @Autowired(required = false) S3Client s3Client,
             @Value("${aws.s3.bucket-name:project-f-media-storage}") String bucketName,
             @Value("${aws.region:ap-southeast-1}") String region,
-            @Value("${aws.s3.presigned-url-expiration-minutes:10}") int expirationMinutes
-    ) {
+            @Value("${aws.s3.presigned-url-expiration-minutes:10}") int expirationMinutes) {
         this.s3Presigner = s3Presigner;
         this.s3Client = s3Client;
         this.bucketName = bucketName;
@@ -55,8 +54,7 @@ public class S3StorageServiceImpl implements StorageService {
             S3Presigner s3Presigner,
             String bucketName,
             String region,
-            int expirationMinutes
-    ) {
+            int expirationMinutes) {
         this(s3Presigner, null, bucketName, region, expirationMinutes);
     }
 
@@ -92,8 +90,7 @@ public class S3StorageServiceImpl implements StorageService {
                 presigned.url().toString(),
                 fileUrl,
                 objectKey,
-                expirationMinutes
-        );
+                expirationMinutes);
     }
 
     @Override
@@ -126,8 +123,7 @@ public class S3StorageServiceImpl implements StorageService {
         return new PresignedDownloadResponse(
                 presigned.url().toString(),
                 cleanKey,
-                expMinutes
-        );
+                expMinutes);
     }
 
     @Override
@@ -146,7 +142,8 @@ public class S3StorageServiceImpl implements StorageService {
                 s3Client.deleteObject(deleteRequest);
             } catch (Exception ex) {
                 if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Không thể xóa object trên S3 [bucket={}, key={}]: {}", bucketName, cleanKey, ex.getMessage());
+                    LOGGER.warn("Không thể xóa object trên S3 [bucket={}, key={}]: {}", bucketName, cleanKey,
+                            ex.getMessage());
                 }
             }
         }
