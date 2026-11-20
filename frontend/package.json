@@ -15,10 +15,13 @@
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.20.0",
     "lucide-react": "^1.58.0",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.5",
     "tailwindcss": "^4.3.3",
+    "utif": "^3.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -27,6 +30,7 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@types/utif": "^3.0.6",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "31.0.0",
     "msw": "^3.0.3",

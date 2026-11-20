@@ -53,6 +53,15 @@ public class FaqController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
+    @PostMapping("/event-series/{seriesId}/faqs/batch")
+    public ResponseEntity<ApiResponse<List<FaqResponse>>> createFaqsBatch(
+            @PathVariable(SERIES_ID) UUID seriesId,
+            @Valid @RequestBody List<CreateFaqRequest> requests
+    ) {
+        List<FaqResponse> response = faqService.createFaqsBatch(seriesId, requests);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
+
     @GetMapping("/faqs/{faqId}")
     public ResponseEntity<ApiResponse<FaqResponse>> getFaqById(
             @PathVariable(FAQ_ID) UUID faqId

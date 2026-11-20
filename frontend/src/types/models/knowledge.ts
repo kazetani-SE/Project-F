@@ -67,6 +67,11 @@ export interface StructuredCustomResponses {
     _schemaVersion?: number;
     _overallRawScore?: number;
     _overallScaleMax?: number;
+    _formTitle?: string;
+    _formPlatform?: string;
+    _formUrl?: string;
+    _importedBy?: string;
+    _skippedRows?: number;
     metadata?: Record<string, string>;
     ratings?: FeedbackRatingItem[];
     suggestions?: FeedbackSuggestionItem[];
@@ -119,7 +124,7 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
 
 export const FEEDBACK_SOURCE_LABELS: Record<FeedbackSourceType, string> = {
     ATTENDEE: 'Người tham dự',
-    ORGANIZER: 'Ban tổ chức',
+    ORGANIZER: 'BTC',
     SPONSOR: 'Nhà tài trợ',
-    SPEAKER: 'Diễn giả / Khách mời',
+    SPEAKER: 'Diễn giả',
 };

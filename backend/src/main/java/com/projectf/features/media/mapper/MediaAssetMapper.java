@@ -19,8 +19,23 @@ public class MediaAssetMapper {
         asset.setDesignFileUrl(request.designFileUrl());
         asset.setPreviewImageUrl(request.previewImageUrl());
         asset.setIsPrinted(false);
-        asset.setApprovalStatus(ApprovalStatus.PENDING);
+        asset.setApprovalStatus(request.approvalStatus() != null ? request.approvalStatus() : ApprovalStatus.PENDING);
         return asset;
+    }
+
+    public void updateEntity(EventMediaAsset asset, CreateMediaAssetRequest request) {
+        asset.setAssetType(request.assetType());
+        asset.setTitle(request.title());
+        asset.setSpecifications(request.specifications());
+        if (request.designFileUrl() != null) {
+            asset.setDesignFileUrl(request.designFileUrl());
+        }
+        if (request.previewImageUrl() != null) {
+            asset.setPreviewImageUrl(request.previewImageUrl());
+        }
+        if (request.approvalStatus() != null) {
+            asset.setApprovalStatus(request.approvalStatus());
+        }
     }
 
     public MediaAssetResponse toResponse(EventMediaAsset entity) {

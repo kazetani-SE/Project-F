@@ -7,6 +7,7 @@ import {
     AlertCircle,
     Loader2,
     XCircle,
+    Upload,
 } from 'lucide-react';
 import {
     getFaqsBySeries,
@@ -17,12 +18,14 @@ import {
     type FaqResponse,
     type CreateFaqRequest,
 } from '../../../types/models/knowledge';
+import { FaqImportModal } from './FaqImportModal';
 
 interface Props {
     seriesId: string;
+    onCountChange?: (count: number) => void;
 }
 
-export const FaqSection: React.FC<Props> = ({ seriesId }) => {
+export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
     const [faqs, setFaqs] = useState<FaqResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -31,8 +34,9 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-    // Create Modal
+    // Create & Import Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [formQuestion, setFormQuestion] = useState('');
     const [formAnswer, setFormAnswer] = useState('');
     const [formCategory, setFormCategory] = useState('Thể lệ & Tham dự');
@@ -48,12 +52,15 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                 selectedCategory === 'ALL' ? undefined : selectedCategory,
             );
             setFaqs(data);
+            if (selectedCategory === 'ALL') {
+                onCountChange?.(data.length);
+            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Không thể tải kho FAQ');
         } finally {
             setIsLoading(false);
         }
-    }, [seriesId, selectedCategory]);
+    }, [seriesId, selectedCategory, onCountChange]);
 
     useEffect(() => {
         fetchFaqs();
@@ -156,13 +163,24 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    <span>Thêm câu hỏi FAQ</span>
-                </button>
+                <div className="flex shrink-0 items-center gap-2.5">
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 shadow-xs hover:bg-emerald-100 hover:border-emerald-400 transition-colors"
+                        title="Nhập danh sách câu hỏi FAQ từ tệp Word (.docx) hoặc Excel (.xlsx, .xls, .csv)"
+                    >
+                        <Upload className="h-4 w-4 text-emerald-600" />
+                        <span>Nhập từ tệp (Word / Excel)</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Thêm câu hỏi FAQ</span>
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -324,6 +342,13 @@ export const FaqSection: React.FC<Props> = ({ seriesId }) => {
                     </div>
                 </div>
             )}
+            {/* Modal Import FAQ từ tệp Word & Excel */}
+            <FaqImportModal
+                seriesId={seriesId}
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onSuccess={fetchFaqs}
+            />
         </div>
     );
 };

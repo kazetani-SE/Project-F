@@ -7,8 +7,12 @@ import {
     transformRowsWithQuestionConfigs,
     parseNumericScore,
     isTrivialSuggestionAnswer,
+    classifySuggestionQuestionType,
+    extractStructuredFeedback,
+    resolveSpreadsheetExportUrl,
     type QuestionColumnConfig,
 } from '../src/utils/excelParser.ts';
+import type { FeedbackResponse } from '../src/types/models/knowledge.ts';
 
 test('autoClassifyColumns classifies columns accurately from typical form headers and rows', () => {
     const headers = [
@@ -70,7 +74,32 @@ test('isTrivialSuggestionAnswer identifies non-informative answers', () => {
     assert.equal(isTrivialSuggestionAnswer('Không có'), true);
     assert.equal(isTrivialSuggestionAnswer('không'), true);
     assert.equal(isTrivialSuggestionAnswer('none'), true);
+    assert.equal(isTrivialSuggestionAnswer('Dạ không, quá hoàn hảo'), true);
+    assert.equal(isTrivialSuggestionAnswer('Tuyệt vời'), true);
     assert.equal(isTrivialSuggestionAnswer('Nên thêm bánh ngọt trong giờ giải lao'), false);
+});
+
+test('classifySuggestionQuestionType distinguishes self-reflection from BTC improvement and highlight questions', () => {
+    assert.equal(
+        classifySuggestionQuestionType('Bạn nghĩ bản thân cần cải thiện gì sau cuộc thi?'),
+        'SELF_OR_OTHER',
+    );
+    assert.equal(
+        classifySuggestionQuestionType('Bạn cần cải thiện gì để làm bài tốt hơn?'),
+        'SELF_OR_OTHER',
+    );
+    assert.equal(
+        classifySuggestionQuestionType('Góp ý cải thiện cho ban tổ chức?'),
+        'IMPROVEMENT',
+    );
+    assert.equal(
+        classifySuggestionQuestionType('Bạn có gặp khó khăn gì trong quá trình thi không?'),
+        'IMPROVEMENT',
+    );
+    assert.equal(
+        classifySuggestionQuestionType('Điều bạn thích nhất tại sự kiện?'),
+        'HIGHLIGHT',
+    );
 });
 
 test('normalizeSourceType maps organizer, sponsor, speaker and attendee correctly', () => {
@@ -150,4 +179,103 @@ test('transformRowsWithQuestionConfigs transforms rows and packs questions into 
     assert.equal(result[1].sourceType, 'ATTENDEE');
     assert.equal(result[1].ratingScore, 4);
     assert.equal(result[1].fileUrl, s3Url);
+});
+
+test('transformRowsWithQuestionConfigs attaches batch metadata options and extractStructuredFeedback preserves highlightContent/improvementContent', () => {
+    const rawRows = [
+        {
+            'Chất lượng nội dung': 4,
+            'Sẽ quay lại mùa sau': 'Có',
+        },
+    ];
+    const columnConfigs: QuestionColumnConfig[] = [
+        {
+            rawHeader: 'Chất lượng nội dung',
+            questionLabel: 'Chất lượng nội dung',
+            role: 'RATING',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+        {
+            rawHeader: 'Sẽ quay lại mùa sau',
+            questionLabel: 'Sẽ quay lại mùa sau',
+            role: 'METADATA',
+            scaleMax: 5,
+            sampleValues: [],
+        },
+    ];
+
+    const result = transformRowsWithQuestionConfigs(
+        rawRows,
+        columnConfigs,
+        'https://bucket.s3.amazonaws.com/feedbacks/ori-26.xlsx',
+        'ATTENDEE',
+        {
+            formTitle: 'Khảo sát người tham dự · Orientation Day K21',
+            formPlatform: 'Google Forms',
+            importedBy: 'Lê Hoàng',
+            skippedRows: 1,
+        },
+    );
+
+    assert.equal(result.length, 1);
+    assert.equal(
+        result[0].customResponses?._formTitle,
+        'Khảo sát người tham dự · Orientation Day K21',
+    );
+    assert.equal(result[0].customResponses?._formPlatform, 'Google Forms');
+    assert.equal(result[0].customResponses?._importedBy, 'Lê Hoàng');
+    assert.equal(result[0].customResponses?._skippedRows, 1);
+
+    // Legacy record with both customResponses keys and highlightContent/improvementContent
+    const legacyRecord: FeedbackResponse = {
+        id: 'fb-legacy-1',
+        eventId: 'ev-tech-fall-2026',
+        sourceType: 'ATTENDEE',
+        fileUrl: 'https://bucket.s3.amazonaws.com/feedbacks/legacy.xlsx',
+        ratingScore: 5,
+        highlightContent: 'Nội dung workshop thực tế',
+        improvementContent: 'Thời gian nghỉ hơi ngắn',
+        customResponses: {
+            favoriteSession: 'CI/CD Workshop',
+            networkingScore: 4,
+        },
+        submittedAt: '2026-08-30T17:00:00Z',
+    };
+
+    const extracted = extractStructuredFeedback(legacyRecord);
+    assert.equal(
+        extracted.suggestions.some((s) => s.answer === 'Nội dung workshop thực tế'),
+        true,
+    );
+    assert.equal(
+        extracted.suggestions.some((s) => s.answer === 'Thời gian nghỉ hơi ngắn'),
+        true,
+    );
+});
+
+test('resolveSpreadsheetExportUrl converts Google Sheets and OneDrive URLs and blocks public viewform links', () => {
+    const gsheet = resolveSpreadsheetExportUrl(
+        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=12345',
+    );
+    assert.equal(
+        gsheet.exportUrl,
+        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/export?format=xlsx&gid=12345',
+    );
+    assert.equal(gsheet.platform, 'Google Forms');
+    assert.equal(gsheet.spreadsheetId, '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms');
+
+    const onedrive = resolveSpreadsheetExportUrl(
+        'https://onedrive.live.com/edit.aspx?resid=ABC12345',
+    );
+    assert.equal(
+        onedrive.exportUrl,
+        'https://onedrive.live.com/edit.aspx?resid=ABC12345&download=1',
+    );
+    assert.equal(onedrive.platform, 'Microsoft Forms');
+
+    assert.throws(
+        () => resolveSpreadsheetExportUrl('https://forms.gle/xyz123'),
+        /Đây là link điền Form công khai/,
+    );
 });

@@ -13,6 +13,7 @@ if "%OS%"=="Windows_NT" @setlocal
 @setlocal
 
 @REM ==== START VALIDATION ====
+if exist "C:\Program Files\Java\jdk-21.0.11" set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.11"
 if not "%JAVA_HOME%" == "" goto OkJHome
 
 for %%i in (java.exe) do set "JAVACMD=%%~$PATH:i"

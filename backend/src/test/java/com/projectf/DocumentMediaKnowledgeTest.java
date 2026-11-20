@@ -338,18 +338,43 @@ class DocumentMediaKnowledgeTest {
     void mediaAssetDeleteSucceedsWhenNotPrinted() {
         MediaAssetRepository mediaRepo = Mockito.mock(MediaAssetRepository.class);
         MediaAssetMapper mapper = new MediaAssetMapper();
-        MediaAssetServiceImpl service = new MediaAssetServiceImpl(mediaRepo, mapper);
+        com.projectf.features.storage.service.StorageService storageService = Mockito.mock(com.projectf.features.storage.service.StorageService.class);
+        MediaAssetServiceImpl service = new MediaAssetServiceImpl(mediaRepo, mapper, storageService);
 
         UUID assetId = UUID.randomUUID();
         EventMediaAsset asset = new EventMediaAsset();
         asset.setId(assetId);
         asset.setIsPrinted(false);
+        asset.setPreviewImageUrl("https://test.s3.ap-southeast-1.amazonaws.com/media/poster.png");
 
         when(mediaRepo.findById(assetId)).thenReturn(Optional.of(asset));
 
         service.deleteMediaAsset(assetId);
 
         verify(mediaRepo).delete(asset);
+        verify(storageService).deleteFile("https://test.s3.ap-southeast-1.amazonaws.com/media/poster.png");
+    }
+
+    @Test
+    void documentDeleteCleansUpS3File() {
+        DocumentRepository docRepo = Mockito.mock(DocumentRepository.class);
+        DocumentMapper mapper = new DocumentMapper();
+        com.projectf.features.storage.service.StorageService storageService = Mockito.mock(com.projectf.features.storage.service.StorageService.class);
+        DocumentServiceImpl service = new DocumentServiceImpl(docRepo, mapper, storageService);
+
+        UUID docId = UUID.randomUUID();
+        EventDocument doc = new EventDocument();
+        doc.setId(docId);
+        doc.setStatus(ApprovalStatus.PENDING);
+        doc.setFileUrl("https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf");
+
+        when(docRepo.findById(docId)).thenReturn(Optional.of(doc));
+        when(docRepo.findByParentDocumentId(docId)).thenReturn(List.of());
+
+        service.deleteDocument(docId);
+
+        verify(docRepo).delete(doc);
+        verify(storageService).deleteFile("https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf");
     }
 
     @Test
