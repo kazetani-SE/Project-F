@@ -16,16 +16,46 @@ export async function getPresignedUploadUrl(
     return res.data.data;
 }
 
+const downloadUrlCache = new Map<string, { data: PresignedDownloadResponse; expiresAt: number }>();
+const inFlightDownloadRequests = new Map<string, Promise<PresignedDownloadResponse>>();
+
 export async function getPresignedDownloadUrl(
     objectKey: string,
 ): Promise<PresignedDownloadResponse> {
-    const res = await apiClient.get<ApiResponse<PresignedDownloadResponse>>(
-        '/storage/presigned-download',
-        {
-            params: { objectKey },
-        },
-    );
-    return res.data.data;
+    const cached = downloadUrlCache.get(objectKey);
+    // Presigned URL mặc định sống 10-15 phút trên S3; tái sử dụng trong vòng 10 phút để tránh gọi API
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
+    }
+
+    const inFlight = inFlightDownloadRequests.get(objectKey);
+    if (inFlight) {
+        return inFlight;
+    }
+
+    const reqPromise = (async () => {
+        try {
+            const res = await apiClient.get<ApiResponse<PresignedDownloadResponse>>(
+                '/storage/presigned-download',
+                {
+                    params: { objectKey },
+                },
+            );
+            const data = res.data.data;
+            if (data?.downloadUrl) {
+                downloadUrlCache.set(objectKey, {
+                    data,
+                    expiresAt: Date.now() + 10 * 60 * 1000,
+                });
+            }
+            return data;
+        } finally {
+            inFlightDownloadRequests.delete(objectKey);
+        }
+    })();
+
+    inFlightDownloadRequests.set(objectKey, reqPromise);
+    return reqPromise;
 }
 
 export async function deleteFileFromS3(objectKey: string): Promise<void> {

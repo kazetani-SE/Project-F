@@ -20,12 +20,14 @@ public enum StorageCategory {
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.ms-powerpoint",
             Constants.MIME_PLAIN)),
-    MEDIA(50L * 1024 * 1024, "media", Set.of(
+    MEDIA(100L * 1024 * 1024, "media", Set.of(
             Constants.MIME_JPEG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             "image/svg+xml",
             "image/gif",
+            "image/tiff",
+            "image/x-tiff",
             "video/mp4",
             Constants.MIME_PDF)),
     FEEDBACK(50L * 1024 * 1024, "feedbacks", Set.of(

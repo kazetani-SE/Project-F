@@ -24,14 +24,46 @@ export function validateUploadFile(file: File, category: StorageCategory): void 
         );
     }
 
-    // 2. Kiểm tra định dạng MIME
+    // 2. Kiểm tra định dạng MIME & Đuôi mở rộng
     const allowed = ALLOWED_MIME_TYPES[category];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    // Kiểm tra định dạng phần mở rộng riêng cho từng danh mục
+    if (category === 'MEDIA') {
+        const allowedMediaExts = ['tiff', 'tif', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'mp4', 'svg', 'gif'];
+        if (ext && !allowedMediaExts.includes(ext)) {
+            throw new Error(
+                `Định dạng tệp ".${ext}" không được hỗ trợ cho danh mục MEDIA. Chỉ chấp nhận tệp TIFF, PDF, ảnh (PNG, JPG, WEBP) hoặc video MP4.`
+            );
+        }
+    }
+
+    // Ngoại lệ theo phần mở rộng phổ biến khi trình duyệt không xác định đúng MIME type
+    const isSpecialMediaFile =
+        category === 'MEDIA' &&
+        !!ext &&
+        ['tiff', 'tif', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'mp4', 'svg', 'gif'].includes(ext);
+
+    const isDocumentFile =
+        category === 'DOCUMENT' &&
+        !!ext &&
+        ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt'].includes(ext);
+
+    const isFeedbackFile =
+        category === 'FEEDBACK' &&
+        !!ext &&
+        ['xlsx', 'xls', 'csv', 'pdf', 'txt', 'jpg', 'jpeg', 'png', 'webp'].includes(ext);
+
+    const isReceiptFile =
+        category === 'RECEIPT' &&
+        !!ext &&
+        ['pdf', 'jpg', 'jpeg', 'png', 'webp'].includes(ext);
+
+    const isRecognizedByExtension =
+        isSpecialMediaFile || isDocumentFile || isFeedbackFile || isReceiptFile;
+
     if (allowed && allowed.length > 0 && file.type && !allowed.includes(file.type)) {
-        const ext = file.name.split('.').pop()?.toLowerCase();
-        const isExcelOrCsv =
-            (ext === 'xlsx' || ext === 'xls' || ext === 'csv') &&
-            (category === 'FEEDBACK' || category === 'DOCUMENT');
-        if (!isExcelOrCsv) {
+        if (!isRecognizedByExtension) {
             throw new Error(
                 `Định dạng tệp "${file.type}" không được hỗ trợ cho danh mục ${category}`
             );

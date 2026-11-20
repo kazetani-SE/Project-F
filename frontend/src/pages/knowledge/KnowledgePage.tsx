@@ -1,16 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { AlertTriangle, HelpCircle, MessageSquare, ChevronRight, Sparkles } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, HelpCircle, MessageSquare } from 'lucide-react';
 import { IncidentSection } from './components/IncidentSection';
 import { FaqSection } from './components/FaqSection';
 import { FeedbackSection } from './components/FeedbackSection';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getIncidentsByEvent, getFaqsBySeries, getFeedbacksByEvent } from '../../services/knowledgeService';
 
+type KnowledgeTab = 'INCIDENTS' | 'FAQS' | 'FEEDBACKS';
+
+const TAB_PARAM_MAP: Record<string, KnowledgeTab> = {
+    incidents: 'INCIDENTS',
+    faqs: 'FAQS',
+    feedbacks: 'FEEDBACKS',
+};
+
+const TAB_TO_PARAM: Record<KnowledgeTab, string> = {
+    INCIDENTS: 'incidents',
+    FAQS: 'faqs',
+    FEEDBACKS: 'feedbacks',
+};
+
 export const KnowledgePage: React.FC = () => {
     const { eventId: paramEventId } = useParams<{ eventId: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { currentEvent } = useActiveEvent();
-    const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'FAQS' | 'FEEDBACKS'>('INCIDENTS');
+
+    const initialTabParam = (searchParams.get('tab') || '').toLowerCase();
+    const [activeTab, setActiveTab] = useState<KnowledgeTab>(
+        TAB_PARAM_MAP[initialTabParam] || 'INCIDENTS',
+    );
+
+    const handleTabChange = (tab: KnowledgeTab) => {
+        setActiveTab(tab);
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('tab', TAB_TO_PARAM[tab]);
+        setSearchParams(nextParams, { replace: true });
+    };
+
+    useEffect(() => {
+        const currentParam = (searchParams.get('tab') || '').toLowerCase();
+        const mapped = TAB_PARAM_MAP[currentParam];
+        if (mapped && mapped !== activeTab) {
+            setActiveTab(mapped);
+        }
+    }, [searchParams, activeTab]);
 
     const eventId = paramEventId || currentEvent?.id || 'ev-tech-fall-2026';
     const seriesId = currentEvent?.seriesId || '22222222-2222-4222-8222-222222222201';
@@ -21,83 +55,76 @@ export const KnowledgePage: React.FC = () => {
 
     useEffect(() => {
         let isMounted = true;
-        const fetchCounters = async () => {
-            try {
-                const [incidents, faqs, feedbacks] = await Promise.allSettled([
-                    getIncidentsByEvent(eventId),
-                    getFaqsBySeries(seriesId),
-                    getFeedbacksByEvent(eventId),
-                ]);
-                if (isMounted) {
-                    if (incidents.status === 'fulfilled') setIncidentCount(incidents.value.length);
-                    if (faqs.status === 'fulfilled') setFaqCount(faqs.value.length);
-                    if (feedbacks.status === 'fulfilled') setFeedbackCount(feedbacks.value.length);
-                }
-            } catch {
-                // Ignore counter error
-            }
-        };
-        fetchCounters();
+        Promise.allSettled([
+            getIncidentsByEvent(eventId),
+            getFeedbacksByEvent(eventId),
+        ]).then(([incidents, feedbacks]) => {
+            if (!isMounted) return;
+            if (incidents.status === 'fulfilled') setIncidentCount(incidents.value.length);
+            if (feedbacks.status === 'fulfilled') setFeedbackCount(feedbacks.value.length);
+        });
         return () => {
             isMounted = false;
         };
-    }, [eventId, seriesId, activeTab]);
+    }, [eventId]);
+
+    useEffect(() => {
+        let isMounted = true;
+        getFaqsBySeries(seriesId)
+            .then((faqs) => {
+                if (isMounted) setFaqCount(faqs.length);
+            })
+            .catch(() => {});
+        return () => {
+            isMounted = false;
+        };
+    }, [seriesId]);
 
     return (
         <div className="space-y-6">
-            {/* Header & Breadcrumb */}
+            {/* Header & Breadcrumb matching Figma design */}
             <div>
-                <nav className="flex items-center gap-2 text-xs font-medium text-slate-400">
+                <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
                     <Link to="/events" className="hover:text-emerald-600 transition-colors">
                         Sự kiện
                     </Link>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="text-slate-600 font-medium">
+                    <span>/</span>
+                    <span className="text-slate-500">
                         {currentEvent?.name || 'Chi tiết sự kiện'}
                     </span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span className="font-semibold text-emerald-600">Kho tri thức</span>
+                    <span>/</span>
+                    <span className="text-slate-600">Kho tri thức</span>
                 </nav>
 
-                <div className="mt-2.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                                Kho Tri Thức & Kinh Nghiệm Đa Mùa
-                            </h1>
-                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                                Task 3 Slice
-                            </span>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Lưu trữ bài học kinh nghiệm Post-Mortem, ngân hàng câu hỏi FAQ tích lũy và khảo sát sau sự kiện.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
-                        <Sparkles className="h-4 w-4" />
-                        <span>Kế thừa tri thức đa mùa</span>
-                    </div>
+                <div className="mt-1">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                        Kho tri thức
+                    </h1>
                 </div>
             </div>
 
             {/* Tab navigation matching Figma */}
             <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
-                    onClick={() => setActiveTab('INCIDENTS')}
-                    className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    type="button"
+                    onClick={() => handleTabChange('INCIDENTS')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                         activeTab === 'INCIDENTS'
-                            ? 'border-emerald-600 text-emerald-700'
+                            ? 'border-emerald-600 text-emerald-700 font-semibold'
                             : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     }`}
                 >
-                    <AlertTriangle className="h-4 w-4 text-rose-500" />
-                    <span>Nhật ký sự cố & Post-Mortem</span>
+                    <AlertTriangle
+                        className={`h-4 w-4 ${
+                            activeTab === 'INCIDENTS' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                    />
+                    <span>Sự cố & Post-mortem</span>
                     {incidentCount != null && (
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 activeTab === 'INCIDENTS'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-slate-100 text-slate-600'
                             }`}
                         >
@@ -107,20 +134,25 @@ export const KnowledgePage: React.FC = () => {
                 </button>
 
                 <button
-                    onClick={() => setActiveTab('FAQS')}
-                    className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    type="button"
+                    onClick={() => handleTabChange('FAQS')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                         activeTab === 'FAQS'
-                            ? 'border-emerald-600 text-emerald-700'
+                            ? 'border-emerald-600 text-emerald-700 font-semibold'
                             : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     }`}
                 >
-                    <HelpCircle className="h-4 w-4 text-emerald-600" />
-                    <span>Kho FAQ chuỗi sự kiện</span>
+                    <HelpCircle
+                        className={`h-4 w-4 ${
+                            activeTab === 'FAQS' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                    />
+                    <span>FAQ</span>
                     {faqCount != null && (
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 activeTab === 'FAQS'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-slate-100 text-slate-600'
                             }`}
                         >
@@ -130,20 +162,25 @@ export const KnowledgePage: React.FC = () => {
                 </button>
 
                 <button
-                    onClick={() => setActiveTab('FEEDBACKS')}
-                    className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    type="button"
+                    onClick={() => handleTabChange('FEEDBACKS')}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                         activeTab === 'FEEDBACKS'
-                            ? 'border-emerald-600 text-emerald-700'
+                            ? 'border-emerald-600 text-emerald-700 font-semibold'
                             : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
                     }`}
                 >
-                    <MessageSquare className="h-4 w-4 text-amber-500" />
-                    <span>Khảo sát & Đánh giá (JSONB)</span>
+                    <MessageSquare
+                        className={`h-4 w-4 ${
+                            activeTab === 'FEEDBACKS' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                    />
+                    <span>Khảo sát & Feedback</span>
                     {feedbackCount != null && (
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 activeTab === 'FEEDBACKS'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-slate-100 text-slate-600'
                             }`}
                         >
@@ -155,9 +192,24 @@ export const KnowledgePage: React.FC = () => {
 
             {/* Tab Contents */}
             <div>
-                {activeTab === 'INCIDENTS' && <IncidentSection eventId={eventId} />}
-                {activeTab === 'FAQS' && <FaqSection seriesId={seriesId} />}
-                {activeTab === 'FEEDBACKS' && <FeedbackSection eventId={eventId} />}
+                {activeTab === 'INCIDENTS' && (
+                    <IncidentSection
+                        eventId={eventId}
+                        onCountChange={setIncidentCount}
+                    />
+                )}
+                {activeTab === 'FAQS' && (
+                    <FaqSection
+                        seriesId={seriesId}
+                        onCountChange={setFaqCount}
+                    />
+                )}
+                {activeTab === 'FEEDBACKS' && (
+                    <FeedbackSection
+                        eventId={eventId}
+                        onCountChange={setFeedbackCount}
+                    />
+                )}
             </div>
         </div>
     );
