@@ -4,8 +4,6 @@ import {
     XCircle,
     Loader2,
     CheckCircle2,
-    Cpu,
-    Wand2,
     Pin,
     Save,
     Lightbulb,
@@ -48,11 +46,6 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
 }) => {
     const [focusTopic, setFocusTopic] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
-    const [metaInfo, setMetaInfo] = useState<{
-        modelUsed: string;
-        modelTier: string;
-        routingReason: string;
-    } | null>(null);
     const [items, setItems] = useState<EditableSuggestion[]>([]);
     const [isSavingAll, setIsSavingAll] = useState<boolean>(false);
 
@@ -66,11 +59,6 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                 eventId,
                 focusTopic: chosenTopic.trim() || undefined,
                 count: 5,
-            });
-            setMetaInfo({
-                modelUsed: res.modelUsed,
-                modelTier: res.modelTier,
-                routingReason: res.routingReason,
             });
             setItems(
                 res.suggestions.map((s) => ({
@@ -182,34 +170,27 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
             <div className="flex w-full max-w-3xl max-h-[90vh] flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/50 px-6 py-4 shrink-0">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 shrink-0">
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                AI FAQ Brainstormer
+                            <h3 className="text-lg font-bold text-slate-900">
+                                Gợi ý câu hỏi FAQ bằng AI
+                            </h3>
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                                AI Assistant
                             </span>
-                            {metaInfo && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 border border-sky-200 px-2 py-0.5 text-[11px] font-bold text-sky-800">
-                                    <Cpu className="h-3 w-3" />
-                                    {metaInfo.modelTier} Tier
-                                </span>
-                            )}
                         </div>
-                        <h3 className="mt-1 text-base font-bold text-slate-900">
-                            AI Hỗ Trợ Sinh Sẵn Câu Hỏi FAQ Dự Kiến
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                            AI dự đoán các câu hỏi có thể xuất hiện từ sự cố & feedback. Người quản trị điền câu trả lời chính thức để lưu vào kho FAQ.
+                        <p className="mt-0.5 text-xs text-slate-500">
+                            Dự đoán các thắc mắc thường gặp dựa trên sự cố và phản hồi của sự kiện
                         </p>
                     </div>
 
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                     >
-                        <XCircle className="h-5 w-5" />
+                        <XCircle className="h-6 w-6" />
                     </button>
                 </div>
 
@@ -229,17 +210,17 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                 type="button"
                                 onClick={() => handleGenerate()}
                                 disabled={isGenerating}
-                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                             >
                                 {isGenerating ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        <span>AI đang sinh câu hỏi…</span>
+                                        <span>Đang phân tích...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <Wand2 className="h-4 w-4" />
-                                        <span>✨ Sinh Câu Hỏi Dự Kiến</span>
+                                        <Sparkles className="h-4 w-4" />
+                                        <span>Gợi ý câu hỏi</span>
                                     </>
                                 )}
                             </button>
@@ -265,25 +246,23 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
 
                     {/* Empty or Generated List */}
                     {items.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/40 py-12 px-6 text-center">
-                            <Sparkles className="h-9 w-9 text-emerald-500" />
-                            <h4 className="mt-3 text-sm font-bold text-slate-800">
-                                Bấm &ldquo;✨ Sinh Câu Hỏi Dự Kiến&rdquo; để bắt đầu
+                        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-12 px-6 text-center">
+                            <Sparkles className="h-8 w-8 text-slate-400" />
+                            <h4 className="mt-3 text-sm font-semibold text-slate-700">
+                                Bấm &ldquo;Gợi ý câu hỏi&rdquo; để bắt đầu
                             </h4>
-                            <p className="mt-1 max-w-md text-xs text-slate-500">
-                                AI Agent sẽ đối chiếu kho FAQ hiện tại để không tạo câu hỏi trùng lặp, sau đó gợi ý bộ câu hỏi để bạn điền câu trả lời.
+                            <p className="mt-1 max-w-md text-xs text-slate-400">
+                                Hệ thống sẽ đối chiếu kho FAQ hiện tại để không tạo câu hỏi trùng lặp, sau đó gợi ý bộ câu hỏi để bạn hoàn thiện câu trả lời.
                             </p>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {metaInfo && (
-                                <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                                    <span>{metaInfo.routingReason}</span>
-                                    <span className="font-semibold text-emerald-700">
-                                        Điền câu trả lời vào các câu bạn muốn xuất bản
-                                    </span>
-                                </div>
-                            )}
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                                <span>Gợi ý {items.length} câu hỏi dự kiến</span>
+                                <span className="font-semibold text-emerald-700">
+                                    Điền câu trả lời vào các câu bạn muốn xuất bản
+                                </span>
+                            </div>
 
                             {items.map((item, idx) => (
                                 <div
@@ -348,7 +327,7 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-emerald-500 focus:outline-hidden"
                                         />
                                         <p className="mt-1 text-[11px] text-slate-500">
-                                            📌 <strong>Lý do xuất hiện:</strong> {item.rationale}
+                                            <strong>Lý do gợi ý:</strong> {item.rationale}
                                         </p>
                                     </div>
 
@@ -364,15 +343,15 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                                 onClick={() => handleApplyHint(idx)}
                                                 className="shrink-0 rounded-lg bg-white border border-amber-300 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors"
                                             >
-                                                Dùng khung gợi ý
+                                                Dùng gợi ý
                                             </button>
                                         )}
                                     </div>
 
                                     {/* Quản trị viên điền câu trả lời */}
                                     <div>
-                                        <label className="block text-xs font-bold text-emerald-800 mb-1">
-                                            ✍️ Câu trả lời chính thức của Quản trị viên sự kiện *:
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Câu trả lời chính thức *:
                                         </label>
                                         <textarea
                                             rows={2}
@@ -381,14 +360,14 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                             onChange={(e) =>
                                                 handleAnswerChange(idx, e.target.value)
                                             }
-                                            placeholder="Nhập câu trả lời chính thức của BTC cho câu hỏi này..."
+                                            placeholder="Nhập câu trả lời chính thức cho câu hỏi này..."
                                             className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
                                         />
                                     </div>
 
                                     <div className="flex justify-end">
                                         {item.isSaved ? (
-                                            <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100 px-3.5 py-1.5 text-xs font-bold text-emerald-800">
+                                            <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100 px-3.5 py-1.5 text-xs font-semibold text-emerald-800">
                                                 <CheckCircle2 className="h-4 w-4" />
                                                 <span>Đã lưu vào Kho FAQ</span>
                                             </span>
@@ -399,14 +378,14 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                                     !item.adminAnswer.trim() || item.isSaving
                                                 }
                                                 onClick={() => handleSaveSingle(idx)}
-                                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+                                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors"
                                             >
                                                 {item.isSaving ? (
                                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 ) : (
                                                     <Save className="h-3.5 w-3.5" />
                                                 )}
-                                                <span>Lưu câu hỏi này</span>
+                                                <span>Lưu câu hỏi</span>
                                             </button>
                                         )}
                                     </div>
@@ -442,7 +421,7 @@ export const FaqAiSuggestModal: React.FC<Props> = ({
                                 ) : (
                                     <Save className="h-4 w-4" />
                                 )}
-                                <span>Lưu tất cả câu đã trả lời ({readyToSaveCount})</span>
+                                <span>Lưu tất cả ({readyToSaveCount})</span>
                             </button>
                         )}
                     </div>

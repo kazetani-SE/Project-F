@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, HelpCircle, MessageSquare, Sparkles, Bot } from 'lucide-react';
+import { AlertTriangle, HelpCircle, MessageSquare, Bot } from 'lucide-react';
 import { IncidentSection } from './components/IncidentSection';
 import { FaqSection } from './components/FaqSection';
 import { FeedbackSection } from './components/FeedbackSection';
@@ -85,47 +85,35 @@ export const KnowledgePage: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header & Breadcrumb matching Figma design */}
-            <div>
-                <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-                    <Link to="/events" className="hover:text-emerald-600 transition-colors">
-                        Sự kiện
-                    </Link>
-                    <span>/</span>
-                    <span className="text-slate-500">
-                        {currentEvent?.name || 'Chi tiết sự kiện'}
-                    </span>
-                    <span>/</span>
-                    <span className="text-slate-600">Kho tri thức</span>
-                </nav>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                        <Link to="/events" className="hover:text-emerald-600 transition-colors">
+                            Sự kiện
+                        </Link>
+                        <span>/</span>
+                        <span className="text-slate-500">
+                            {currentEvent?.name || 'Chi tiết sự kiện'}
+                        </span>
+                        <span>/</span>
+                        <span className="text-slate-600">Kho tri thức</span>
+                    </nav>
 
-                <div className="mt-2.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                                Kho Tri Thức & Kinh Nghiệm Đa Mùa
-                            </h1>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Lưu trữ bài học kinh nghiệm Post-Mortem, ngân hàng câu hỏi FAQ tích lũy và khảo sát sau sự kiện.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
-                            <Sparkles className="h-4 w-4" />
-                            <span>Kế thừa tri thức đa mùa</span>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsAiChatOpen(true)}
-                            className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                        >
-                            <Bot className="h-4 w-4 text-emerald-400" />
-                            <span>Trợ lý AI Kho Tri Thức (RAG)</span>
-                        </button>
+                    <div className="mt-1">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                            Kho tri thức
+                        </h1>
                     </div>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={() => setIsAiChatOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition-colors"
+                >
+                    <Bot className="h-4 w-4 text-emerald-400" />
+                    <span>Trợ lý AI</span>
+                </button>
             </div>
 
             {/* Tab navigation matching Figma */}

@@ -4,7 +4,6 @@ import {
     Send,
     X,
     Sparkles,
-    Cpu,
     BookOpen,
     AlertTriangle,
     MessageSquare,
@@ -15,7 +14,6 @@ import { chatWithKnowledgeAi } from '../../../services/knowledgeService';
 import type {
     KnowledgeChatCitation,
     KnowledgeChatTurnItem,
-    AiModelTier,
 } from '../../../types/models/knowledge';
 
 interface Props {
@@ -30,22 +28,13 @@ interface ChatMessageUI {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    modelUsed?: string;
-    modelTier?: AiModelTier;
-    routingReason?: string;
     citations?: KnowledgeChatCitation[];
     followUpQuestions?: string[];
 }
 
 const SAMPLE_PROMPTS = [
-    {
-        tierLabel: '⚡ Fast Tier (Haiku)',
-        prompt: 'Quy định tham dự cho sinh viên năm nhất và thủ tục hoàn ứng BTC là gì?',
-    },
-    {
-        tierLabel: '🧠 Deep Tier (Sonnet)',
-        prompt: 'Phân tích nguyên nhân các sự cố và tổng hợp chiến lược khắc phục từ Feedback mùa này?',
-    },
+    'Quy định tham gia sự kiện và thủ tục hoàn ứng chi phí?',
+    'Tổng hợp các bài học sự cố và giải pháp khắc phục từ phản hồi khảo sát?',
 ];
 
 export const KnowledgeAiChatDrawer: React.FC<Props> = ({
@@ -60,10 +49,10 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
             id: 'welcome',
             role: 'assistant',
             content:
-                'Xin chào! Tôi là **Trợ lý AI Kho Tri Thức Đa Mùa** (RAG). Tôi có thể tra cứu trực tiếp trên **Kho FAQ**, **Nhật ký Sự cố Post-Mortem** và **Dữ liệu Khảo sát Feedback** của sự kiện. Hệ thống `AiModelRouter` sẽ tự động chọn **Fast Model (Haiku/Nova Lite)** cho câu hỏi tra cứu nhanh và **Deep Model (Sonnet/Opus)** cho câu hỏi phân tích chuyên sâu.',
+                'Xin chào! Tôi là Trợ lý AI Kho tri thức. Tôi có thể giúp bạn tra cứu quy định FAQ, bài học sự cố (Post-Mortem) và phân tích ý kiến phản hồi khảo sát của sự kiện.',
             followUpQuestions: [
                 'Các câu hỏi FAQ nào đang được ghim ưu tiên?',
-                'Tại sao xảy ra các sự cố nghiêm trọng và bài học kế thừa cho mùa sau là gì?',
+                'Tổng hợp bài học kinh nghiệm từ các sự cố mùa trước?',
             ],
         },
     ]);
@@ -114,9 +103,6 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                 id: `a-${Date.now()}`,
                 role: 'assistant',
                 content: res.answer,
-                modelUsed: res.modelUsed,
-                modelTier: res.modelTier,
-                routingReason: res.routingReason,
                 citations: res.citations,
                 followUpQuestions: res.followUpQuestions,
             };
@@ -154,22 +140,17 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
             <div className="flex h-full w-full max-w-lg flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-4 text-white">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-900 px-5 py-4 text-white">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur-xs">
-                            <Bot className="h-5 w-5 text-white" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                            <Bot className="h-5 w-5 text-emerald-400" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold">
-                                    Chatbot Trợ Lý Kho Tri Thức (RAG)
-                                </h3>
-                                <span className="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                                    AWS Bedrock
-                                </span>
-                            </div>
-                            <p className="text-[11px] text-emerald-100 truncate max-w-xs">
-                                {eventName || 'Đang kết nối FAQ, Sự cố Post-Mortem & Feedback'}
+                            <h3 className="text-sm font-bold text-white">
+                                Trợ lý AI Kho tri thức
+                            </h3>
+                            <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                                {eventName || 'Hỏi đáp FAQ, sự cố Post-Mortem & phản hồi sự kiện'}
                             </p>
                         </div>
                     </div>
@@ -178,7 +159,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                         <button
                             type="button"
                             onClick={handleResetChat}
-                            className="rounded-lg p-1.5 text-emerald-100 hover:bg-white/15 hover:text-white transition-colors"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
                             title="Làm mới cuộc trò chuyện"
                         >
                             <Trash2 className="h-4 w-4" />
@@ -186,33 +167,28 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-lg p-1.5 text-emerald-100 hover:bg-white/15 hover:text-white transition-colors"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
                         >
                             <X className="h-5 w-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* Quick Tier Demo Banner */}
-                <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                        Thử nghiệm Tự động Định tuyến Model (Smart Model Routing):
+                {/* Suggested Questions */}
+                <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 space-y-1.5">
+                    <span className="text-[10px] font-semibold text-slate-500 block">
+                        Gợi ý câu hỏi:
                     </span>
-                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                        {SAMPLE_PROMPTS.map((sp, idx) => (
+                    <div className="flex flex-col gap-1.5">
+                        {SAMPLE_PROMPTS.map((prompt, idx) => (
                             <button
                                 key={idx}
                                 type="button"
                                 disabled={isSending}
-                                onClick={() => handleSendMessage(sp.prompt)}
-                                className="flex flex-col items-start rounded-xl border border-slate-200 bg-white p-2 text-left hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors"
+                                onClick={() => handleSendMessage(prompt)}
+                                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-left text-[11px] text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors"
                             >
-                                <span className="text-[10px] font-bold text-emerald-700">
-                                    {sp.tierLabel}
-                                </span>
-                                <span className="text-[11px] text-slate-600 line-clamp-1">
-                                    {sp.prompt}
-                                </span>
+                                {prompt}
                             </button>
                         ))}
                     </div>
@@ -234,36 +210,13 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                                         : 'bg-slate-100 text-slate-800 rounded-bl-xs border border-slate-200/80'
                                 }`}
                             >
-                                {/* Model Tier Badge on Assistant messages */}
-                                {msg.role === 'assistant' && msg.modelTier && (
-                                    <div className="mb-2 flex flex-wrap items-center gap-1.5 pb-1.5 border-b border-slate-200/80">
-                                        <span
-                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold border ${
-                                                msg.modelTier === 'DEEP'
-                                                    ? 'bg-purple-50 text-purple-800 border-purple-200'
-                                                    : 'bg-sky-50 text-sky-800 border-sky-200'
-                                            }`}
-                                        >
-                                            <Cpu className="h-3 w-3" />
-                                            {msg.modelTier === 'DEEP'
-                                                ? '🧠 Deep Tier (Sonnet/Opus)'
-                                                : '⚡ Fast Tier (Haiku/Nova)'}
-                                        </span>
-                                        {msg.routingReason && (
-                                            <span className="text-[10px] text-slate-500">
-                                                {msg.routingReason}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-
                                 <div className="whitespace-pre-line">{msg.content}</div>
 
                                 {/* Citations */}
                                 {msg.citations && msg.citations.length > 0 && (
                                     <div className="mt-3 pt-2.5 border-t border-slate-200/80 space-y-1.5">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                                            Nguồn trích dẫn thực tế (RAG Citations):
+                                        <span className="text-[10px] font-semibold text-slate-500 block">
+                                            Nguồn tham chiếu:
                                         </span>
                                         {msg.citations.map((cit, cIdx) => (
                                             <div
@@ -310,9 +263,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                     {isSending && (
                         <div className="flex items-center gap-2 text-xs text-slate-500 px-2">
                             <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-                            <span>
-                                AiModelRouter đang chọn Model & truy xuất dữ liệu Kho Tri Thức…
-                            </span>
+                            <span>Trợ lý AI đang tra cứu và trả lời…</span>
                         </div>
                     )}
                     <div ref={messagesEndRef} />

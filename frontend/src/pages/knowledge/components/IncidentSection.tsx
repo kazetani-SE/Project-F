@@ -9,7 +9,6 @@ import {
     XCircle,
     Search,
     Sparkles,
-    Cpu,
 } from 'lucide-react';
 import {
     getIncidentsByEvent,
@@ -56,10 +55,6 @@ export const IncidentSection: React.FC<Props> = ({ eventId, onCountChange }) => 
     // AI Post-Mortem Copilot State
     const [aiBriefInput, setAiBriefInput] = useState('');
     const [isAiDrafting, setIsAiDrafting] = useState(false);
-    const [aiDraftMeta, setAiDraftMeta] = useState<{
-        modelTier: string;
-        routingReason: string;
-    } | null>(null);
 
     const fetchIncidents = useCallback(async () => {
         setIsLoading(true);
@@ -130,10 +125,6 @@ export const IncidentSection: React.FC<Props> = ({ eventId, onCountChange }) => 
             setFormRootCause(draft.rootCause);
             setFormSolution(draft.immediateSolution);
             setFormLesson(draft.lessonLearned);
-            setAiDraftMeta({
-                modelTier: draft.modelTier,
-                routingReason: draft.routingReason,
-            });
         } catch (err: unknown) {
             alert(err instanceof Error ? err.message : 'Lỗi khi gọi AI phân tích sự cố');
         } finally {
@@ -363,46 +354,35 @@ export const IncidentSection: React.FC<Props> = ({ eventId, onCountChange }) => 
                         </div>
 
                         <form onSubmit={handleCreateIncident} className="mt-5 space-y-4 text-xs">
-                            {/* AI Trợ lý Phân tích Post-Mortem */}
-                            <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/50 p-3.5 space-y-2.5">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-                                        <span>AI Trợ lý Phân tích Sự cố 5-Whys (Post-Mortem Copilot)</span>
-                                    </div>
-                                    {aiDraftMeta && (
-                                        <span
-                                            className="inline-flex items-center gap-1 rounded-md bg-sky-50 border border-sky-200 px-2 py-0.5 text-[10px] font-bold text-sky-800"
-                                            title={aiDraftMeta.routingReason}
-                                        >
-                                            <Cpu className="h-3 w-3" />
-                                            {aiDraftMeta.modelTier} Tier
-                                        </span>
-                                    )}
+                            {/* AI Gợi ý phân tích sự cố */}
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 space-y-2.5">
+                                <div className="flex items-center gap-1.5 font-semibold text-emerald-800">
+                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span>Gợi ý điền mẫu bằng AI</span>
                                 </div>
                                 <p className="text-[11px] text-slate-600">
-                                    Chỉ cần nhập 1 câu mô tả hiện tượng sự cố, AI sẽ tự động đề xuất mức độ nghiêm trọng, ban liên quan và điền nháp 4 mục Post-Mortem bên dưới.
+                                    Nhập mô tả sự cố để AI tự động phân loại mức độ và điền nháp 4 nội dung Post-Mortem bên dưới.
                                 </p>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={aiBriefInput}
                                         onChange={(e) => setAiBriefInput(e.target.value)}
-                                        placeholder="VD: Micro không dây bị mất tiếng 15 phút lúc khai mạc và bàn check-in ùn tắc..."
-                                        className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
+                                        placeholder="Ví dụ: Mất điện hội trường 15 phút lúc khai mạc, micro không hoạt động..."
+                                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
                                     />
                                     <button
                                         type="button"
                                         disabled={isAiDrafting || !aiBriefInput.trim()}
                                         onClick={handleAiDraftIncident}
-                                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                                     >
                                         {isAiDrafting ? (
                                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                         ) : (
                                             <Sparkles className="h-3.5 w-3.5" />
                                         )}
-                                        <span>✨ AI Điền Mẫu</span>
+                                        <span>AI điền mẫu</span>
                                     </button>
                                 </div>
                             </div>

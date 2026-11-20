@@ -181,10 +181,11 @@ export const FaqSection: React.FC<Props> = ({ seriesId, eventId, onCountChange }
                     <button
                         type="button"
                         onClick={() => setIsAiSuggestOpen(true)}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 shadow-2xs hover:bg-emerald-100 transition-colors"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+                        title="AI hỗ trợ gợi ý các câu hỏi thường gặp dựa trên phản hồi và sự cố"
                     >
                         <Sparkles className="h-4 w-4 text-emerald-600" />
-                        <span>✨ AI Gợi ý Câu hỏi FAQ</span>
+                        <span>Gợi ý câu hỏi AI</span>
                     </button>
 
                     <button

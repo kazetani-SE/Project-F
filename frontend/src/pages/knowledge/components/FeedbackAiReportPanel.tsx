@@ -6,7 +6,6 @@ import {
     CheckCircle2,
     Copy,
     Check,
-    Cpu,
     TrendingUp,
     AlertCircle,
     Building2,
@@ -143,23 +142,20 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
     // Chưa từng có báo cáo AI trong DB
     if (!report) {
         return (
-            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/60 p-5 shadow-xs">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-xs">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-2xs">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                AI Feedback Agent
-                            </span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                                AWS Bedrock • Dynamic Model Routing
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-semibold">
+                                <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                                Phân tích phản hồi AI
                             </span>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 pt-1">
-                            Tổng hợp Báo cáo Khái quát từ {totalFeedbacksCount} phiếu Feedback
+                        <h4 className="text-sm font-bold text-slate-900 pt-0.5">
+                            Tổng hợp báo cáo từ {totalFeedbacksCount} phiếu khảo sát
                         </h4>
                         <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-                            AI Agent sẽ đọc toàn bộ điểm số và ý kiến tự luận để tóm tắt bức tranh toàn cảnh, chỉ ra điểm sáng, điểm nghẽn và đề xuất hành động cho từng Ban. Kết quả được lưu Snapshot vào DB để các thành viên xem ngay mà không tốn phí gọi lại AI.
+                            Tự động trích xuất điểm sáng, tồn tại cần cải thiện và gợi ý hành động cụ thể cho từng ban chuyên môn từ ý kiến người tham gia.
                         </p>
                     </div>
 
@@ -167,17 +163,17 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                         type="button"
                         onClick={handleGenerateReport}
                         disabled={isGenerating || totalFeedbacksCount === 0}
-                        className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
                     >
                         {isGenerating ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>AI đang phân tích {totalFeedbacksCount} phiếu…</span>
+                                <span>Đang phân tích...</span>
                             </>
                         ) : (
                             <>
                                 <Sparkles className="h-4 w-4" />
-                                <span>✨ Tạo Báo Cáo Tổng Hợp AI</span>
+                                <span>Tạo báo cáo phân tích</span>
                             </>
                         )}
                     </button>
@@ -198,40 +194,20 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
     const negPct = report.sentimentBreakdown?.negative ?? 0;
 
     return (
-        <div className="rounded-2xl border border-emerald-200 bg-white shadow-xs overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
             {/* Top Bar */}
-            <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-emerald-50/70 via-white to-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            Báo Cáo Tổng Hợp AI
-                        </span>
+            <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-semibold">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                        Báo cáo phân tích AI
+                    </span>
 
-                        <span
-                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-bold border ${
-                                report.modelTier === 'DEEP'
-                                    ? 'bg-purple-50 text-purple-800 border-purple-200'
-                                    : 'bg-sky-50 text-sky-800 border-sky-200'
-                            }`}
-                            title={report.routingReason}
-                        >
-                            <Cpu className="h-3 w-3" />
-                            {report.modelTier === 'DEEP'
-                                ? '🧠 Deep Tier (Sonnet/Opus)'
-                                : '⚡ Fast Tier (Haiku/Nova)'}
-                        </span>
-
-                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                            <Clock className="h-3 w-3" />
-                            Lưu lúc:{' '}
-                            {new Date(report.updatedAt || report.generatedAt).toLocaleString(
-                                'vi-VN',
-                            )}
-                        </span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-500">{report.routingReason}</p>
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        Cập nhật:{' '}
+                        {new Date(report.updatedAt || report.generatedAt).toLocaleString('vi-VN')}
+                    </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -243,12 +219,12 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                         {copiedMarkdown ? (
                             <>
                                 <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                <span className="text-emerald-700">Đã chép Markdown</span>
+                                <span className="text-emerald-700">Đã chép</span>
                             </>
                         ) : (
                             <>
                                 <Copy className="h-3.5 w-3.5 text-slate-500" />
-                                <span>Copy Báo cáo</span>
+                                <span>Copy báo cáo</span>
                             </>
                         )}
                     </button>
@@ -257,10 +233,10 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                         type="button"
                         onClick={handleGenerateReport}
                         disabled={isGenerating}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
                     >
                         <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-                        <span>{isGenerating ? 'Đang tổng hợp lại…' : 'Tổng hợp lại'}</span>
+                        <span>{isGenerating ? 'Đang phân tích…' : 'Phân tích lại'}</span>
                     </button>
 
                     <button
@@ -278,33 +254,24 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                 </div>
             </div>
 
-            {/* Banner cảnh báo dữ liệu mới (Staleness Detection) */}
+            {/* Banner cảnh báo dữ liệu mới */}
             {report.isStale && (
-                <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50/90 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-2.5 text-xs text-amber-900">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                        <div>
-                            <span className="font-bold">
-                                Phát hiện dữ liệu khảo sát mới cập nhật:
-                            </span>{' '}
-                            Báo cáo hiện tại được tạo trên mốc{' '}
-                            <span className="font-bold">{report.feedbackCountSnapshot} phiếu</span>,
-                            nhưng hệ thống hiện có{' '}
-                            <span className="font-bold">{report.currentFeedbackCount} phiếu</span>
-                            {report.newFeedbackCountDelta > 0 &&
-                                ` (+${report.newFeedbackCountDelta} phiếu mới)`}
-                            . Hệ thống đang hiển thị bản lưu trong DB để tiết kiệm chi phí AI.
-                        </div>
+                <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 text-xs text-amber-900">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                        <span>
+                            Có thêm <strong>{report.newFeedbackCountDelta > 0 ? report.newFeedbackCountDelta : 'mới'}</strong> phản hồi khảo sát kể từ lần phân tích trước.
+                        </span>
                     </div>
 
                     <button
                         type="button"
                         onClick={handleGenerateReport}
                         disabled={isGenerating}
-                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
                     >
-                        <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-                        <span>Cập nhật báo cáo theo dữ liệu mới</span>
+                        <RefreshCw className={`h-3 w-3 ${isGenerating ? 'animate-spin' : ''}`} />
+                        <span>Cập nhật báo cáo</span>
                     </button>
                 </div>
             )}
@@ -321,8 +288,8 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                     {/* 1. Executive Summary & Sentiment Bar */}
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                         <div className="lg:col-span-8 rounded-xl bg-slate-50 p-4 border border-slate-100">
-                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                1. Tóm tắt toàn cảnh (Executive Summary)
+                            <h5 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                                Tóm tắt tổng quan
                             </h5>
                             <p className="text-sm text-slate-800 leading-relaxed">
                                 {report.executiveSummary}
@@ -331,14 +298,14 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
 
                         <div className="lg:col-span-4 rounded-xl bg-slate-50 p-4 border border-slate-100 flex flex-col justify-between">
                             <div>
-                                <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
-                                    <span>Phân bổ sắc thái phản hồi</span>
-                                    <span className="text-emerald-700">
+                                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-2">
+                                    <span>Tỷ lệ sắc thái phản hồi</span>
+                                    <span className="text-emerald-700 font-bold">
                                         {report.feedbackCountSnapshot} phiếu
                                     </span>
                                 </div>
 
-                                <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden flex">
+                                <div className="h-2.5 w-full rounded-full bg-slate-200 overflow-hidden flex">
                                     <div
                                         className="bg-emerald-500 h-full"
                                         style={{ width: `${posPct}%` }}
@@ -359,16 +326,16 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
 
                             <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
                                 <div className="rounded-lg bg-emerald-50 p-1.5 border border-emerald-200 text-emerald-800">
-                                    <span className="block font-extrabold text-sm">{posPct}%</span>
+                                    <span className="block font-bold text-sm">{posPct}%</span>
                                     <span>Tích cực</span>
                                 </div>
                                 <div className="rounded-lg bg-amber-50 p-1.5 border border-amber-200 text-amber-800">
-                                    <span className="block font-extrabold text-sm">{neuPct}%</span>
+                                    <span className="block font-bold text-sm">{neuPct}%</span>
                                     <span>Trung lập</span>
                                 </div>
                                 <div className="rounded-lg bg-rose-50 p-1.5 border border-rose-200 text-rose-800">
-                                    <span className="block font-extrabold text-sm">{negPct}%</span>
-                                    <span>Cần khắc phục</span>
+                                    <span className="block font-bold text-sm">{negPct}%</span>
+                                    <span>Khắc phục</span>
                                 </div>
                             </div>
                         </div>
@@ -376,10 +343,10 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
 
                     {/* 2. Điểm sáng & Vấn đề cần khắc phục */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4">
-                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 mb-2.5">
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 mb-2.5">
                                 <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                <span>Điểm sáng được đánh giá cao nhất</span>
+                                <span>Điểm đánh giá tích cực</span>
                             </div>
                             <ul className="space-y-2 text-xs text-slate-700">
                                 {report.topHighlights.map((item, idx) => (
@@ -391,10 +358,10 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                             </ul>
                         </div>
 
-                        <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-4">
-                            <div className="flex items-center gap-2 text-xs font-bold text-amber-900 mb-2.5">
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 mb-2.5">
                                 <AlertTriangle className="h-4 w-4 text-amber-600" />
-                                <span>Điểm nghẽn cần ưu tiên khắc phục</span>
+                                <span>Vấn đề cần ưu tiên khắc phục</span>
                             </div>
                             <ul className="space-y-2 text-xs text-slate-700">
                                 {report.topImprovements.map((item, idx) => (
@@ -410,9 +377,9 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                     {/* 3. Khuyến nghị hành động theo từng Ban */}
                     {report.departmentActions && report.departmentActions.length > 0 && (
                         <div>
-                            <div className="flex items-center gap-2 text-xs font-bold text-slate-800 mb-2.5">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 mb-2.5">
                                 <Building2 className="h-4 w-4 text-emerald-600" />
-                                <span>Khuyến nghị hành động cụ thể cho từng Ban chuyên môn</span>
+                                <span>Khuyến nghị hành động theo từng ban</span>
                             </div>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 {report.departmentActions.map((da, idx) => (
@@ -420,7 +387,7 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                                         key={idx}
                                         className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs space-y-1.5"
                                     >
-                                        <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                                        <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
                                             {DEPARTMENT_LABELS[da.department as Department] ||
                                                 da.department}
                                         </span>
@@ -433,16 +400,14 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
 
                     {/* 4. Gợi ý chuyển thành Sự cố Post-Mortem */}
                     {report.suggestedIncidents && report.suggestedIncidents.length > 0 && (
-                        <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="space-y-0.5">
-                                    <span className="text-xs font-bold text-rose-900">
-                                        💡 Phát hiện vấn đề lặp lại có thể lưu thành Bài học Sự cố (Post-Mortem)
-                                    </span>
-                                    <p className="text-[11px] text-rose-700">
-                                        Chuyển hóa góp ý tiêu cực trong Feedback thành bản ghi Sự cố để mùa sau không lặp lại lỗi này.
-                                    </p>
-                                </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                            <div className="space-y-0.5">
+                                <span className="text-xs font-bold text-slate-800">
+                                    Gợi ý chuyển thành sự cố Post-Mortem
+                                </span>
+                                <p className="text-[11px] text-slate-500">
+                                    Lưu các vấn đề được phản hồi nhiều thành bản ghi Sự cố để rút kinh nghiệm cho các mùa tiếp theo.
+                                </p>
                             </div>
 
                             <div className="mt-3 space-y-2.5">
@@ -452,14 +417,14 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                                     return (
                                         <div
                                             key={idx}
-                                            className="flex flex-col gap-3 rounded-xl bg-white p-3.5 border border-rose-100 sm:flex-row sm:items-center sm:justify-between"
+                                            className="flex flex-col gap-3 rounded-xl bg-white p-3.5 border border-slate-200 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             <div className="space-y-1 text-xs">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
                                                         {inc.severity}
                                                     </span>
-                                                    <span className="font-bold text-slate-900">
+                                                    <span className="font-semibold text-slate-900">
                                                         {inc.title}
                                                     </span>
                                                 </div>
@@ -475,10 +440,10 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                                                 type="button"
                                                 disabled={isSaved || isSaving}
                                                 onClick={() => handlePromoteToIncident(inc, idx)}
-                                                className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors ${
+                                                className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors ${
                                                     isSaved
                                                         ? 'bg-emerald-100 text-emerald-800'
-                                                        : 'bg-rose-600 text-white hover:bg-rose-700'
+                                                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
                                                 }`}
                                             >
                                                 {isSaving ? (
@@ -490,8 +455,8 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                                                 )}
                                                 <span>
                                                     {isSaved
-                                                        ? 'Đã lưu vào Nhật ký Sự cố'
-                                                        : 'Lưu vào Post-Mortem'}
+                                                        ? 'Đã lưu sự cố'
+                                                        : 'Lưu sự cố'}
                                                 </span>
                                             </button>
                                         </div>
