@@ -5,7 +5,7 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 import RoleBadge from '../ui/RoleBadge';
-import {useActiveEvent} from "../../context/activeEventContext.ts";
+import { useActiveEvent } from "../../context/activeEventContext.ts";
 import logo from "../../assets/NewFCode_Logo.png"
 import { ROUTE_PATHS } from '../../app/router/route';
 
@@ -38,21 +38,18 @@ function NavItem({ to, label, icon: Icon, end, disabled, compact, onClick }: Nav
             tabIndex={disabled ? -1 : 0}
             onClick={(e) => (disabled ? e.preventDefault() : onClick?.())}
             className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-xl text-sm transition-colors ${
-                    compact ? 'px-3 py-2' : 'px-3.5 py-2.5'
-                } ${
-                    isActive
-                        ? 'bg-emerald-50/90 font-semibold text-emerald-700'
-                        : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                `group flex items-center gap-3 rounded-xl text-sm transition-colors ${compact ? 'px-3 py-2' : 'px-3.5 py-2.5'
+                } ${isActive
+                    ? 'bg-emerald-50/90 font-semibold text-emerald-700'
+                    : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 } ${disabled ? 'pointer-events-none opacity-40' : ''}`
             }
         >
             {({ isActive }) => (
                 <>
                     <Icon
-                        className={`shrink-0 ${compact ? 'h-4 w-4' : 'h-5 w-5'} ${
-                            isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'
-                        }`}
+                        className={`shrink-0 ${compact ? 'h-4 w-4' : 'h-5 w-5'} ${isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'
+                            }`}
                     />
                     <span>{label}</span>
                 </>
@@ -75,9 +72,8 @@ export default function Sidebar({ open, onClose }: Props) {
 
     return (
         <aside
-            className={`fixed inset-y-0 left-0 z-40 flex w-64 select-none flex-col justify-between overflow-y-auto border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${
-                open ? 'translate-x-0' : '-translate-x-full'
-            }`}
+            className={`fixed inset-y-0 left-0 z-40 flex w-64 select-none flex-col justify-between overflow-y-auto border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'
+                }`}
         >
             <div className="p-5">
                 {/* Brand */}
@@ -121,14 +117,14 @@ export default function Sidebar({ open, onClose }: Props) {
                                 <div className="mt-2">
                                     {roleStatus === 'checking' && (
                                         <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <Loader2 size={12} className="animate-spin" /> Đang kiểm tra vai trò…
-                    </span>
+                                            <Loader2 size={12} className="animate-spin" /> Đang kiểm tra vai trò…
+                                        </span>
                                     )}
                                     {roleStatus === 'granted' && role && <RoleBadge role={role} />}
                                     {roleStatus === 'denied' && (
                                         <span className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
-                      <Lock size={12} /> Không thuộc BTC
-                    </span>
+                                            <Lock size={12} /> Không thuộc BTC
+                                        </span>
                                     )}
                                 </div>
                             </div>

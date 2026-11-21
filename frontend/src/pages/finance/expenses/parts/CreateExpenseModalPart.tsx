@@ -1,18 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { X, Paperclip } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, RefreshCw, ScanLine } from 'lucide-react';
 import { formatVND } from '../../components/CurrencyText';
-import type { BudgetItem, CreateExpenseRequest } from '../../../../types/models/finance';
+import { FileUploader } from '../../../../components/common/FileUploader';
+import { useS3Upload } from '../../../../hooks/useS3Upload';
+import { validateUploadFile } from '../../../../services/uploadWorkflow';
+import type { BillScanResponse, BudgetItem, CreateExpenseRequest } from '../../../../types/models/finance';
+import { useMemberOptions } from '../../hooks/useMemberOptions';
+import { useBillScan } from '../../hooks/useBillScan';
 
 interface CreateExpenseModalPartProps {
     isOpen: boolean;
+    eventId: string;
     budgetItems: BudgetItem[];
+    isSubmitting?: boolean;
     onClose: () => void;
     onSubmit: (data: CreateExpenseRequest) => Promise<void>;
 }
 
+const todayStr = () => new Date().toISOString().split('T')[0];
+
 export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
     isOpen,
+    eventId,
     budgetItems,
+    isSubmitting = false,
     onClose,
     onSubmit,
 }) => {
@@ -20,100 +31,165 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
     const [itemName, setItemName] = useState('');
     const [quantity, setQuantity] = useState<number>(1);
     const [actualPrice, setActualPrice] = useState<number>(0);
-    const [paidBy, setPaidBy] = useState<string>('00000000-0000-0000-0000-000000000001');
-    const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [paidBy, setPaidBy] = useState<string>('');
+    const [paymentDate, setPaymentDate] = useState<string>(todayStr());
     const [notes, setNotes] = useState('');
 
-    // Initial receipt attachment
+    // Receipt upload state
     const [initReceiptCode, setInitReceiptCode] = useState('');
-    const [initReceiptUrl, setInitReceiptUrl] = useState('');
     const [initReceiptSupplier, setInitReceiptSupplier] = useState('');
+    const [receiptFile, setReceiptFile] = useState<File | null>(null);
+    const { isUploading, progress, error: uploadError, uploadFile, reset: resetUpload } = useS3Upload();
+
+    // Danh sách người chi trả + quét hóa đơn
+    const { options: memberOptions, isLoading: isLoadingMembers, error: memberError } = useMemberOptions(isOpen);
+    const { isScanning, scan, reset: resetScan } = useBillScan(eventId);
 
     useEffect(() => {
-        if (isOpen) {
-            setSelectedBudgetItemId('');
-            setItemName('');
-            setQuantity(1);
-            setActualPrice(0);
-            setPaidBy('00000000-0000-0000-0000-000000000001');
-            setPaymentDate(new Date().toISOString().split('T')[0]);
-            setNotes('');
-            setInitReceiptCode('');
-            setInitReceiptUrl('');
-            setInitReceiptSupplier('');
-        }
+        if (!isOpen) return;
+        setSelectedBudgetItemId('');
+        setItemName('');
+        setQuantity(1);
+        setActualPrice(0);
+        setPaidBy('');
+        setPaymentDate(todayStr());
+        setNotes('');
+        setInitReceiptCode('');
+        setInitReceiptSupplier('');
+        setReceiptFile(null);
+        resetUpload();
+        resetScan();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
+
+    const canScan = useMemo(() => {
+        if (!receiptFile) return false;
+        try {
+            validateUploadFile(receiptFile, 'RECEIPT');
+            return true;
+        } catch {
+            return false;
+        }
+    }, [receiptFile]);
 
     if (!isOpen) return null;
 
     const handleBudgetItemSelect = (bId: string) => {
         setSelectedBudgetItemId(bId);
         if (!bId) return;
-        const b = budgetItems.find(item => item.id === bId);
+        const b = budgetItems.find((item) => item.id === bId);
         if (b) {
             setItemName(b.itemName);
             setQuantity(b.quantity);
-            setActualPrice(b.estimatedUnitPrice);
+            setActualPrice(b.estUnitPrice ?? b.estimatedUnitPrice ?? 0);
         }
+    };
+
+    // ===== HÀM ĐIỀN FORM từ kết quả quét (không đụng tới paidBy) =====
+    const applyScanResult = (r: BillScanResponse) => {
+        if (r.itemName) setItemName(r.itemName);
+        setQuantity(Math.max(1, Math.round(r.quantity || 1)));
+        setActualPrice(Math.max(0, Math.round(r.unitPrice || 0)));
+        if (r.billDate && /^\d{4}-\d{2}-\d{2}$/.test(r.billDate)) setPaymentDate(r.billDate);
+        if (r.receiptCode) setInitReceiptCode(r.receiptCode);
+        if (r.storeName) setInitReceiptSupplier(r.storeName);
+        if (r.notes) setNotes(r.notes);
+    };
+
+    const isBusy = isSubmitting || isUploading || isScanning;
+
+    // ===== HÀM QUÉT: gọi API rồi điền form =====
+    const handleScan = async () => {
+        if (!receiptFile || isBusy) return;
+        const result = await scan(receiptFile);
+        if (result) applyScanResult(result);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!itemName.trim()) return;
+        if (!itemName.trim() || !paidBy) return;
 
-        const receiptsList = initReceiptUrl.trim() ? [{
-            receiptCode: initReceiptCode.trim() || undefined,
-            imageUrl: initReceiptUrl.trim(),
-            supplierName: initReceiptSupplier.trim() || undefined,
-        }] : [];
+        try {
+            let uploadedFileUrl: string | undefined = undefined;
+            if (receiptFile) {
+                const uploadRes = await uploadFile(receiptFile, 'RECEIPT');
+                uploadedFileUrl = uploadRes.fileUrl;
+            }
 
-        await onSubmit({
-            budgetItemId: selectedBudgetItemId || undefined,
-            itemName: itemName.trim(),
-            quantity,
-            actualUnitPrice: actualPrice,
-            paidBy,
-            paymentDate,
-            notes: notes.trim() || undefined,
-            receipts: receiptsList,
-        });
-        onClose();
+            const receiptsList = uploadedFileUrl
+                ? [
+                    {
+                        receiptCode: initReceiptCode.trim() || undefined,
+                        imageUrl: uploadedFileUrl,
+                        supplierName: initReceiptSupplier.trim() || undefined,
+                    },
+                ]
+                : [];
+
+            await onSubmit({
+                budgetItemId: selectedBudgetItemId || undefined,
+                itemName: itemName.trim(),
+                quantity,
+                actualUnitPrice: actualPrice,
+                paidBy,
+                paymentDate,
+                notes: notes.trim() || undefined,
+                receipts: receiptsList,
+            });
+            onClose();
+        } catch {
+            // Do not close on error, error dialog will be displayed
+        }
     };
+
+    const totalExpense = quantity * actualPrice;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900">Ghi Nhận Thực Chi</h3>
-                    <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">Thêm Khoản Chi Tiêu Thực Tế</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Khớp với dự trù ngân sách đã duyệt</p>
+                    </div>
+                    <button onClick={onClose} disabled={isBusy} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-50">
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                    {/* Link to approved budget item */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-700">Khớp với Hạng mục dự trù (tùy chọn)</label>
+                        <label className="block text-xs font-semibold text-slate-700">Khớp với Hạng mục Dự trù (Budget Item)</label>
                         <select
+                            disabled={isBusy}
                             value={selectedBudgetItemId}
                             onChange={(e) => handleBudgetItemSelect(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                         >
-                            <option value="">-- Khoản chi ngoài dự trù --</option>
-                            {budgetItems.map(b => (
-                                <option key={b.id} value={b.id}>
-                                    {b.itemName} (Dự kiến: {formatVND(b.estimatedUnitPrice * b.quantity)})
-                                </option>
-                            ))}
+                            <option value="">-- Chi phát sinh ngoài dự trù (hoặc tự nhập) --</option>
+                            {budgetItems.map((b) => {
+                                const unitPrice = b.estUnitPrice ?? b.estimatedUnitPrice ?? 0;
+                                const total = b.totalEstAmount ?? b.totalEstimatedAmount ?? b.quantity * unitPrice;
+                                return (
+                                    <option key={b.id} value={b.id}>
+                                        {b.itemName} (Dự kiến: {formatVND(total)})
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-700">Tên khoản chi *</label>
+                        <label className="block text-xs font-semibold text-slate-700">Tên khoản chi thực tế *</label>
                         <input
                             type="text"
                             required
+                            disabled={isBusy}
                             value={itemName}
                             onChange={(e) => setItemName(e.target.value)}
-                            placeholder="VD: Mua nước suối, In ấn backdrop..."
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            placeholder="VD: Mua 4 Standee tại Nhà in FPT"
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                         />
                     </div>
 
@@ -123,11 +199,11 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
                             <input
                                 type="number"
                                 required
-                                min={0.01}
-                                step="any"
+                                min={1}
+                                disabled={isBusy}
                                 value={quantity}
-                                onChange={(e) => setQuantity(Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
                         <div>
@@ -136,9 +212,10 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
                                 type="number"
                                 required
                                 min={0}
+                                disabled={isBusy}
                                 value={actualPrice}
-                                onChange={(e) => setActualPrice(Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                onChange={(e) => setActualPrice(parseInt(e.target.value) || 0)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
                     </div>
@@ -149,86 +226,118 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
                             <input
                                 type="date"
                                 required
+                                disabled={isBusy}
                                 value={paymentDate}
                                 onChange={(e) => setPaymentDate(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-700">Thành tiền tự tính</label>
-                            <div className="mt-1 flex h-10 items-center rounded-xl bg-slate-50 px-3 text-sm font-bold text-emerald-700">
-                                {formatVND(quantity * actualPrice)}
-                            </div>
+                            <label className="block text-xs font-semibold text-slate-700">Người chi trả *</label>
+                            <select
+                                required
+                                disabled={isBusy || isLoadingMembers}
+                                value={paidBy}
+                                onChange={(e) => setPaidBy(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
+                            >
+                                <option value="">{isLoadingMembers ? 'Đang tải...' : '-- Chọn thành viên --'}</option>
+                                {memberOptions.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.label}
+                                    </option>
+                                ))}
+                            </select>
+                            {memberError && <p className="mt-1 text-[11px] text-rose-600">{memberError}</p>}
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-700">Mã định danh người chi (Member ID) *</label>
-                        <input
-                            type="text"
-                            required
-                            value={paidBy}
-                            onChange={(e) => setPaidBy(e.target.value)}
-                            placeholder="UUID thành viên chi trả"
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                        />
-                    </div>
+                    {/* Receipt section using FileUploader (RECEIPT category) */}
+                    <div className="rounded-2xl border border-slate-200 p-4 bg-slate-50/50 space-y-3">
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-900">Đính kèm chứng từ ban đầu (khuyến nghị)</h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                Khoản chi bắt buộc phải có ít nhất 1 chứng từ hóa đơn trước khi được duyệt (APPROVED).
+                            </p>
+                        </div>
 
-                    {/* Optional initial receipt */}
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                            <Paperclip className="h-3.5 w-3.5 text-amber-600" />
-                            Đính kèm Hóa đơn / Chứng từ S3 (Bắt buộc để được duyệt chi)
-                        </label>
                         <div className="grid grid-cols-2 gap-2">
                             <input
                                 type="text"
+                                disabled={isBusy}
                                 value={initReceiptCode}
                                 onChange={(e) => setInitReceiptCode(e.target.value)}
-                                placeholder="Mã số HĐ (VD: HD-0012)"
-                                className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none"
+                                placeholder="Mã số hóa đơn (VD: HD-0012)"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                             <input
                                 type="text"
+                                disabled={isBusy}
                                 value={initReceiptSupplier}
                                 onChange={(e) => setInitReceiptSupplier(e.target.value)}
-                                placeholder="Nhà cung cấp / Cửa hàng"
-                                className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none"
+                                placeholder="Tên đơn vị bán..."
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
-                        <input
-                            type="url"
-                            value={initReceiptUrl}
-                            onChange={(e) => setInitReceiptUrl(e.target.value)}
-                            placeholder="Đường dẫn ảnh/file hóa đơn S3 (URL)..."
-                            className="w-full rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none"
+
+                        <FileUploader
+                            category="RECEIPT"
+                            selectedFile={receiptFile}
+                            onFileSelect={setReceiptFile}
+                            isUploading={isUploading}
+                            progress={progress}
+                            error={uploadError}
+                            label="Tải lên ảnh/PDF hóa đơn"
+                            description="Hỗ trợ JPG, PNG, WEBP, PDF, DOCX, XLSX (Tối đa 15MB)"
+                            disabled={isBusy}
                         />
+
+                        {/* ===== NÚT QUÉT HÓA ĐƠN ===== */}
+                        <button
+                            type="button"
+                            onClick={handleScan}
+                            disabled={isBusy || !canScan}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                        >
+                            {isScanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                            {isScanning ? 'Đang quét...' : 'Quét hóa đơn bằng AI'}
+                        </button>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-700">Ghi chú thực chi</label>
+                        <label className="block text-xs font-semibold text-slate-700">Ghi chú diễn giải</label>
                         <textarea
                             rows={2}
+                            disabled={isBusy}
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Ghi chú hoàn ứng hoặc chuyển khoản..."
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            placeholder="Chi tiết mua hàng, tình trạng hóa đơn..."
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                         />
+                    </div>
+
+                    {/* Calculated total preview */}
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 border border-slate-100">
+                        <span className="text-xs font-medium text-slate-500">Tổng tiền thực chi:</span>
+                        <span className="text-base font-bold text-slate-900">{formatVND(totalExpense)}</span>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                            disabled={isBusy}
+                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                             Hủy
                         </button>
                         <button
                             type="submit"
-                            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                            disabled={isBusy}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
-                            Gửi Yêu Cầu Thanh Toán
+                            {isBusy && <RefreshCw className="h-4 w-4 animate-spin" />}
+                            {isUploading ? `Đang tải tệp (${progress}%)...` : isSubmitting ? 'Đang lưu...' : 'Lưu Khoản Chi'}
                         </button>
                     </div>
                 </form>
@@ -236,4 +345,3 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
         </div>
     );
 };
-

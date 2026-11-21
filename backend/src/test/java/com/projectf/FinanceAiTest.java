@@ -23,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -290,15 +291,16 @@ class FinanceAiTest {
         }
 
         @Test
-        void modelTraVeJsonBocTrongMarkdown_vanParseDuoc() {
+        void ngaySaiDinhDang_thanhNull() {
             when(gemini.generateWithImage(anyString(), any(byte[].class), anyString(),
-                    any(GenerateContentConfig.class))).thenReturn("```json\n" + BILL_JSON + "\n```");
+                    any(GenerateContentConfig.class)))
+                    .thenReturn(
+                            "{\"storeName\":\"A\",\"billDate\":\"20/11/2026\",\"itemName\":\"x\",\"quantity\":2,\"unitPrice\":0,\"totalAmount\":100000}");
 
             BillScanResponse r = service.scan(file("image/png", "abc".getBytes()));
 
-            assertEquals("Highlands", r.storeName());
-            assertEquals(125000L, r.totalAmount());
-            assertEquals(1, r.items().size());
+            assertNull(r.billDate());
+            assertEquals(50000L, r.unitPrice());
         }
 
         @Test

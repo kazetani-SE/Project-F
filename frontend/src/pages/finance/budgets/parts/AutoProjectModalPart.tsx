@@ -9,6 +9,7 @@ interface AutoProjectModalPartProps {
     availableEvents: Array<{ id: string; name: string; seasonLabel?: string | null }>;
     projectedPreview: ProjectedBudgetItem[];
     loading: boolean;
+    isSubmitting?: boolean;
     onClose: () => void;
     onSelectPreviousEvent: (prevEventId: string) => void;
     onConfirm: (prevEventId: string) => Promise<void>;
@@ -19,6 +20,7 @@ export const AutoProjectModalPart: React.FC<AutoProjectModalPartProps> = ({
     availableEvents,
     projectedPreview,
     loading,
+    isSubmitting = false,
     onClose,
     onSelectPreviousEvent,
     onConfirm,
@@ -34,11 +36,18 @@ export const AutoProjectModalPart: React.FC<AutoProjectModalPartProps> = ({
 
     const handleConfirm = async () => {
         if (!selectedPrevEventId) return;
-        await onConfirm(selectedPrevEventId);
-        onClose();
+        try {
+            await onConfirm(selectedPrevEventId);
+            onClose();
+        } catch {
+            // Error modal will be displayed
+        }
     };
 
-    const totalProjectedAmount = projectedPreview.reduce((sum, item) => sum + item.projectedCurrentCost, 0);
+    const totalProjectedAmount = projectedPreview.reduce((sum, item) => {
+        const cost = item.projectedCost ?? item.projectedCurrentCost ?? 0;
+        return sum + cost;
+    }, 0);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -55,16 +64,19 @@ export const AutoProjectModalPart: React.FC<AutoProjectModalPartProps> = ({
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
+                    <button onClick={onClose} disabled={isSubmitting} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-50">
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
                 <div className="mt-4 space-y-4">
                     <div>
                         <label className="block text-xs font-semibold text-slate-700">Chọn sự kiện tham chiếu mùa trước *</label>
                         <select
+                            disabled={isSubmitting}
                             value={selectedPrevEventId}
                             onChange={(e) => handleEventChange(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none disabled:bg-slate-50"
                         >
                             <option value="">-- Chọn mùa sự kiện để kế thừa --</option>
                             {availableEvents.map((e) => (
@@ -102,7 +114,7 @@ export const AutoProjectModalPart: React.FC<AutoProjectModalPartProps> = ({
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {projectedPreview.map((p, idx) => (
-                                            <ProjectedPreviewRow key={p.previousBudgetItemId || idx} item={p} />
+                                            <ProjectedPreviewRow key={p.prevBudgetItemId || p.previousBudgetItemId || idx} item={p} />
                                         ))}
                                     </tbody>
                                 </table>
@@ -118,18 +130,19 @@ export const AutoProjectModalPart: React.FC<AutoProjectModalPartProps> = ({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                            disabled={isSubmitting}
+                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                             Hủy
                         </button>
                         <button
                             type="button"
-                            disabled={projectedPreview.length === 0}
+                            disabled={projectedPreview.length === 0 || isSubmitting}
                             onClick={handleConfirm}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-40"
                         >
-                            <Sparkles className="h-4 w-4" />
-                            Xác Nhận Kế Thừa Vào Dự Toán
+                            {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            {isSubmitting ? 'Đang kế thừa...' : 'Xác Nhận Kế Thừa Vào Dự Toán'}
                         </button>
                     </div>
                 </div>

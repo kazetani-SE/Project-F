@@ -10,7 +10,7 @@ interface ExpenseTableRowProps {
     onOpenReceipts: (exp: Expense) => void;
     onApprove: (exp: Expense) => void;
     onReject: (exp: Expense) => void;
-    onDelete: (id: string) => void;
+    onDelete: (exp: Expense) => void;
 }
 
 export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
@@ -88,7 +88,7 @@ export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
                         </button>
                     )}
                     <button
-                        onClick={() => onDelete(expense.id)}
+                        onClick={() => onDelete(expense)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                         title="Xóa"
                     >
@@ -99,4 +99,3 @@ export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
         </tr>
     );
 };
-

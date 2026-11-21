@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import type { ItemPriceBenchmark, BudgetCategory, CreateBenchmarkRequest, UpdateBenchmarkRequest } from '../../../../types/models/finance';
 
 interface BenchmarkModalPartProps {
     isOpen: boolean;
     initialData: ItemPriceBenchmark | null;
     categories: BudgetCategory[];
+    isSubmitting?: boolean;
     onClose: () => void;
     onSubmit: (data: CreateBenchmarkRequest | UpdateBenchmarkRequest) => Promise<void>;
 }
@@ -14,6 +15,7 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
     isOpen,
     initialData,
     categories,
+    isSubmitting = false,
     onClose,
     onSubmit,
 }) => {
@@ -21,21 +23,24 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
     const [itemName, setItemName] = useState('');
     const [unit, setUnit] = useState('Cái');
     const [price, setPrice] = useState<number>(0);
-    const [supplier, setSupplier] = useState('');
+    const [supplierName, setSupplierName] = useState('');
+    const [supplierLink, setSupplierLink] = useState('');
 
     useEffect(() => {
         if (initialData) {
             setCategoryId(initialData.categoryId);
             setItemName(initialData.itemName);
             setUnit(initialData.unit);
-            setPrice(initialData.currentMarketPrice);
-            setSupplier(initialData.supplierReference ?? '');
+            setPrice(initialData.curMarketPrice ?? initialData.currentMarketPrice ?? 0);
+            setSupplierName(initialData.supplierName ?? initialData.supplierReference ?? '');
+            setSupplierLink(initialData.supplierLink ?? '');
         } else {
             setCategoryId(categories[0]?.id ?? '');
             setItemName('');
             setUnit('Cái');
             setPrice(0);
-            setSupplier('');
+            setSupplierName('');
+            setSupplierLink('');
         }
     }, [initialData, categories, isOpen]);
 
@@ -44,14 +49,21 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!itemName.trim() || !unit.trim() || !categoryId) return;
-        await onSubmit({
-            categoryId,
-            itemName: itemName.trim(),
-            unit: unit.trim(),
-            currentMarketPrice: price,
-            supplierReference: supplier.trim() || undefined,
-        });
-        onClose();
+        try {
+            await onSubmit({
+                categoryId,
+                itemName: itemName.trim(),
+                unit: unit.trim(),
+                curMarketPrice: price,
+                currentMarketPrice: price,
+                supplierName: supplierName.trim() || undefined,
+                supplierReference: supplierName.trim() || undefined,
+                supplierLink: supplierLink.trim() || undefined,
+            });
+            onClose();
+        } catch {
+            // Do not close on error, error dialog will be displayed
+        }
     };
 
     return (
@@ -61,7 +73,9 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
                     <h3 className="text-lg font-bold text-slate-900">
                         {initialData ? 'Sửa Đơn Giá Benchmark' : 'Thêm Đơn Giá Benchmark'}
                     </h3>
-                    <button onClick={onClose}><X className="h-5 w-5 text-slate-400" /></button>
+                    <button onClick={onClose} disabled={isSubmitting} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-50">
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -69,9 +83,10 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
                         <label className="block text-xs font-semibold text-slate-700">Danh mục kinh phí *</label>
                         <select
                             required
+                            disabled={isSubmitting}
                             value={categoryId}
                             onChange={(e) => setCategoryId(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                         >
                             <option value="">Chọn danh mục</option>
                             {categories.map((c) => (
@@ -85,10 +100,11 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
                         <input
                             type="text"
                             required
+                            disabled={isSubmitting}
                             value={itemName}
                             onChange={(e) => setItemName(e.target.value)}
                             placeholder="VD: Standee bạt PP (0.8m x 1.8m)"
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                         />
                     </div>
 
@@ -98,10 +114,11 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
                             <input
                                 type="text"
                                 required
+                                disabled={isSubmitting}
                                 value={unit}
                                 onChange={(e) => setUnit(e.target.value)}
                                 placeholder="VD: Cái, Tấm, Thùng"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
                         <div>
@@ -110,37 +127,55 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
                                 type="number"
                                 required
                                 min={0}
+                                disabled={isSubmitting}
                                 value={price}
                                 onChange={(e) => setPrice(Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-700">Tham chiếu nhà cung cấp</label>
-                        <input
-                            type="text"
-                            value={supplier}
-                            onChange={(e) => setSupplier(e.target.value)}
-                            placeholder="VD: Nhà in FPT Copy, Bách Hóa Xanh"
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                        />
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700">Tên nhà cung cấp</label>
+                            <input
+                                type="text"
+                                disabled={isSubmitting}
+                                value={supplierName}
+                                onChange={(e) => setSupplierName(e.target.value)}
+                                placeholder="VD: Nhà in FPT Copy"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700">Link tham khảo (URL)</label>
+                            <input
+                                type="url"
+                                disabled={isSubmitting}
+                                value={supplierLink}
+                                onChange={(e) => setSupplierLink(e.target.value)}
+                                placeholder="https://..."
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none disabled:bg-slate-50"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                            disabled={isSubmitting}
+                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                             Hủy
                         </button>
                         <button
                             type="submit"
-                            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                            disabled={isSubmitting}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
-                            Lưu Benchmark
+                            {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+                            {isSubmitting ? 'Đang lưu...' : 'Lưu Benchmark'}
                         </button>
                     </div>
                 </form>
@@ -148,4 +183,3 @@ export const BenchmarkModalPart: React.FC<BenchmarkModalPartProps> = ({
         </div>
     );
 };
-

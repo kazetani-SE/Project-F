@@ -14,6 +14,9 @@ export const BudgetProgressPart: React.FC<BudgetProgressPartProps> = ({
     spentPercentage,
     estimatedPercentage,
 }) => {
+    const totalEst = summary?.totalBudgetEst ?? summary?.totalBudgetEstimated ?? 0;
+    const variance = summary?.estimateVariance ?? summary?.varianceAgainstEstimate ?? 0;
+
     return (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
             <h3 className="text-base font-bold text-slate-900">Tiến Độ Giải Ngân & Phân Bổ</h3>
@@ -41,7 +44,7 @@ export const BudgetProgressPart: React.FC<BudgetProgressPartProps> = ({
                     <div className="mb-2 flex justify-between text-xs font-semibold">
                         <span className="text-slate-600">Dự trù đã duyệt / Quỹ cấp phát ({estimatedPercentage}%)</span>
                         <span className="text-slate-900 font-bold">
-                            {formatVND(summary?.totalBudgetEstimated ?? 0)} / {formatVND(summary?.allocatedFund ?? 0)}
+                            {formatVND(totalEst)} / {formatVND(summary?.allocatedFund ?? 0)}
                         </span>
                     </div>
                     <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -61,10 +64,10 @@ export const BudgetProgressPart: React.FC<BudgetProgressPartProps> = ({
                     <div>
                         <span className="text-xs font-semibold text-slate-500">Chênh lệch Dự trù vs Thực chi</span>
                         <div className="text-lg font-bold text-slate-900">
-                            {formatVND(summary?.varianceAgainstEstimate ?? 0)}
+                            {formatVND(variance)}
                         </div>
                         <p className="text-xs text-slate-500">
-                            {(summary?.varianceAgainstEstimate ?? 0) >= 0 ? 'Tiết kiệm so với dự toán' : 'Chi vượt dự toán ban đầu'}
+                            {variance >= 0 ? 'Tiết kiệm so với dự toán' : 'Chi vượt dự toán ban đầu'}
                         </p>
                     </div>
                 </div>
@@ -85,4 +88,3 @@ export const BudgetProgressPart: React.FC<BudgetProgressPartProps> = ({
         </div>
     );
 };
-

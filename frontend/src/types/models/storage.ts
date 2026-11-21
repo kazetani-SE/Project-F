@@ -43,7 +43,16 @@ export const STORAGE_LIMIT_LABELS: Record<StorageCategory, string> = {
 };
 
 export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
-    RECEIPT: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+    RECEIPT: [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword',
+        'application/vnd.ms-excel',
+    ],
     DOCUMENT: [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

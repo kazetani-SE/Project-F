@@ -1,18 +1,21 @@
 import React from 'react';
+import { RefreshCw } from 'lucide-react';
 import { BudgetItemTableRow } from '../components/BudgetItemTableRow';
 import type { BudgetItem, BudgetCategory } from '../../../../types/models/finance';
 
 interface BudgetItemTablePartProps {
     items: BudgetItem[];
     categories: BudgetCategory[];
+    loading?: boolean;
     onApprove: (item: BudgetItem) => void;
     onReject: (item: BudgetItem) => void;
-    onDelete: (id: string) => void;
+    onDelete: (item: BudgetItem) => void;
 }
 
 export const BudgetItemTablePart: React.FC<BudgetItemTablePartProps> = ({
     items,
     categories,
+    loading = false,
     onApprove,
     onReject,
     onDelete,
@@ -32,7 +35,16 @@ export const BudgetItemTablePart: React.FC<BudgetItemTablePartProps> = ({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                    {items.length === 0 ? (
+                    {loading ? (
+                        <tr>
+                            <td colSpan={7} className="px-5 py-12 text-center">
+                                <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                                    <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
+                                    <span className="text-sm font-medium">Đang tải dự trù ngân sách...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    ) : items.length === 0 ? (
                         <tr>
                             <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
                                 Không có hạng mục dự trù nào.
@@ -55,4 +67,3 @@ export const BudgetItemTablePart: React.FC<BudgetItemTablePartProps> = ({
         </div>
     );
 };
-

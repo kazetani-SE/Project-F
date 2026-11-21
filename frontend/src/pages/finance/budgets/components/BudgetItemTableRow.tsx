@@ -9,7 +9,7 @@ interface BudgetItemTableRowProps {
     categories: BudgetCategory[];
     onApprove: (item: BudgetItem) => void;
     onReject: (item: BudgetItem) => void;
-    onDelete: (id: string) => void;
+    onDelete: (item: BudgetItem) => void;
 }
 
 export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
@@ -19,7 +19,8 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
     onReject,
     onDelete,
 }) => {
-    const total = item.totalEstimatedAmount ?? (item.quantity * item.estimatedUnitPrice);
+    const unitPrice = item.estUnitPrice ?? item.estimatedUnitPrice ?? 0;
+    const total = item.totalEstAmount ?? item.totalEstimatedAmount ?? (item.quantity * unitPrice);
     const categoryName = categories.find(c => c.id === item.categoryId)?.name ?? 'Khác';
 
     return (
@@ -27,12 +28,29 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
             <td className="px-5 py-3.5">
                 <div className="font-semibold text-slate-900">{item.itemName}</div>
                 <div className="text-xs text-slate-400">{categoryName}</div>
+                {item.benchmark?.supplierName && (
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+                        <span className="text-slate-400">Nơi mua:</span>
+                        {item.benchmark.supplierLink ? (
+                            <a
+                                href={item.benchmark.supplierLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-700 underline hover:text-emerald-800"
+                            >
+                                {item.benchmark.supplierName}
+                            </a>
+                        ) : (
+                            <span className="font-medium text-slate-700">{item.benchmark.supplierName}</span>
+                        )}
+                    </div>
+                )}
             </td>
             <td className="px-4 py-3.5 text-slate-700">
                 {item.quantity} {item.unit}
             </td>
             <td className="px-4 py-3.5 text-slate-600">
-                {formatVND(item.estimatedUnitPrice)}
+                {formatVND(unitPrice)}
             </td>
             <td className="px-4 py-3.5 font-bold text-slate-900">
                 {formatVND(total)}
@@ -69,7 +87,7 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
                         </button>
                     )}
                     <button
-                        onClick={() => onDelete(item.id)}
+                        onClick={() => onDelete(item)}
                         className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                         title="Xóa"
                     >
@@ -80,4 +98,3 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
         </tr>
     );
 };
-
