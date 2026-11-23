@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/CrudUi';
-import { MemberForm } from '../../components/members/MemberForm';
+import { MemberForm } from './components/MemberForm';
 import { useSuccessToast } from '../../components/ui/toastContext';
 import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
 import { memberService } from '../../services/memberService';

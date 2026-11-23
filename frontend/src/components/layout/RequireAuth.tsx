@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ROUTE_PATHS } from '../../app/router/route';
 import { useAuth } from '../../context/authContext';
-import { AuthCard } from '../auth/AuthCard';
+import { AuthCard } from '../../pages/auth/components/AuthCard';
 import { Loading, RetryNotice } from '../ui/CrudUi';
 import { LogoutButton } from './LogoutButton';
 

@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
-import { MemberImportPanel } from '../../src/components/members/MemberImportPanel';
+import { MemberImportPanel } from '../../src/pages/members/components/MemberImportPanel';
 import { memberService } from '../../src/services/memberService';
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });

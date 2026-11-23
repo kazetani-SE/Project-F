@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Plus, Sparkles, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
 import { useBudgetItems } from './hooks/useBudgetItems';
-import { BudgetSummaryPart } from '../../../components/finance/budgets/parts/BudgetSummaryPart';
-import { BudgetFilterPart } from '../../../components/finance/budgets/parts/BudgetFilterPart';
-import { BudgetItemTablePart } from '../../../components/finance/budgets/parts/BudgetItemTablePart';
-import { CreateBudgetItemModalPart } from '../../../components/finance/budgets/parts/CreateBudgetItemModalPart';
-import { AutoProjectModalPart } from '../../../components/finance/budgets/parts/AutoProjectModalPart';
-import { RejectReasonModal } from '../../../components/finance/common/RejectReasonModal';
+import { BudgetSummaryPart } from './parts/BudgetSummaryPart';
+import { BudgetFilterPart } from './parts/BudgetFilterPart';
+import { BudgetItemTablePart } from './parts/BudgetItemTablePart';
+import { CreateBudgetItemModalPart } from './parts/CreateBudgetItemModalPart';
+import { AutoProjectModalPart } from './parts/AutoProjectModalPart';
+import { RejectReasonModal } from '../components/RejectReasonModal';
 import type { BudgetItem } from '../../../types/models/finance';
 
 export default function BudgetItemsPage() {

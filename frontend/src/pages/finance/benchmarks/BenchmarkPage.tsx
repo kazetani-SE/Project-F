@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Scale, Plus, RefreshCw, CheckCircle, AlertTriangle, X, Tag } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
 import { useBenchmarkCatalog } from './hooks/useBenchmarkCatalog';
-import { BenchmarkFilterPart } from '../../../components/finance/benchmarks/parts/BenchmarkFilterPart';
-import { BenchmarkTablePart } from '../../../components/finance/benchmarks/parts/BenchmarkTablePart';
-import { CategoryGridPart } from '../../../components/finance/benchmarks/parts/CategoryGridPart';
-import { BenchmarkModalPart } from '../../../components/finance/benchmarks/parts/BenchmarkModalPart';
-import { CategoryModalPart } from '../../../components/finance/benchmarks/parts/CategoryModalPart';
+import { BenchmarkFilterPart } from './parts/BenchmarkFilterPart';
+import { BenchmarkTablePart } from './parts/BenchmarkTablePart';
+import { CategoryGridPart } from './parts/CategoryGridPart';
+import { BenchmarkModalPart } from './parts/BenchmarkModalPart';
+import { CategoryModalPart } from './parts/CategoryModalPart';
 import type { ItemPriceBenchmark, BudgetCategory } from '../../../types/models/finance';
 
 export default function BenchmarkPage() {

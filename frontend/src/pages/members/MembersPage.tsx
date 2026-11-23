@@ -1,7 +1,7 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { button, field, link, Loading, PageHeader, Pagination, panel, RetryNotice } from '../../components/ui/CrudUi';
-import { MemberImportPanel } from '../../components/members/MemberImportPanel';
+import { MemberImportPanel } from './components/MemberImportPanel';
 import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
 import { DEPARTMENT_LABEL } from '../../constants/enum/member';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';

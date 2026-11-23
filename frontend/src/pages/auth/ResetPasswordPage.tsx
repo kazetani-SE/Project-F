@@ -3,7 +3,7 @@ import { ROUTE_PATHS } from '../../app/router/route';
 import { useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { button, ErrorNotice, field, link, Loading } from '../../components/ui/CrudUi';
-import { AuthCard } from '../../components/auth/AuthCard';
+import { AuthCard } from './components/AuthCard';
 
 export function ResetPasswordPage() {
     const { recovery, isLoading, updatePassword, signOut } = useAuth();

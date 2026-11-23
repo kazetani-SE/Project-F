@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/CrudUi';
-import { EventForm } from '../../components/events/EventForm';
+import { EventForm } from './components/EventForm';
 import { useSuccessToast } from '../../components/ui/toastContext';
 import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
 import { useActiveEvent } from '../../context/activeEventContext';

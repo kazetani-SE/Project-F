@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { MemberDetail } from '../../components/members/MemberDetail';
+import { MemberDetail } from './components/MemberDetail';
 
 export function MemberDetailPage() {
     const { id = '' } = useParams();

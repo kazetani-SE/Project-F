@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FileText, Image, ChevronRight, Layers } from 'lucide-react';
-import { DocumentTab } from '../../components/documents/DocumentTab';
-import { MediaAssetTab } from '../../components/documents/MediaAssetTab';
+import { DocumentTab } from './components/DocumentTab';
+import { MediaAssetTab } from './components/MediaAssetTab';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getDocumentsByEvent } from '../../services/documentService';
 import { getMediaAssetsByEvent } from '../../services/mediaService';

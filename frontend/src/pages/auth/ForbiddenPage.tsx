@@ -3,7 +3,7 @@ import { ROUTE_PATHS } from '../../app/router/route';
 import { useAuth } from '../../context/authContext';
 import { link } from '../../components/ui/CrudUi';
 import { LogoutButton } from '../../components/layout/LogoutButton';
-import { AuthCard } from '../../components/auth/AuthCard';
+import { AuthCard } from './components/AuthCard';
 
 export function ForbiddenPage() {
     const { user, error } = useAuth();

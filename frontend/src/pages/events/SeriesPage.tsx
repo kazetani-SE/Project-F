@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { button, link, Loading, PageHeader, Pagination, panel, RetryNotice } from '../../components/ui/CrudUi';
-import { SeriesForm } from '../../components/events/SeriesForm';
+import { SeriesForm } from './components/SeriesForm';
 import { useSuccessToast } from '../../components/ui/toastContext';
 import { ROUTES } from '../../app/router/route';
 import { isClubAdmin, useAuth } from '../../context/authContext';

@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Plus, RefreshCw, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
 import { useExpenses } from './hooks/useExpenses';
-import { ExpenseSummaryPart } from '../../../components/finance/expenses/parts/ExpenseSummaryPart';
-import { ExpenseFilterPart } from '../../../components/finance/expenses/parts/ExpenseFilterPart';
-import { ExpenseTablePart } from '../../../components/finance/expenses/parts/ExpenseTablePart';
-import { CreateExpenseModalPart } from '../../../components/finance/expenses/parts/CreateExpenseModalPart';
-import { ReceiptsModalPart } from '../../../components/finance/expenses/parts/ReceiptsModalPart';
-import { ReceiptLightboxPart } from '../../../components/finance/expenses/parts/ReceiptLightboxPart';
-import { RejectReasonModal } from '../../../components/finance/common/RejectReasonModal';
+import { ExpenseSummaryPart } from './parts/ExpenseSummaryPart';
+import { ExpenseFilterPart } from './parts/ExpenseFilterPart';
+import { ExpenseTablePart } from './parts/ExpenseTablePart';
+import { CreateExpenseModalPart } from './parts/CreateExpenseModalPart';
+import { ReceiptsModalPart } from './parts/ReceiptsModalPart';
+import { ReceiptLightboxPart } from './parts/ReceiptLightboxPart';
+import { RejectReasonModal } from '../components/RejectReasonModal';
 import type { Expense } from '../../../types/models/finance';
 
 export default function ExpensesPage() {

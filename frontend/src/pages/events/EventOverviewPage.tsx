@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loading, RetryNotice } from '../../components/ui/CrudUi';
-import { EventOverview } from '../../components/events/EventOverview';
+import { EventOverview } from './components/EventOverview';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { useResource } from '../../hooks/useResource';
 import { eventService } from '../../services/eventService';

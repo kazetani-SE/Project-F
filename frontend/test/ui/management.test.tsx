@@ -10,7 +10,7 @@ import MainLayout from '../../src/components/layout/MainLayout';
 import { ToastProvider } from '../../src/components/ui/ToastProvider';
 import { MemberDetailPage } from '../../src/pages/members/MemberDetailPage';
 import { MembersPage } from '../../src/pages/members/MembersPage';
-import { EventStatusForm } from '../../src/components/events/EventStatusForm';
+import { EventStatusForm } from '../../src/pages/events/components/EventStatusForm';
 import { EventsPage } from '../../src/pages/events/EventsPage';
 import { eventRoutes } from '../../src/app/router/events';
 import { OrganizerSection } from '../../src/components/organizers/OrganizerSection';

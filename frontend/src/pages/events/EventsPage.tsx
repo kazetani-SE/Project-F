@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { button, field, Loading, PageHeader, Pagination, panel, RetryNotice } from '../../components/ui/CrudUi';
-import { EventList } from '../../components/events/EventList';
+import { EventList } from './components/EventList';
 import { ROUTE_PATHS } from '../../app/router/route';
 import { EVENT_STATUS_LABEL } from '../../constants/enum/event';
 import { isClubAdmin, useAuth } from '../../context/authContext';
