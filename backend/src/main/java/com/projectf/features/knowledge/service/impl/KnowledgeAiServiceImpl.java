@@ -6,7 +6,12 @@ import com.projectf.common.enums.Department;
 import com.projectf.common.enums.IncidentSeverity;
 import com.projectf.features.knowledge.ai.AiModelDecision;
 import com.projectf.features.knowledge.ai.AiModelRouter;
+import com.projectf.features.knowledge.ai.KnowledgeContextRetriever;
+import com.projectf.features.knowledge.ai.KnowledgeContextRetriever.FeedbackInsights;
+import com.projectf.features.knowledge.ai.KnowledgeContextRetriever.RagPromptPackage;
+import com.projectf.features.knowledge.ai.KnowledgePromptLibrary;
 import com.projectf.features.knowledge.ai.LlmGateway;
+import com.projectf.features.knowledge.ai.LlmGateway.LlmInvocationResult;
 import com.projectf.features.knowledge.ai.LocalHeuristicAiEngine;
 import com.projectf.features.knowledge.ai.LocalHeuristicAiEngine.HeuristicFeedbackDraft;
 import com.projectf.features.knowledge.dto.request.DraftIncidentAiRequest;
@@ -19,6 +24,7 @@ import com.projectf.features.knowledge.dto.response.FeedbackAiReportResponse;
 import com.projectf.features.knowledge.dto.response.FeedbackAiReportResponse.DepartmentActionItem;
 import com.projectf.features.knowledge.dto.response.FeedbackAiReportResponse.SuggestedIncidentItem;
 import com.projectf.features.knowledge.dto.response.KnowledgeChatResponse;
+import com.projectf.features.knowledge.dto.response.KnowledgeChatResponse.CitationItem;
 import com.projectf.features.knowledge.entity.EventFaq;
 import com.projectf.features.knowledge.entity.EventFeedback;
 import com.projectf.features.knowledge.entity.EventFeedbackAiReport;
@@ -33,10 +39,12 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,11 +65,13 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
     private static final String KEY_SOLUTION = "immediateSolution";
     private static final String KEY_LESSON = "lessonLearned";
     private static final String DEFAULT_PLAN = "PLAN";
+    private static final String DEFAULT_MEDIUM = "MEDIUM";
 
     private final FeedbackRepository feedbackRepo;
     private final FeedbackAiReportRepository reportRepo;
     private final FaqRepository faqRepo;
     private final IncidentRepository incidentRepo;
+    private final KnowledgeContextRetriever contextRetriever;
     private final AiModelRouter modelRouter;
     private final LlmGateway llmGateway;
     private final LocalHeuristicAiEngine heuristicEngine;
@@ -72,6 +82,7 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
             FeedbackAiReportRepository reportRepo,
             FaqRepository faqRepo,
             IncidentRepository incidentRepo,
+            KnowledgeContextRetriever contextRetriever,
             AiModelRouter modelRouter,
             LlmGateway llmGateway,
             LocalHeuristicAiEngine heuristicEngine,
@@ -81,10 +92,19 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
         this.reportRepo = reportRepo;
         this.faqRepo = faqRepo;
         this.incidentRepo = incidentRepo;
+        this.contextRetriever = contextRetriever;
         this.modelRouter = modelRouter;
         this.llmGateway = llmGateway;
         this.heuristicEngine = heuristicEngine;
         this.objectMapper = objectMapper;
+    }
+
+    private record ResolvedFeedbackReport(
+            HeuristicFeedbackDraft draft,
+            String actualModelUsed,
+            String actualTier,
+            String routingReason
+    ) {
     }
 
     @Override
@@ -106,10 +126,12 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                     && currentLatest.isAfter(saved.getLatestFbAtSnap());
             boolean isStale = currentCount != snapshotCount || hasNewerTimestamp;
 
-            AiModelDecision decision = modelRouter.routeFeedbackReport(snapshotCount, 0);
+            String reason = AiModelRouter.TIER_HEURISTIC.equalsIgnoreCase(saved.getModelTier())
+                    ? "Báo cáo tổng hợp nội bộ Heuristic (chưa kết nối Cloud AI tại thời điểm tạo)"
+                    : modelRouter.routeFeedbackReport(snapshotCount, 0).routingReason();
             result = Optional.of(mapEntityToReportResponse(
                     saved,
-                    decision.routingReason(),
+                    reason,
                     currentCount,
                     delta,
                     isStale
@@ -132,11 +154,11 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                 .orElse(0.0);
         BigDecimal avgDecimal = BigDecimal.valueOf(rawAvg).setScale(2, RoundingMode.HALF_UP);
 
-        String feedbackContext = buildFeedbackPromptContext(feedbacks, avgDecimal.doubleValue());
+        String feedbackContext = contextRetriever.buildFeedbackReportContext(eventId, feedbacks, avgDecimal.doubleValue());
         AiModelDecision decision = modelRouter.routeFeedbackReport(currentCount, feedbackContext.length());
 
         HeuristicFeedbackDraft fallbackDraft = heuristicEngine.buildFeedbackReport(feedbacks, avgDecimal.doubleValue());
-        HeuristicFeedbackDraft finalDraft = resolveCloudOrFallbackFeedbackDraft(
+        ResolvedFeedbackReport resolved = resolveCloudOrFallbackFeedbackDraft(
                 decision,
                 feedbackContext,
                 fallbackDraft
@@ -144,21 +166,21 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
 
         EventFeedbackAiReport entity = reportRepo.findByEventId(eventId).orElseGet(EventFeedbackAiReport::new);
         entity.setEventId(eventId);
-        entity.setModelUsed(decision.modelId());
-        entity.setModelTier(decision.tier());
+        entity.setModelUsed(resolved.actualModelUsed());
+        entity.setModelTier(resolved.actualTier());
         entity.setFbCountSnap(currentCount);
         entity.setLatestFbAtSnap(latestSubmittedAt);
         entity.setAvgRatingSnap(avgDecimal);
-        entity.setExecutiveSummary(finalDraft.executiveSummary());
-        entity.setSentimentMap(finalDraft.sentimentMap());
-        entity.setTopHighlights(finalDraft.topHighlights());
-        entity.setTopImprovements(finalDraft.topImprovements());
-        entity.setDepartmentActions(serializeDepartmentActions(finalDraft.departmentActions()));
-        entity.setIncidentDrafts(serializeSuggestedIncidents(finalDraft.incidentDrafts()));
+        entity.setExecutiveSummary(resolved.draft().executiveSummary());
+        entity.setSentimentMap(resolved.draft().sentimentMap());
+        entity.setTopHighlights(resolved.draft().topHighlights());
+        entity.setTopImprovements(resolved.draft().topImprovements());
+        entity.setDepartmentActions(serializeDepartmentActions(resolved.draft().departmentActions()));
+        entity.setIncidentDrafts(serializeSuggestedIncidents(resolved.draft().incidentDrafts()));
         entity.setGeneratedAt(OffsetDateTime.now());
 
         EventFeedbackAiReport saved = reportRepo.save(entity);
-        return mapEntityToReportResponse(saved, decision.routingReason(), currentCount, 0, false);
+        return mapEntityToReportResponse(saved, resolved.routingReason(), currentCount, 0, false);
     }
 
     @Override
@@ -181,18 +203,30 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                 decision
         );
 
-        String systemPrompt = "Bạn là AI Chuyên gia Quản trị Sự kiện CLB Đại học. "
-                + "Hãy trả về JSON hợp lệ theo cấu trúc: "
-                + "{\"suggestions\":[{\"question\":\"...\",\"category\":\"...\",\"rationale\":\"...\",\"answerHint\":\"...\"}]}";
-        String userPrompt = "Chủ đề trọng tâm: " + (request.focusTopic() == null ? "Tổng hợp đa mục" : request.focusTopic())
-                + ". Số lượng câu hỏi cần tạo: " + requestedCount
-                + ". Tránh trùng với các FAQ đã có: "
-                + existingFaqs.stream().map(EventFaq::getQuestion).limit(10).toList();
+        String systemPrompt = KnowledgePromptLibrary.faqSuggestionsSystemPrompt();
+        String userPrompt = contextRetriever.buildFaqSuggestionContext(
+                seriesId,
+                request.eventId(),
+                request.focusTopic(),
+                requestedCount,
+                existingFaqs
+        );
 
-        Optional<String> llmJsonOpt = llmGateway.invokeStructuredJson(decision, systemPrompt, userPrompt);
+        Optional<LlmInvocationResult> llmOpt = llmGateway.invokeWithMetadata(
+                decision,
+                systemPrompt,
+                userPrompt,
+                Collections.emptyList()
+        );
         FaqSuggestionsResultResponse result = fallback;
-        if (llmJsonOpt.isPresent()) {
-            Optional<FaqSuggestionsResultResponse> parsedOpt = parseFaqSuggestionsJson(llmJsonOpt.get(), decision);
+        if (llmOpt.isPresent()) {
+            LlmInvocationResult invocation = llmOpt.get();
+            Optional<FaqSuggestionsResultResponse> parsedOpt = parseFaqSuggestionsJson(
+                    invocation.jsonContent(),
+                    invocation.actualModelUsed(),
+                    invocation.actualTier(),
+                    decision.routingReason()
+            );
             if (parsedOpt.isPresent()) {
                 result = parsedOpt.get();
             }
@@ -209,19 +243,29 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
         AiModelDecision decision = modelRouter.routeIncidentDraft(request.briefObservation());
         DraftIncidentAiResponse fallback = heuristicEngine.buildIncidentDraft(request, decision);
 
-        String systemPrompt = "Bạn là AI Trợ lý Phân tích Sự cố Post-Mortem (5-Whys) cho CLB Sự kiện. "
-                + "Hãy trả về duy nhất JSON: "
-                + "{\"title\":\"...\",\"severity\":\"LOW|MEDIUM|HIGH|CRITICAL\","
-                + "\"departments\":[\"HR\",\"PLAN\",\"MEDIA\",\"ACADEMIC\"],"
-                + "\"description\":\"...\",\"rootCause\":\"...\","
-                + "\"immediateSolution\":\"...\",\"lessonLearned\":\"...\"}";
-        String userPrompt = "Sự kiện: " + (request.eventTitle() == null ? eventId.toString() : request.eventTitle())
-                + "\nMô tả hiện tượng ban đầu: " + request.briefObservation();
+        String systemPrompt = KnowledgePromptLibrary.incidentPostMortemSystemPrompt();
+        String userPrompt = contextRetriever.buildIncidentDraftContext(
+                eventId,
+                request.eventTitle(),
+                request.briefObservation()
+        );
 
-        Optional<String> llmJsonOpt = llmGateway.invokeStructuredJson(decision, systemPrompt, userPrompt);
+        Optional<LlmInvocationResult> llmOpt = llmGateway.invokeWithMetadata(
+                decision,
+                systemPrompt,
+                userPrompt,
+                Collections.emptyList()
+        );
         DraftIncidentAiResponse result = fallback;
-        if (llmJsonOpt.isPresent()) {
-            Optional<DraftIncidentAiResponse> parsedOpt = parseIncidentDraftJson(llmJsonOpt.get(), decision, fallback);
+        if (llmOpt.isPresent()) {
+            LlmInvocationResult invocation = llmOpt.get();
+            Optional<DraftIncidentAiResponse> parsedOpt = parseIncidentDraftJson(
+                    invocation.jsonContent(),
+                    invocation.actualModelUsed(),
+                    invocation.actualTier(),
+                    decision.routingReason(),
+                    fallback
+            );
             if (parsedOpt.isPresent()) {
                 result = parsedOpt.get();
             }
@@ -232,30 +276,47 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
     @Override
     @Transactional(readOnly = true)
     public KnowledgeChatResponse chatWithKnowledgeBase(UUID eventId, KnowledgeChatRequest request) {
-        List<EventIncident> incidents = incidentRepo.findByEventIdOrderByCreatedAtDesc(eventId);
-        List<EventFeedback> feedbacks = feedbackRepo.findByEventIdOrderBySubmittedAtDesc(eventId);
-        List<EventFaq> faqs = request.seriesId() != null
-                ? faqRepo.findBySeriesIdOrderByIsPinnedDescUpdatedAtDesc(request.seriesId())
-                : faqRepo.findAll();
+        RagPromptPackage ragPackage = contextRetriever.buildRagChatPackage(
+                eventId,
+                request.seriesId(),
+                request.message()
+        );
+        List<EventFeedback> activeFeedbacks = ragPackage.bundle().currentFeedbacks().isEmpty()
+                ? ragPackage.bundle().seriesFeedbacks()
+                : ragPackage.bundle().currentFeedbacks();
+        double avgRating = activeFeedbacks.stream()
+                .filter(fb -> fb.getRatingScore() != null)
+                .mapToInt(EventFeedback::getRatingScore)
+                .average()
+                .orElse(0.0);
+        FeedbackInsights feedbackInsights = contextRetriever.extractFeedbackInsights(activeFeedbacks, avgRating);
 
         AiModelDecision decision = modelRouter.routeKnowledgeChat(request.message());
         KnowledgeChatResponse fallback = heuristicEngine.buildChatResponse(
                 request,
-                faqs,
-                incidents,
-                feedbacks,
+                ragPackage.bundle(),
+                feedbackInsights,
                 decision
         );
 
-        String systemPrompt = "Bạn là Trợ lý AI Đa Mùa của Ban Tổ Chức Sự kiện (Project F). "
-                + "Chỉ dựa trên dữ liệu FAQ, Sự cố Post-Mortem và Feedback được cung cấp để trả lời chính xác bằng tiếng Việt. "
-                + "Trả về JSON: {\"answer\":\"...\",\"followUpQuestions\":[\"...\",\"...\"]}";
-        String userPrompt = buildRagChatPrompt(request.message(), faqs, incidents, feedbacks);
-
-        Optional<String> llmJsonOpt = llmGateway.invokeStructuredJson(decision, systemPrompt, userPrompt);
+        String systemPrompt = KnowledgePromptLibrary.ragChatSystemPrompt();
+        Optional<LlmInvocationResult> llmOpt = llmGateway.invokeWithMetadata(
+                decision,
+                systemPrompt,
+                ragPackage.promptText(),
+                request.history()
+        );
         KnowledgeChatResponse result = fallback;
-        if (llmJsonOpt.isPresent()) {
-            Optional<KnowledgeChatResponse> parsedOpt = parseChatJson(llmJsonOpt.get(), decision, fallback);
+        if (llmOpt.isPresent()) {
+            LlmInvocationResult invocation = llmOpt.get();
+            Optional<KnowledgeChatResponse> parsedOpt = parseChatJson(
+                    invocation.jsonContent(),
+                    invocation.actualModelUsed(),
+                    invocation.actualTier(),
+                    decision.routingReason(),
+                    ragPackage.citationRegistry(),
+                    fallback
+            );
             if (parsedOpt.isPresent()) {
                 result = parsedOpt.get();
             }
@@ -263,23 +324,29 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
         return result;
     }
 
-    private HeuristicFeedbackDraft resolveCloudOrFallbackFeedbackDraft(
+    private ResolvedFeedbackReport resolveCloudOrFallbackFeedbackDraft(
             AiModelDecision decision,
             String feedbackContext,
             HeuristicFeedbackDraft fallbackDraft
     ) {
-        HeuristicFeedbackDraft chosen = fallbackDraft;
-        String systemPrompt = "Bạn là Chuyên gia Phân tích Dữ liệu Khảo sát Sự kiện. "
-                + "Hãy đọc dữ liệu khảo sát và trả về JSON theo cấu trúc: "
-                + "{\"executiveSummary\":\"...\","
-                + "\"topHighlights\":[\"...\"],"
-                + "\"topImprovements\":[\"...\"],"
-                + "\"departmentActions\":[{\"department\":\"PLAN|MEDIA|HR|ACADEMIC\",\"action\":\"...\"}}]}";
+        ResolvedFeedbackReport chosen = new ResolvedFeedbackReport(
+                fallbackDraft,
+                LocalHeuristicAiEngine.MODEL_NAME,
+                AiModelRouter.TIER_HEURISTIC,
+                decision.routingReason() + " (Chế độ nội bộ Heuristic)"
+        );
 
-        Optional<String> llmJsonOpt = llmGateway.invokeStructuredJson(decision, systemPrompt, feedbackContext);
-        if (llmJsonOpt.isPresent()) {
+        String systemPrompt = KnowledgePromptLibrary.feedbackReportSystemPrompt();
+        Optional<LlmInvocationResult> llmOpt = llmGateway.invokeWithMetadata(
+                decision,
+                systemPrompt,
+                feedbackContext,
+                Collections.emptyList()
+        );
+        if (llmOpt.isPresent()) {
+            LlmInvocationResult invocation = llmOpt.get();
             try {
-                JsonNode root = objectMapper.readTree(llmJsonOpt.get());
+                JsonNode root = objectMapper.readTree(invocation.jsonContent());
                 String summary = root.path("executiveSummary").asText(fallbackDraft.executiveSummary());
                 List<String> highlights = readStringList(root.path("topHighlights"), fallbackDraft.topHighlights());
                 List<String> improvements = readStringList(root.path("topImprovements"), fallbackDraft.topImprovements());
@@ -287,14 +354,24 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                         root.path("departmentActions"),
                         fallbackDraft.departmentActions()
                 );
+                List<SuggestedIncidentItem> incDrafts = readSuggestedIncidents(
+                        root.path("suggestedIncidents"),
+                        fallbackDraft.incidentDrafts()
+                );
 
-                chosen = new HeuristicFeedbackDraft(
+                HeuristicFeedbackDraft llmDraft = new HeuristicFeedbackDraft(
                         summary,
                         fallbackDraft.sentimentMap(),
                         highlights,
                         improvements,
                         deptActions,
-                        fallbackDraft.incidentDrafts()
+                        incDrafts
+                );
+                chosen = new ResolvedFeedbackReport(
+                        llmDraft,
+                        invocation.actualModelUsed(),
+                        invocation.actualTier(),
+                        decision.routingReason()
                 );
             } catch (Exception ex) {
                 if (LOG.isDebugEnabled()) {
@@ -307,7 +384,9 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
 
     private Optional<FaqSuggestionsResultResponse> parseFaqSuggestionsJson(
             String json,
-            AiModelDecision decision
+            String modelUsed,
+            String modelTier,
+            String routingReason
     ) {
         Optional<FaqSuggestionsResultResponse> result = Optional.empty();
         try {
@@ -321,9 +400,9 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                 }
                 if (!items.isEmpty()) {
                     result = Optional.of(new FaqSuggestionsResultResponse(
-                            decision.modelId(),
-                            decision.tier(),
-                            decision.routingReason(),
+                            modelUsed,
+                            modelTier,
+                            routingReason,
                             items
                     ));
                 }
@@ -352,7 +431,9 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
 
     private Optional<DraftIncidentAiResponse> parseIncidentDraftJson(
             String json,
-            AiModelDecision decision,
+            String modelUsed,
+            String modelTier,
+            String routingReason,
             DraftIncidentAiResponse fallback
     ) {
         Optional<DraftIncidentAiResponse> result = Optional.empty();
@@ -370,9 +451,9 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                     root.path(KEY_ROOT_CAUSE).asText(fallback.rootCause()),
                     root.path(KEY_SOLUTION).asText(fallback.immediateSolution()),
                     root.path(KEY_LESSON).asText(fallback.lessonLearned()),
-                    decision.modelId(),
-                    decision.tier(),
-                    decision.routingReason()
+                    modelUsed,
+                    modelTier,
+                    routingReason
             ));
         } catch (Exception ex) {
             if (LOG.isDebugEnabled()) {
@@ -384,7 +465,10 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
 
     private Optional<KnowledgeChatResponse> parseChatJson(
             String json,
-            AiModelDecision decision,
+            String modelUsed,
+            String modelTier,
+            String routingReason,
+            Map<String, CitationItem> citationRegistry,
             KnowledgeChatResponse fallback
     ) {
         Optional<KnowledgeChatResponse> result = Optional.empty();
@@ -392,16 +476,21 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
             JsonNode root = objectMapper.readTree(json);
             String answer = root.path("answer").asText("").trim();
             if (!answer.isEmpty()) {
+                List<CitationItem> citations = resolveRealCitations(
+                        root.path("citationIds"),
+                        citationRegistry,
+                        fallback.citations()
+                );
                 List<String> followUps = readStringList(
                         root.path("followUpQuestions"),
                         fallback.followUpQuestions()
                 );
                 result = Optional.of(new KnowledgeChatResponse(
                         answer,
-                        decision.modelId(),
-                        decision.tier(),
-                        decision.routingReason(),
-                        fallback.citations(),
+                        modelUsed,
+                        modelTier,
+                        routingReason,
+                        citations,
                         followUps
                 ));
             }
@@ -413,47 +502,62 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
         return result;
     }
 
-    private String buildFeedbackPromptContext(List<EventFeedback> feedbacks, double avgRating) {
-        StringBuilder sb = new StringBuilder(512);
-        sb.append("Tổng số phiếu: ").append(feedbacks.size())
-                .append(", Điểm trung bình (quy đổi thang 5): ").append(avgRating).append('\n');
-
-        int limit = Math.min(feedbacks.size(), 40);
-        for (int idx = 0; idx < limit; idx++) {
-            EventFeedback fb = feedbacks.get(idx);
-            sb.append("- [").append(fb.getSourceType()).append(" | ").append(fb.getRatingScore()).append("★] ");
-            if (fb.getHighlightContent() != null && !fb.getHighlightContent().isBlank()) {
-                sb.append("Điểm tốt: ").append(fb.getHighlightContent()).append("; ");
+    private List<CitationItem> resolveRealCitations(
+            JsonNode citationIdsNode,
+            Map<String, CitationItem> registry,
+            List<CitationItem> fallbackCitations
+    ) {
+        List<CitationItem> resolved = new ArrayList<>();
+        if (citationIdsNode != null && citationIdsNode.isArray()) {
+            Set<String> seenIds = new LinkedHashSet<>();
+            for (JsonNode idNode : citationIdsNode) {
+                String refId = idNode.asText("").trim().toUpperCase(Locale.ROOT);
+                if (!refId.isEmpty() && seenIds.add(refId) && registry.containsKey(refId)) {
+                    resolved.add(registry.get(refId));
+                }
             }
-            if (fb.getImproveContent() != null && !fb.getImproveContent().isBlank()) {
-                sb.append("Cần cải thiện: ").append(fb.getImproveContent());
-            }
-            sb.append('\n');
         }
-        return sb.toString();
+        return resolved.isEmpty() ? fallbackCitations : resolved;
     }
 
-    private String buildRagChatPrompt(
-            String userQuestion,
-            List<EventFaq> faqs,
-            List<EventIncident> incidents,
-            List<EventFeedback> feedbacks
+    private List<SuggestedIncidentItem> readSuggestedIncidents(
+            JsonNode node,
+            List<SuggestedIncidentItem> fallbackItems
     ) {
-        StringBuilder sb = new StringBuilder(512);
-        sb.append("Câu hỏi của thành viên BTC: ").append(userQuestion)
-                .append("\n\n=== DỮ LIỆU FAQ ===\n");
-        faqs.stream().limit(8).forEach(faq ->
-                sb.append("Q: ").append(faq.getQuestion()).append(" | A: ").append(faq.getAnswer()).append('\n')
-        );
-        sb.append("\n=== NHẬT KÝ SỰ CỐ & POST-MORTEM ===\n");
-        incidents.stream().limit(6).forEach(inc ->
-                sb.append("- [").append(inc.getSeverity()).append("] ").append(inc.getTitle())
-                        .append(" | Nguyên nhân: ").append(inc.getRootCause())
-                        .append(" | Bài học: ").append(inc.getLessonLearned()).append('\n')
-        );
-        sb.append("\n=== TỔNG QUAN FEEDBACK ===\nSố lượng phiếu: ")
-                .append(feedbacks.size()).append('\n');
-        return sb.toString();
+        List<SuggestedIncidentItem> result = fallbackItems;
+        if (node != null && node.isArray()) {
+            List<SuggestedIncidentItem> parsed = new ArrayList<>();
+            for (JsonNode item : node) {
+                Optional<SuggestedIncidentItem> incOpt = toSuggestedIncidentItem(item);
+                incOpt.ifPresent(parsed::add);
+            }
+            if (!parsed.isEmpty() || node.isEmpty()) {
+                result = parsed;
+            }
+        }
+        return result;
+    }
+
+    private Optional<SuggestedIncidentItem> toSuggestedIncidentItem(JsonNode item) {
+        Optional<SuggestedIncidentItem> result = Optional.empty();
+        String title = item.path(KEY_TITLE).asText("").trim();
+        String lesson = item.path(KEY_LESSON).asText("").trim();
+        if (!title.isEmpty() && !lesson.isEmpty()) {
+            IncidentSeverity sev = parseSeverity(item.path(KEY_SEVERITY).asText(""), IncidentSeverity.MEDIUM);
+            List<String> depts = parseDepartments(item.path(KEY_DEPTS), List.of(Department.PLAN)).stream()
+                    .map(Enum::name)
+                    .toList();
+            result = Optional.of(new SuggestedIncidentItem(
+                    title,
+                    sev.name(),
+                    depts,
+                    item.path(KEY_DESC).asText(title).trim(),
+                    item.path(KEY_ROOT_CAUSE).asText("Cần rà soát quy trình vận hành liên quan.").trim(),
+                    item.path(KEY_SOLUTION).asText("Điều phối nhân sự xử lý trực tiếp tại hiện trường.").trim(),
+                    lesson
+            ));
+        }
+        return result;
     }
 
     private FeedbackAiReportResponse mapEntityToReportResponse(
@@ -538,7 +642,7 @@ public class KnowledgeAiServiceImpl implements KnowledgeAiService {
                                     : List.of(DEFAULT_PLAN);
                             return new SuggestedIncidentItem(
                                     String.valueOf(row.getOrDefault(KEY_TITLE, "")),
-                                    String.valueOf(row.getOrDefault(KEY_SEVERITY, "MEDIUM")),
+                                    String.valueOf(row.getOrDefault(KEY_SEVERITY, DEFAULT_MEDIUM)),
                                     depts,
                                     String.valueOf(row.getOrDefault(KEY_DESC, "")),
                                     String.valueOf(row.getOrDefault(KEY_ROOT_CAUSE, "")),

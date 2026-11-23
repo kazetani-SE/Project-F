@@ -25,7 +25,7 @@ public class FinanceGeminiGateway {
     public static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
     private static final String KEY_SUCCESS = "success";
 
-    @Value("${gemini.api.key:${GEMINI_API_KEY:}}")
+    @Value("${app.ai.gemini.api-key:${gemini.api.key:${GEMINI_API_KEY:}}}")
     private String apiKey;
 
     /** Gọi model với văn bản (có thể kèm tool, ví dụ Google Search qua config). */

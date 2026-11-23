@@ -203,6 +203,12 @@ export const FeedbackAiReportPanel: React.FC<Props> = ({ eventId, totalFeedbacks
                         Báo cáo phân tích AI
                     </span>
 
+                    {report.modelTier === 'HEURISTIC' && (
+                        <span className="inline-flex items-center rounded-lg bg-amber-100/90 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                            Tổng hợp nội bộ (Offline)
+                        </span>
+                    )}
+
                     <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
                         Cập nhật:{' '}

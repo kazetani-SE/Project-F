@@ -7,14 +7,19 @@ import {
     BookOpen,
     AlertTriangle,
     MessageSquare,
+    FileText,
+    Wallet,
+    ShieldCheck,
     Loader2,
     Trash2,
 } from 'lucide-react';
 import { chatWithKnowledgeAi } from '../../../services/knowledgeService';
 import type {
+    AiModelTier,
     KnowledgeChatCitation,
     KnowledgeChatTurnItem,
 } from '../../../types/models/knowledge';
+import { ChatMarkdown } from './ChatMarkdown';
 
 interface Props {
     eventId: string;
@@ -28,13 +33,14 @@ interface ChatMessageUI {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    modelTier?: AiModelTier;
     citations?: KnowledgeChatCitation[];
     followUpQuestions?: string[];
 }
 
 const SAMPLE_PROMPTS = [
-    'Quy định tham gia sự kiện và thủ tục hoàn ứng chi phí?',
-    'Tổng hợp các bài học sự cố và giải pháp khắc phục từ phản hồi khảo sát?',
+    'Phân tích chi tiết điểm từng tiêu chí và các góp ý nổi bật từ phiếu khảo sát?',
+    'Tổng hợp bài học kinh nghiệm từ sự cố đa mùa và tình hình ngân sách, tài liệu đã duyệt?',
 ];
 
 export const KnowledgeAiChatDrawer: React.FC<Props> = ({
@@ -49,10 +55,11 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
             id: 'welcome',
             role: 'assistant',
             content:
-                'Xin chào! Tôi là Trợ lý AI Kho tri thức. Tôi có thể giúp bạn tra cứu quy định FAQ, bài học sự cố (Post-Mortem) và phân tích ý kiến phản hồi khảo sát của sự kiện.',
+                'Xin chào! Tôi là **Trợ lý AI Kho tri thức đa mùa**. Tôi có thể giúp bạn phân tích chi tiết phản hồi khảo sát, tra cứu sự cố Post-Mortem qua các mùa, FAQ chuỗi sự kiện, tài liệu đã duyệt và tổng quan ngân sách / quy chế duyệt của Project F.',
             followUpQuestions: [
-                'Các câu hỏi FAQ nào đang được ghim ưu tiên?',
-                'Tổng hợp bài học kinh nghiệm từ các sự cố mùa trước?',
+                'Người tham dự đánh giá điểm nào tốt nhất và cần cải thiện điều gì?',
+                'Tổng hợp bài học kinh nghiệm từ các sự cố của chuỗi sự kiện?',
+                'Quy chế phân quyền duyệt tài liệu, ấn phẩm và khoản chi trong Project F?',
             ],
         },
     ]);
@@ -103,6 +110,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                 id: `a-${Date.now()}`,
                 role: 'assistant',
                 content: res.answer,
+                modelTier: res.modelTier,
                 citations: res.citations,
                 followUpQuestions: res.followUpQuestions,
             };
@@ -133,6 +141,15 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
         if (sourceType === 'FEEDBACK') {
             return <MessageSquare className="h-3 w-3 text-amber-500 shrink-0" />;
         }
+        if (sourceType === 'DOCUMENT') {
+            return <FileText className="h-3 w-3 text-sky-600 shrink-0" />;
+        }
+        if (sourceType === 'FINANCE') {
+            return <Wallet className="h-3 w-3 text-indigo-600 shrink-0" />;
+        }
+        if (sourceType === 'POLICY') {
+            return <ShieldCheck className="h-3 w-3 text-slate-600 shrink-0" />;
+        }
         return <BookOpen className="h-3 w-3 text-emerald-600 shrink-0" />;
     };
 
@@ -150,7 +167,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                                 Trợ lý AI Kho tri thức
                             </h3>
                             <p className="text-[11px] text-slate-400 truncate max-w-xs">
-                                {eventName || 'Hỏi đáp FAQ, sự cố Post-Mortem & phản hồi sự kiện'}
+                                {eventName || 'Hỏi đáp đa mùa: FAQ, Sự cố, Feedback, Tài liệu & Ngân sách'}
                             </p>
                         </div>
                     </div>
@@ -210,7 +227,17 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                                         : 'bg-slate-100 text-slate-800 rounded-bl-xs border border-slate-200/80'
                                 }`}
                             >
-                                <div className="whitespace-pre-line">{msg.content}</div>
+                                {msg.role === 'assistant' ? (
+                                    <ChatMarkdown content={msg.content} />
+                                ) : (
+                                    <div className="whitespace-pre-line">{msg.content}</div>
+                                )}
+
+                                {msg.role === 'assistant' && msg.modelTier === 'HEURISTIC' && (
+                                    <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                                        Chế độ tổng hợp nội bộ (Offline Fallback)
+                                    </div>
+                                )}
 
                                 {/* Citations */}
                                 {msg.citations && msg.citations.length > 0 && (
@@ -263,7 +290,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                     {isSending && (
                         <div className="flex items-center gap-2 text-xs text-slate-500 px-2">
                             <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-                            <span>Trợ lý AI đang tra cứu và trả lời…</span>
+                            <span>Trợ lý AI đang tra cứu đa mùa và tổng hợp…</span>
                         </div>
                     )}
                     <div ref={messagesEndRef} />
@@ -282,7 +309,7 @@ export const KnowledgeAiChatDrawer: React.FC<Props> = ({
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Đặt câu hỏi về FAQ, sự cố mùa trước hoặc đánh giá sự kiện..."
+                            placeholder="Đặt câu hỏi về FAQ, sự cố đa mùa, đánh giá hoặc ngân sách..."
                             className="flex-1 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-hidden"
                         />
                         <button

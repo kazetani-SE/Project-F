@@ -2,6 +2,10 @@ package com.projectf.features.knowledge.ai;
 
 import com.projectf.common.enums.Department;
 import com.projectf.common.enums.IncidentSeverity;
+import com.projectf.features.document.entity.EventDocument;
+import com.projectf.features.finance.entity.EventBudgetSummaryView;
+import com.projectf.features.knowledge.ai.KnowledgeContextRetriever.FeedbackInsights;
+import com.projectf.features.knowledge.ai.KnowledgeContextRetriever.MultiSeasonBundle;
 import com.projectf.features.knowledge.dto.request.DraftIncidentAiRequest;
 import com.projectf.features.knowledge.dto.request.GenerateFaqSuggestionsRequest;
 import com.projectf.features.knowledge.dto.request.KnowledgeChatRequest;
@@ -15,11 +19,15 @@ import com.projectf.features.knowledge.dto.response.KnowledgeChatResponse.Citati
 import com.projectf.features.knowledge.entity.EventFaq;
 import com.projectf.features.knowledge.entity.EventFeedback;
 import com.projectf.features.knowledge.entity.EventIncident;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
@@ -27,11 +35,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class LocalHeuristicAiEngine {
 
-    private static final String MODEL_NAME = "smart-fallback-heuristic-v1";
+    public static final String MODEL_NAME = "smart-fallback-heuristic-v1";
     private static final String DEPT_PLAN = "PLAN";
     private static final String DEPT_MEDIA = "MEDIA";
     private static final String DEPT_HR = "HR";
     private static final String DEPT_ACADEMIC = "ACADEMIC";
+    private static final String FALLBACK_TAG = " (Chế độ nội bộ Heuristic)";
+    private static final int MIN_FOLLOW_UPS = 2;
+    private static final int MAX_FOLLOW_UPS = 3;
 
     public record HeuristicFeedbackDraft(
             String executiveSummary,
@@ -60,8 +71,8 @@ public class LocalHeuristicAiEngine {
             summary = String.format(
                     Locale.US,
                     "Tổng hợp trên %d phiếu phản hồi với điểm trung bình %.2f/5.0★ (%d%% đánh giá tích cực, %d%% cần khắc phục). "
-                            + "Người tham dự đánh giá cao chất lượng nội dung chuyên môn và sự nhiệt tình của BTC, "
-                            + "nhưng cần cải thiện khâu điều phối thời gian check-in, âm thanh hội trường và thông báo lịch trình.",
+                            + "Các phản hồi cho thấy điểm sáng chính nằm ở chất lượng tổ chức và nội dung, "
+                            + "đồng thời cần theo dõi các góp ý cải thiện cụ thể bên dưới cho mùa sau.",
                     total,
                     avgRating,
                     positivePct,
@@ -72,11 +83,11 @@ public class LocalHeuristicAiEngine {
         List<DepartmentActionItem> deptActions = List.of(
                 new DepartmentActionItem(
                         DEPT_PLAN,
-                        "Rà soát lại kịch bản điều phối (Running Order), mở thêm luồng đón tiếp giờ cao điểm và bố trí thời gian nghỉ giữa giờ hợp lý."
+                        "Rà soát lại kịch bản điều phối (Running Order), tối ưu luồng đón tiếp giờ cao điểm và khung thời gian nghỉ giữa giờ."
                 ),
                 new DepartmentActionItem(
                         DEPT_MEDIA,
-                        "Kiểm tra kỹ hệ thống âm thanh, micro và slide trình chiếu trước giờ G 60 phút; gửi tài liệu/thông báo sớm hơn cho người tham dự."
+                        "Kiểm tra kỹ hệ thống âm thanh, micro và slide trình chiếu trước giờ G 60 phút; gửi tài liệu/thông báo sớm cho người tham dự."
                 ),
                 new DepartmentActionItem(
                         DEPT_HR,
@@ -145,7 +156,7 @@ public class LocalHeuristicAiEngine {
                 "Quy trình hoàn ứng chi phí mua vật tư cho thành viên BTC yêu cầu những chứng từ gì để được duyệt?",
                 "Tài chính & Nội bộ BTC",
                 "Đảm bảo tuân thủ quy tắc bắt buộc đính kèm hóa đơn chứng từ trước khi duyệt chi.",
-                "Gợi ý: Yêu cầu ảnh chụp hóa đơn hợp lệ (<= 15MB), đúng hạng mục dự trù và gửi yêu cầu trong vòng 48h sau khi thanh toán."
+                "Gợi ý: Yêu cầu ảnh chụp hóa đơn hợp lệ (<= 15MB), đúng hạng mục dự trù và gửi yêu cầu cho Ban HR duyệt."
         ));
         pool.add(new FaqSuggestionItemResponse(
                 "Giấy chứng nhận (Certificate) và điểm rèn luyện sẽ được gửi sau sự kiện bao lâu và theo hình thức nào?",
@@ -169,9 +180,9 @@ public class LocalHeuristicAiEngine {
                 .toList();
 
         return new FaqSuggestionsResultResponse(
-                decision.modelId() + " (" + MODEL_NAME + ")",
-                decision.tier(),
-                decision.routingReason(),
+                MODEL_NAME,
+                AiModelRouter.TIER_HEURISTIC,
+                decision.routingReason() + FALLBACK_TAG,
                 filtered
         );
     }
@@ -226,20 +237,25 @@ public class LocalHeuristicAiEngine {
                         + "và thông báo kịp thời tới người tham dự để ổn định chương trình.",
                 "Bổ sung hạng mục này vào Checklist rà soát bắt buộc trước sự kiện 24h cho các mùa tiếp theo; "
                         + "luôn chuẩn bị sẵn thiết bị/nhân sự dự phòng tối thiểu 15%.",
-                decision.modelId() + " (" + MODEL_NAME + ")",
-                decision.tier(),
-                decision.routingReason()
+                MODEL_NAME,
+                AiModelRouter.TIER_HEURISTIC,
+                decision.routingReason() + FALLBACK_TAG
         );
     }
 
     public KnowledgeChatResponse buildChatResponse(
             KnowledgeChatRequest request,
-            List<EventFaq> faqs,
-            List<EventIncident> incidents,
-            List<EventFeedback> feedbacks,
+            MultiSeasonBundle bundle,
+            FeedbackInsights feedbackInsights,
             AiModelDecision decision
     ) {
         String query = request.message().trim().toLowerCase(Locale.ROOT);
+        List<EventFaq> faqs = bundle.faqs();
+        List<EventIncident> incidents = bundle.incidents();
+        List<EventFeedback> feedbacks = bundle.currentFeedbacks().isEmpty()
+                ? bundle.seriesFeedbacks()
+                : bundle.currentFeedbacks();
+
         List<CitationItem> citations = new ArrayList<>();
         StringBuilder answerBuilder = new StringBuilder(1024);
 
@@ -253,16 +269,24 @@ public class LocalHeuristicAiEngine {
                         query,
                         inc.getTitle() + " " + inc.getDescription() + " " + inc.getRootCause() + " " + inc.getLessonLearned()
                 ))
-                .limit(2)
+                .limit(3)
                 .toList();
 
-        answerBuilder.append("Dựa trên **Kho Tri Thức Đa Mùa** của sự kiện (gồm ")
+        answerBuilder.append("Dựa trên **Kho Tri Thức Đa Mùa** (")
                 .append(faqs.size()).append(" FAQ, ")
-                .append(incidents.size()).append(" sự cố Post-Mortem và ")
-                .append(feedbacks.size()).append(" phiếu khảo sát), đây là thông tin tổng hợp cho câu hỏi của bạn:\n\n");
+                .append(incidents.size()).append(" sự cố Post-Mortem, ")
+                .append(feedbacks.size()).append(" phiếu khảo sát và ")
+                .append(bundle.approvedDocuments().size()).append(" tài liệu đã duyệt):\n\n");
+
+        boolean matchedSection = false;
+        if (asksAboutFinanceOrApproval(query)) {
+            matchedSection = true;
+            appendFinanceAndPolicyAnswer(answerBuilder, bundle.budgetSummary(), citations);
+        }
 
         if (!matchedFaqs.isEmpty()) {
-            answerBuilder.append("### 📌 Thông tin từ Kho FAQ Chuỗi Sự Kiện\n");
+            matchedSection = true;
+            answerBuilder.append("### Thông tin từ Kho FAQ Chuỗi Sự Kiện\n");
             for (EventFaq faq : matchedFaqs) {
                 answerBuilder.append("- **").append(faq.getQuestion()).append("**: ")
                         .append(faq.getAnswer()).append('\n');
@@ -272,7 +296,8 @@ public class LocalHeuristicAiEngine {
         }
 
         if (!matchedIncidents.isEmpty()) {
-            answerBuilder.append("### ⚠️ Bài học từ Nhật ký Sự cố & Post-Mortem\n");
+            matchedSection = true;
+            answerBuilder.append("### Bài học từ Nhật ký Sự cố & Post-Mortem\n");
             for (EventIncident inc : matchedIncidents) {
                 answerBuilder.append("- **[").append(inc.getSeverity()).append("] ").append(inc.getTitle())
                         .append("**: Nguyên nhân do *").append(inc.getRootCause())
@@ -282,57 +307,136 @@ public class LocalHeuristicAiEngine {
             answerBuilder.append('\n');
         }
 
-        if (matchedFaqs.isEmpty() && matchedIncidents.isEmpty()) {
-            appendGeneralOverview(answerBuilder, faqs, incidents, feedbacks, citations);
+        if (asksAboutDocuments(query) && !bundle.approvedDocuments().isEmpty()) {
+            matchedSection = true;
+            answerBuilder.append("### Tài liệu Kế hoạch đã phê duyệt\n");
+            for (EventDocument doc : bundle.approvedDocuments().stream().limit(5).toList()) {
+                answerBuilder.append("- **").append(doc.getTitle()).append("** (`")
+                        .append(doc.getDocType()).append("` — v").append(doc.getVersion()).append(")\n");
+                citations.add(new CitationItem("DOCUMENT", doc.getTitle(), "Loại: " + doc.getDocType() + " | v" + doc.getVersion()));
+            }
+            answerBuilder.append('\n');
         }
 
-        List<String> followUps = List.of(
-                "Tóm tắt các bài học kinh nghiệm quan trọng nhất từ sự cố mùa này?",
-                "Người tham dự góp ý cần cải thiện điểm gì nhiều nhất trong Feedback?",
-                "Những câu hỏi FAQ nào đang được ghim ưu tiên cho người mới?"
-        );
+        if (!matchedSection || asksAboutFeedback(query)) {
+            appendFeedbackAndOverview(answerBuilder, faqs, incidents, feedbacks, feedbackInsights, citations);
+        }
+
+        List<String> followUps = buildDataAwareFollowUps(bundle, feedbacks);
 
         return new KnowledgeChatResponse(
                 answerBuilder.toString().trim(),
-                decision.modelId(),
-                decision.tier(),
-                decision.routingReason(),
+                MODEL_NAME,
+                AiModelRouter.TIER_HEURISTIC,
+                decision.routingReason() + FALLBACK_TAG,
                 citations,
                 followUps
         );
     }
 
-    private void appendGeneralOverview(
+    public List<String> buildDataAwareFollowUps(MultiSeasonBundle bundle, List<EventFeedback> feedbacks) {
+        List<String> followUps = new ArrayList<>();
+        if (!feedbacks.isEmpty()) {
+            followUps.add("Phân tích chi tiết điểm từng tiêu chí và góp ý nổi bật trong các phiếu khảo sát?");
+        }
+        if (!bundle.incidents().isEmpty()) {
+            followUps.add("Tổng hợp các bài học kinh nghiệm quan trọng nhất từ nhật ký sự cố?");
+        }
+        if (!bundle.faqs().isEmpty()) {
+            followUps.add("Những câu hỏi FAQ nào đang được ghim ưu tiên trong chuỗi sự kiện?");
+        }
+        if (!bundle.approvedDocuments().isEmpty() && followUps.size() < MAX_FOLLOW_UPS) {
+            followUps.add("Sự kiện hiện đã có những tài liệu kế hoạch nào được phê duyệt?");
+        }
+        if (bundle.budgetSummary().isPresent() && followUps.size() < MAX_FOLLOW_UPS) {
+            followUps.add("Tình hình ngân sách, thực chi và quỹ còn lại của sự kiện hiện tại ra sao?");
+        }
+        if (followUps.size() < MIN_FOLLOW_UPS) {
+            followUps.add("Quy chế phân quyền duyệt tài liệu, ấn phẩm và khoản chi trong Project F như thế nào?");
+        }
+        return followUps.stream().limit(MAX_FOLLOW_UPS).toList();
+    }
+
+    private void appendFinanceAndPolicyAnswer(
+            StringBuilder answerBuilder,
+            Optional<EventBudgetSummaryView> budgetOpt,
+            List<CitationItem> citations
+    ) {
+        answerBuilder.append("### Quy chế Phê duyệt & Ngân sách Sự kiện\n"
+                + "- **Phê duyệt chi phí & dự trù**: Vai trò **HR** trong BTC đối soát hóa đơn và duyệt đề xuất của **MEMBER** (bắt buộc đính kèm tối thiểu 1 hóa đơn hợp lệ <= 15MB trước khi `APPROVED`). **Ban Chủ nhiệm CLB** (`PRESIDENT`, `VICEPRESIDENT`) có toàn quyền duyệt.\n"
+                + "- **Phê duyệt tài liệu & ấn phẩm**: **LEAD_HEADER** duyệt tài liệu kế hoạch; **HR** duyệt ấn phẩm truyền thông do **MEDIA** thiết kế.\n");
+        citations.add(new CitationItem("POLICY", "Quy chế Phân quyền & Duyệt chi Project F",
+                "HR duyệt ấn phẩm và khoản chi của MEMBER; LEAD_HEADER duyệt tài liệu; BCN CLB có toàn quyền."));
+
+        budgetOpt.ifPresent(summary -> {
+            String snippet = "Quỹ cấp phát: " + formatVnd(summary.getAllocatedFund())
+                    + " | Dự trù đã duyệt: " + formatVnd(summary.getTotalBudgetEst())
+                    + " | Thực chi đã duyệt: " + formatVnd(summary.getTotalActualSpent())
+                    + " | Quỹ còn lại: " + formatVnd(summary.getRemainingFund());
+            answerBuilder.append("- **Số liệu ngân sách hiện tại**: ").append(snippet).append('\n');
+            citations.add(new CitationItem("FINANCE", "Tổng quan Ngân sách Sự kiện", snippet));
+        });
+        answerBuilder.append('\n');
+    }
+
+    private void appendFeedbackAndOverview(
             StringBuilder answerBuilder,
             List<EventFaq> faqs,
             List<EventIncident> incidents,
             List<EventFeedback> feedbacks,
+            FeedbackInsights feedbackInsights,
             List<CitationItem> citations
     ) {
-        if (!incidents.isEmpty()) {
-            EventIncident topInc = incidents.get(0);
-            answerBuilder.append("- **Sự cố đáng chú ý gần nhất**: *").append(topInc.getTitle())
-                    .append("* (Mức độ: `").append(topInc.getSeverity())
-                    .append("`) — Bài học rút ra: ").append(topInc.getLessonLearned()).append('\n');
-            citations.add(new CitationItem("INCIDENT", topInc.getTitle(), topInc.getLessonLearned()));
-        }
-        if (!faqs.isEmpty()) {
-            EventFaq topFaq = faqs.get(0);
-            answerBuilder.append("- **FAQ trọng tâm**: *").append(topFaq.getQuestion())
-                    .append("* — ").append(topFaq.getAnswer()).append('\n');
-            citations.add(new CitationItem("FAQ", topFaq.getQuestion(), topFaq.getAnswer()));
-        }
-        if (!feedbacks.isEmpty()) {
-            double avg = feedbacks.stream().mapToInt(EventFeedback::getRatingScore).average().orElse(0.0);
+        if (feedbacks.isEmpty()) {
+            if (!incidents.isEmpty()) {
+                EventIncident topInc = incidents.get(0);
+                answerBuilder.append("- **Sự cố gần nhất**: *").append(topInc.getTitle())
+                        .append("* (Mức độ: `").append(topInc.getSeverity())
+                        .append("`) — Bài học: ").append(topInc.getLessonLearned()).append('\n');
+                citations.add(new CitationItem("INCIDENT", topInc.getTitle(), topInc.getLessonLearned()));
+            }
+            if (!faqs.isEmpty()) {
+                EventFaq topFaq = faqs.get(0);
+                answerBuilder.append("- **FAQ trọng tâm**: *").append(topFaq.getQuestion())
+                        .append("* — ").append(topFaq.getAnswer()).append('\n');
+                citations.add(new CitationItem("FAQ", topFaq.getQuestion(), topFaq.getAnswer()));
+            }
+        } else {
             String fbSummary = String.format(
                     Locale.US,
                     "Điểm đánh giá trung bình đạt %.2f/5.0★ trên tổng số %d phiếu khảo sát.",
-                    avg,
+                    feedbackInsights.avgRating(),
                     feedbacks.size()
             );
-            answerBuilder.append("- **Tổng quan Feedback**: ").append(fbSummary).append('\n');
+            answerBuilder.append("### Tổng hợp Khảo sát & Feedback\n- **Đánh giá chung**: ")
+                    .append(fbSummary).append('\n');
+            for (Map.Entry<String, String> entry : feedbackInsights.criterionAverages().entrySet().stream().limit(4).toList()) {
+                answerBuilder.append("- **").append(entry.getKey()).append("**: ").append(entry.getValue()).append('\n');
+            }
+            for (String note : feedbackInsights.improvements().stream().limit(2).toList()) {
+                answerBuilder.append("- **Góp ý cải thiện**: ").append(note).append('\n');
+            }
+            for (String suggestion : feedbackInsights.suggestions().stream().limit(2).toList()) {
+                answerBuilder.append("- **Ý kiến chi tiết**: ").append(suggestion).append('\n');
+            }
             citations.add(new CitationItem("FEEDBACK", "Thống kê Khảo sát Sự kiện", fbSummary));
         }
+    }
+
+    private boolean asksAboutFinanceOrApproval(String query) {
+        return query.contains("duyệt") || query.contains("chi phí") || query.contains("ngân sách")
+                || query.contains("hoàn ứng") || query.contains("thanh toán") || query.contains("quỹ")
+                || query.contains("phân quyền");
+    }
+
+    private boolean asksAboutDocuments(String query) {
+        return query.contains("tài liệu") || query.contains("kế hoạch") || query.contains("running order")
+                || query.contains("master plan") || query.contains("document");
+    }
+
+    private boolean asksAboutFeedback(String query) {
+        return query.contains("feedback") || query.contains("khảo sát") || query.contains("góp ý")
+                || query.contains("đánh giá") || query.contains("tiêu chí") || query.contains("cải thiện");
     }
 
     private boolean matchesQuery(String query, String targetText) {
@@ -376,6 +480,10 @@ public class LocalHeuristicAiEngine {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         if (highlights.isEmpty()) {
+            collectCustomSuggestions(feedbacks, highlights, 4);
+        }
+
+        if (highlights.isEmpty()) {
             highlights.add("Nội dung chương trình thiết thực, bám sát nhu cầu thực tế của sinh viên.");
             highlights.add("Đội ngũ Ban Tổ Chức và tình nguyện viên hỗ trợ nhiệt tình, thân thiện.");
             highlights.add("Không khí sự kiện sôi nổi, phần giao lưu Q&A mang lại nhiều góc nhìn giá trị.");
@@ -392,11 +500,37 @@ public class LocalHeuristicAiEngine {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         if (improvements.isEmpty()) {
+            collectCustomSuggestions(feedbacks, improvements, 4);
+        }
+
+        if (improvements.isEmpty()) {
             improvements.add("Cần tối ưu quy trình đón tiếp (check-in) để giảm thời gian chờ đợi đầu giờ.");
             improvements.add("Kiểm tra kỹ chất lượng âm thanh/micro và điều hòa nhiệt độ trong hội trường.");
             improvements.add("Gửi thông báo lịch trình chi tiết và tài liệu hướng dẫn sớm hơn trước ngày diễn ra.");
         }
         return improvements;
+    }
+
+    private void collectCustomSuggestions(List<EventFeedback> feedbacks, List<String> target, int maxCount) {
+        for (EventFeedback fb : feedbacks) {
+            if (target.size() >= maxCount) {
+                break;
+            }
+            Map<String, Object> custom = fb.getCustomResponses();
+            if (custom != null && custom.get("suggestions") instanceof Collection<?> items) {
+                for (Object item : items) {
+                    if (target.size() >= maxCount) {
+                        break;
+                    }
+                    if (item instanceof Map<?, ?> map && map.get("answer") != null) {
+                        String ans = String.valueOf(map.get("answer")).trim();
+                        if (ans.length() > 6 && !target.contains(ans)) {
+                            target.add(ans);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private List<SuggestedIncidentItem> buildSuggestedIncidents(List<String> improvements) {
@@ -414,5 +548,11 @@ public class LocalHeuristicAiEngine {
                 "Thiết lập quy trình diễn tập (Dry-run) và bố trí thêm bàn hỗ trợ dự phòng cho mùa sự kiện kế tiếp."
         ));
         return items;
+    }
+
+    private String formatVnd(BigDecimal amount) {
+        BigDecimal safe = amount == null ? BigDecimal.ZERO : amount;
+        NumberFormat formatter = NumberFormat.getNumberInstance(Locale.US);
+        return formatter.format(safe) + " VNĐ";
     }
 }

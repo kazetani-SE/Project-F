@@ -1,6 +1,8 @@
 package com.projectf.features.event.repository;
+
 import com.projectf.features.event.entity.Event;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +14,6 @@ public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecific
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Event e where e.id = :id")
     Optional<Event> findByIdForUpdate(UUID id);
+
+    List<Event> findBySeriesIdOrderByExpectedStartDateDesc(UUID seriesId);
 }

@@ -2,7 +2,9 @@ spring:
   # Trong profile dev, cho phép nạp thêm .env.dev (nếu có) và đảm bảo .env.local luôn có độ ưu tiên cao nhất
   config:
     import:
+      - optional:file:backend/.env.dev[.properties]
       - optional:file:.env.dev[.properties]
+      - optional:file:backend/.env.local[.properties]
       - optional:file:.env.local[.properties]
 
   devtools:
