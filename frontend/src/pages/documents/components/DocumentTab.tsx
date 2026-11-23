@@ -21,10 +21,15 @@ import {
     getDocumentsByEvent,
     createDocument,
     updateDocumentApproval,
+    updateDocumentFileVersion,
     deleteDocument,
 } from '../../../services/documentService';
-import { getPresignedDownloadUrl } from '../../../services/storageService';
+import {
+    getPresignedDownloadUrl,
+    extractS3VersionId,
+} from '../../../services/storageService';
 import { FileUploader } from '../../../components/common/FileUploader';
+import { S3VersionHistoryList } from '../../../components/common/S3VersionHistoryList';
 import { ConfirmationDialog } from '../../../components/ui/ConfirmationDialog';
 import { useSuccessToast } from '../../../components/ui/toastContext';
 import {
@@ -221,7 +226,8 @@ export const DocumentTab: React.FC<Props> = ({ eventId, onCountChange }) => {
             await executeStagedUploadAndSave({
                 file: selectedFile,
                 category: 'DOCUMENT',
-                uploadToS3: (file, cat) => uploadFile(file, cat),
+                uploadToS3: (file, cat) =>
+                    uploadFile(file, cat, selectedParentDoc ? selectedParentDoc.fileUrl : null),
                 saveToDatabase: async (fileUrl) => {
                     const req: CreateDocumentRequest = {
                         parentDocumentId: selectedParentDoc ? selectedParentDoc.id : null,
@@ -766,6 +772,14 @@ export const DocumentTab: React.FC<Props> = ({ eventId, onCountChange }) => {
                                                             >
                                                                 {fileName}
                                                             </button>
+                                                            {extractS3VersionId(doc.fileUrl) && (
+                                                                <span
+                                                                    className="rounded bg-slate-100 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-slate-600 border border-slate-200"
+                                                                    title={`S3 Version ID: ${extractS3VersionId(doc.fileUrl)}`}
+                                                                >
+                                                                    S3 #{extractS3VersionId(doc.fileUrl)?.slice(0, 8)}
+                                                                </span>
+                                                            )}
                                                             <span>•</span>
                                                             <span>
                                                                 Tạo ngày:{' '}
@@ -1228,6 +1242,42 @@ export const DocumentTab: React.FC<Props> = ({ eventId, onCountChange }) => {
                                     );
                                 },
                             )}
+                        </div>
+
+                        <div className="mt-4">
+                            <S3VersionHistoryList
+                                fileUrl={versionHistoryDoc.fileUrl}
+                                canModify={
+                                    canUploadOrVersion && versionHistoryDoc.status !== 'APPROVED'
+                                }
+                                lockedVersionIds={
+                                    new Set(
+                                        documents
+                                            .map((d) => extractS3VersionId(d.fileUrl))
+                                            .filter((v): v is string => Boolean(v)),
+                                    )
+                                }
+                                onRestoreVersion={async (s3Ver) => {
+                                    const updated = await updateDocumentFileVersion(
+                                        versionHistoryDoc.id,
+                                        {
+                                            fileUrl: s3Ver.fileUrl,
+                                            version: versionHistoryDoc.version,
+                                        },
+                                        eventId,
+                                    );
+                                    setVersionHistoryDoc(updated);
+                                    showToast(
+                                        `Đã khôi phục tài liệu "${updated.title}" về phiên bản S3 #${s3Ver.versionId.slice(0, 8)}!`,
+                                    );
+                                    await fetchDocuments();
+                                }}
+                                onVersionDeleted={(deletedVerId) => {
+                                    showToast(
+                                        `Đã xóa phiên bản S3 #${deletedVerId.slice(0, 8)} khỏi Bucket.`,
+                                    );
+                                }}
+                            />
                         </div>
 
                         {canUploadOrVersion && (

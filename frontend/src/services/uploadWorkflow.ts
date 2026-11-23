@@ -5,6 +5,7 @@ import {
     STORAGE_LIMIT_LABELS,
     ALLOWED_MIME_TYPES,
 } from '../types/models/storage.ts';
+import { deleteFileFromS3 } from './storageService.ts';
 
 /**
  * Kiểm tra tính hợp lệ của tệp (dung lượng & định dạng MIME) trước khi tiếp nhận
@@ -113,11 +114,17 @@ export async function executeStagedUploadAndSave<T>({
     try {
         return await saveToDatabase(uploadResult.fileUrl);
     } catch (dbError: unknown) {
+        // Tự động thu hồi (Rollback) phiên bản vừa tải lên S3 để tránh phát sinh tệp mồ côi
+        try {
+            await deleteFileFromS3(uploadResult.fileUrl, uploadResult.versionId);
+        } catch {
+            // Bỏ qua lỗi phụ khi thu hồi để trả về đúng lỗi gốc của Database
+        }
         const msg =
             dbError instanceof Error
                 ? dbError.message
                 : 'Lỗi khi lưu thông tin vào cơ sở dữ liệu';
-        throw new Error(`[Database Thất Bại] Tệp đã tải lên S3 nhưng lưu CSDL lỗi: ${msg}`);
+        throw new Error(`[Database Thất Bại] Đã tự động thu hồi phiên bản S3 vừa tải lên: ${msg}`);
     }
 }
 

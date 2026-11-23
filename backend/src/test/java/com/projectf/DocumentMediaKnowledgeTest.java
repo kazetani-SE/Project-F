@@ -5,6 +5,7 @@ import com.projectf.common.enums.Department;
 import com.projectf.common.enums.IncidentSeverity;
 import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
+import com.projectf.features.document.dto.request.UpdateDocumentFileVersionRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import com.projectf.features.document.entity.EventDocument;
 import com.projectf.features.document.mapper.DocumentMapper;
@@ -426,5 +427,43 @@ class DocumentMediaKnowledgeTest {
         service.deleteFeedback(feedbackId);
 
         verify(feedbackRepo).delete(feedback);
+    }
+
+    @Test
+    void documentUpdateFileVersionSucceedsWhenNotApprovedAndFailsWhenApproved() {
+        DocumentRepository docRepo = Mockito.mock(DocumentRepository.class);
+        DocumentMapper mapper = new DocumentMapper();
+        DocumentServiceImpl service = new DocumentServiceImpl(docRepo, mapper);
+
+        UUID docId = UUID.randomUUID();
+        EventDocument doc = new EventDocument();
+        doc.setId(docId);
+        doc.setStatus(ApprovalStatus.PENDING);
+        doc.setVersion("1.0");
+        doc.setFileUrl("https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf?versionId=v1");
+
+        when(docRepo.findById(docId)).thenReturn(Optional.of(doc));
+        when(docRepo.save(any(EventDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DocumentResponse updated = service.updateFileVersion(
+                docId,
+                new UpdateDocumentFileVersionRequest(
+                        "https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf?versionId=v0",
+                        "1.0"
+                )
+        );
+        assertEquals("https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf?versionId=v0", updated.fileUrl());
+
+        doc.setStatus(ApprovalStatus.APPROVED);
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.updateFileVersion(
+                        docId,
+                        new UpdateDocumentFileVersionRequest(
+                                "https://test.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf?versionId=v2",
+                                null
+                        )
+                )
+        );
     }
 }

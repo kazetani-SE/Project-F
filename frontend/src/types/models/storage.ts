@@ -5,6 +5,7 @@ export interface PresignedUploadRequest {
     mimeType: string;
     fileSize: number;
     category: StorageCategory;
+    targetObjectKey?: string | null;
 }
 
 export interface PresignedUploadResponse {
@@ -20,9 +21,20 @@ export interface PresignedDownloadResponse {
     expiresInMinutes: number;
 }
 
+export interface S3ObjectVersionResponse {
+    objectKey: string;
+    versionId: string;
+    isLatest: boolean;
+    sizeBytes: number;
+    lastModified: string;
+    eTag: string | null;
+    fileUrl: string;
+}
+
 export interface UploadedFileResult {
     fileUrl: string;
     objectKey: string;
+    versionId?: string | null;
     fileName: string;
     fileSize: number;
     mimeType: string;

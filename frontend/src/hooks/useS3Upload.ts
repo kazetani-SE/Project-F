@@ -24,7 +24,11 @@ export function useS3Upload() {
     }, []);
 
     const uploadFile = useCallback(
-        async (file: File, category: StorageCategory): Promise<UploadedFileResult> => {
+        async (
+            file: File,
+            category: StorageCategory,
+            targetObjectKey?: string | null,
+        ): Promise<UploadedFileResult> => {
             setError(null);
             setProgress(0);
 
@@ -38,12 +42,13 @@ export function useS3Upload() {
 
             setIsUploading(true);
             try {
-                // 3. Xin pre-signed upload URL từ backend
+                // 3. Xin pre-signed upload URL từ backend (hỗ trợ targetObjectKey để xếp chồng S3 Version)
                 const presigned = await getPresignedUploadUrl({
                     fileName: file.name,
                     mimeType: file.type || 'application/octet-stream',
                     fileSize: file.size,
                     category,
+                    targetObjectKey: targetObjectKey || null,
                 });
 
                 // 4. Upload binary trực tiếp lên S3
@@ -58,6 +63,7 @@ export function useS3Upload() {
                 const result: UploadedFileResult = {
                     fileUrl: finalFileUrl,
                     objectKey: presigned.objectKey,
+                    versionId: uploadResult?.versionId || null,
                     fileName: file.name,
                     fileSize: file.size,
                     mimeType: file.type,

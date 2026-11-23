@@ -3,15 +3,21 @@ package com.projectf;
 import com.projectf.features.storage.dto.request.PresignedUploadRequest;
 import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.dto.response.PresignedUploadResponse;
+import com.projectf.features.storage.dto.response.S3ObjectVersionResponse;
 import com.projectf.features.storage.enums.StorageCategory;
 import com.projectf.features.storage.service.impl.S3StorageServiceImpl;
 import java.net.URI;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
+import software.amazon.awssdk.services.s3.model.ObjectVersion;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -19,7 +25,9 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,6 +68,27 @@ class StorageServiceTest {
         assertEquals(10, response.expiresInMinutes());
         assertTrue(response.objectKey().startsWith("receipts/"));
         assertTrue(response.fileUrl().contains("test-bucket.s3.ap-southeast-1.amazonaws.com/receipts/"));
+    }
+
+    @Test
+    void generatePresignedUploadUrlReusesTargetObjectKeyForS3Versioning() throws Exception {
+        PresignedPutObjectRequest mockPresigned = Mockito.mock(PresignedPutObjectRequest.class);
+        when(mockPresigned.url()).thenReturn(URI.create("https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/master-plan.pdf?signed=true").toURL());
+        ArgumentCaptor<PutObjectPresignRequest> putCaptor = ArgumentCaptor.forClass(PutObjectPresignRequest.class);
+        when(s3Presigner.presignPutObject(putCaptor.capture())).thenReturn(mockPresigned);
+
+        PresignedUploadRequest request = new PresignedUploadRequest(
+                "master-plan-v2.pdf",
+                "application/pdf",
+                3L * 1024 * 1024,
+                StorageCategory.DOCUMENT,
+                "https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/master-plan.pdf?versionId=old-ver-1"
+        );
+
+        PresignedUploadResponse response = storageService.generatePresignedUploadUrl(request);
+
+        assertEquals("documents/master-plan.pdf", response.objectKey());
+        assertEquals("documents/master-plan.pdf", putCaptor.getValue().putObjectRequest().key());
     }
 
     @Test
@@ -212,5 +241,81 @@ class StorageServiceTest {
         Mockito.verify(mockS3).deleteObject(captor.capture());
         assertEquals("test-bucket", captor.getValue().bucket());
         assertEquals("documents/test-plan.pdf", captor.getValue().key());
+        assertNull(captor.getValue().versionId());
+    }
+
+    @Test
+    void deleteFilePassesEmbeddedVersionIdToS3DeleteObjectRequest() {
+        S3Client mockS3 = Mockito.mock(S3Client.class);
+        S3StorageServiceImpl serviceWithClient = new S3StorageServiceImpl(
+                s3Presigner,
+                mockS3,
+                "test-bucket",
+                "ap-southeast-1",
+                10
+        );
+
+        serviceWithClient.deleteFile("https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/test-plan.pdf?versionId=ver-xyz-999");
+
+        ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        Mockito.verify(mockS3).deleteObject(captor.capture());
+        assertEquals("test-bucket", captor.getValue().bucket());
+        assertEquals("documents/test-plan.pdf", captor.getValue().key());
+        assertEquals("ver-xyz-999", captor.getValue().versionId());
+    }
+
+    @Test
+    void listObjectVersionsFiltersExactKeyAndSortsNewestFirst() {
+        S3Client mockS3 = Mockito.mock(S3Client.class);
+        S3StorageServiceImpl serviceWithClient = new S3StorageServiceImpl(
+                s3Presigner,
+                mockS3,
+                "test-bucket",
+                "ap-southeast-1",
+                10
+        );
+
+        Instant older = Instant.parse("2026-10-01T08:00:00Z");
+        Instant newer = Instant.parse("2026-10-05T10:30:00Z");
+
+        ObjectVersion v1 = ObjectVersion.builder()
+                .key("documents/plan.pdf")
+                .versionId("ver-001")
+                .isLatest(false)
+                .size(102400L)
+                .lastModified(older)
+                .eTag("\"etag-1\"")
+                .build();
+        ObjectVersion v2 = ObjectVersion.builder()
+                .key("documents/plan.pdf")
+                .versionId("ver-002")
+                .isLatest(true)
+                .size(204800L)
+                .lastModified(newer)
+                .eTag("\"etag-2\"")
+                .build();
+        ObjectVersion otherPrefixFile = ObjectVersion.builder()
+                .key("documents/plan.pdf.bak")
+                .versionId("ver-other")
+                .isLatest(true)
+                .size(500L)
+                .lastModified(newer)
+                .build();
+
+        ListObjectVersionsResponse s3Res = ListObjectVersionsResponse.builder()
+                .versions(v1, v2, otherPrefixFile)
+                .build();
+        when(mockS3.listObjectVersions(any(ListObjectVersionsRequest.class))).thenReturn(s3Res);
+
+        List<S3ObjectVersionResponse> results = serviceWithClient.listObjectVersions(
+                "https://test-bucket.s3.ap-southeast-1.amazonaws.com/documents/plan.pdf?versionId=ver-002"
+        );
+
+        assertEquals(2, results.size());
+        assertEquals("ver-002", results.get(0).versionId());
+        assertTrue(results.get(0).isLatest());
+        assertTrue(results.get(0).fileUrl().endsWith("?versionId=ver-002"));
+        assertEquals("ver-001", results.get(1).versionId());
+        assertFalse(results.get(1).isLatest());
     }
 }

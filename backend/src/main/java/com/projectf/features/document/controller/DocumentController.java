@@ -3,8 +3,10 @@ package com.projectf.features.document.controller;
 import com.projectf.common.response.ApiResponse;
 import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
+import com.projectf.features.document.dto.request.UpdateDocumentFileVersionRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import com.projectf.features.document.service.DocumentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -66,6 +68,17 @@ public class DocumentController {
             @Valid @RequestBody DocumentApprovalRequest request
     ) {
         DocumentResponse response = documentService.updateApproval(documentId, request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(summary = "Khôi phục / chuyển đổi phiên bản tệp S3 cho tài liệu chưa khóa duyệt")
+    @PatchMapping({"/events/{eventId}/documents/{documentId}/file-version", "/documents/{documentId}/file-version"})
+    public ResponseEntity<ApiResponse<DocumentResponse>> updateFileVersion(
+            @PathVariable(value = EVENT_ID, required = false) UUID eventId,
+            @PathVariable(DOCUMENT_ID) UUID documentId,
+            @Valid @RequestBody UpdateDocumentFileVersionRequest request
+    ) {
+        DocumentResponse response = documentService.updateFileVersion(documentId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

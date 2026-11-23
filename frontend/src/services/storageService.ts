@@ -4,6 +4,7 @@ import type {
     PresignedDownloadResponse,
     PresignedUploadRequest,
     PresignedUploadResponse,
+    S3ObjectVersionResponse,
 } from '../types/models/storage';
 
 export async function getPresignedUploadUrl(
@@ -58,10 +59,43 @@ export async function getPresignedDownloadUrl(
     return reqPromise;
 }
 
-export async function deleteFileFromS3(objectKey: string): Promise<void> {
+export async function listS3ObjectVersions(
+    objectKey: string,
+): Promise<S3ObjectVersionResponse[]> {
+    const res = await apiClient.get<ApiResponse<S3ObjectVersionResponse[]>>(
+        '/storage/versions',
+        {
+            params: { objectKey },
+        },
+    );
+    return res.data.data ?? [];
+}
+
+export async function deleteFileFromS3(
+    objectKey: string,
+    versionId?: string | null,
+): Promise<void> {
+    downloadUrlCache.delete(objectKey);
+    if (versionId) {
+        downloadUrlCache.delete(`${objectKey}?versionId=${versionId}`);
+    }
     await apiClient.delete<ApiResponse<null>>('/storage/file', {
-        params: { objectKey },
+        params: versionId ? { objectKey, versionId } : { objectKey },
     });
+}
+
+export function extractS3VersionId(fileUrlOrKey: string | null | undefined): string | null {
+    if (!fileUrlOrKey) return null;
+    const qIdx = fileUrlOrKey.indexOf('?');
+    if (qIdx < 0) return null;
+    const params = new URLSearchParams(fileUrlOrKey.slice(qIdx + 1));
+    return params.get('versionId');
+}
+
+export function stripS3QueryParams(fileUrlOrKey: string | null | undefined): string {
+    if (!fileUrlOrKey) return '';
+    const qIdx = fileUrlOrKey.indexOf('?');
+    return qIdx >= 0 ? fileUrlOrKey.slice(0, qIdx) : fileUrlOrKey;
 }
 
 export function uploadBinaryToS3(

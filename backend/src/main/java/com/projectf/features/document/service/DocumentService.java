@@ -2,6 +2,7 @@ package com.projectf.features.document.service;
 
 import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
+import com.projectf.features.document.dto.request.UpdateDocumentFileVersionRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,8 @@ public interface DocumentService {
     DocumentResponse createDocument(UUID eventId, CreateDocumentRequest request);
 
     DocumentResponse updateApproval(UUID documentId, DocumentApprovalRequest request);
+
+    DocumentResponse updateFileVersion(UUID documentId, UpdateDocumentFileVersionRequest request);
 
     void deleteDocument(UUID documentId);
 }

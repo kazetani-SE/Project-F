@@ -91,9 +91,46 @@ public class MediaAssetServiceImpl implements MediaAssetService {
         EventMediaAsset asset = mediaRepo.findById(assetId)
                 .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_MSG + assetId));
 
+        String oldDesignUrl = asset.getDesignFileUrl();
+        String oldPreviewUrl = asset.getPreviewImageUrl();
+
         mediaMapper.updateEntity(asset, request);
         EventMediaAsset updated = mediaRepo.save(asset);
+
+        cleanupReplacedS3File(assetId, oldDesignUrl, updated.getDesignFileUrl());
+        if (oldPreviewUrl != null && !oldPreviewUrl.equals(oldDesignUrl)) {
+            cleanupReplacedS3File(assetId, oldPreviewUrl, updated.getPreviewImageUrl());
+        }
+
         return enrichResponse(updated);
+    }
+
+    private void cleanupReplacedS3File(UUID assetId, String oldUrl, String newUrl) {
+        if (storageService != null
+                && oldUrl != null
+                && !oldUrl.isBlank()
+                && oldUrl.contains(".amazonaws.com/")
+                && !oldUrl.equals(newUrl)) {
+            String oldBase = stripQuery(oldUrl);
+            String newBase = newUrl != null ? stripQuery(newUrl) : "";
+            // Nếu người dùng đổi sang một objectKey hoàn toàn khác, thu hồi tệp/phiên bản cũ để tránh rác S3;
+            // Nếu giữ cùng objectKey (S3 Versioning tạo versionId mới), giữ lại version cũ trong lịch sử S3.
+            if (!oldBase.equals(newBase)) {
+                try {
+                    storageService.deleteFile(oldUrl);
+                } catch (Exception ex) {
+                    if (LOGGER.isWarnEnabled()) {
+                        LOGGER.warn("Không thể thu hồi tệp S3 cũ khi cập nhật ấn phẩm [assetId={}, oldUrl={}]: {}",
+                                assetId, oldUrl, ex.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    private static String stripQuery(String url) {
+        int qIdx = url.indexOf('?');
+        return qIdx >= 0 ? url.substring(0, qIdx) : url;
     }
 
     @Override

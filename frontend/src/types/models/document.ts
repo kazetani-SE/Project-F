@@ -40,6 +40,11 @@ export interface DocumentApprovalRequest {
     rejectionReason?: string | null;
 }
 
+export interface UpdateDocumentFileVersionRequest {
+    fileUrl: string;
+    version?: string | null;
+}
+
 export const DOC_TYPE_LABELS: Record<DocumentDocType, string> = {
     MASTER_PLAN: 'Kế hoạch tổng thể',
     RUNNING_ORDER: 'Kịch bản chạy chương trình',

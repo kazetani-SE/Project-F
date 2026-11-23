@@ -3,6 +3,7 @@ package com.projectf.features.storage.service.impl;
 import com.projectf.features.storage.dto.request.PresignedUploadRequest;
 import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.dto.response.PresignedUploadResponse;
+import com.projectf.features.storage.dto.response.S3ObjectVersionResponse;
 import com.projectf.features.storage.enums.StorageCategory;
 import com.projectf.features.storage.service.StorageService;
 import java.net.URI;
@@ -10,6 +11,9 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
@@ -20,6 +24,9 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
+import software.amazon.awssdk.services.s3.model.ObjectVersion;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -31,6 +38,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 public class S3StorageServiceImpl implements StorageService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(S3StorageServiceImpl.class);
+    private static final String EMPTY_KEY_ERR = "Đường dẫn tệp (objectKey) không được để trống";
+    private static final String VERSION_PARAM = "versionId";
 
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
@@ -76,8 +85,7 @@ public class S3StorageServiceImpl implements StorageService {
             throw new IllegalArgumentException("Định dạng tệp không được hỗ trợ cho danh mục " + category);
         }
 
-        String sanitized = sanitizeFileName(request.fileName());
-        String objectKey = category.getFolderName() + "/" + sanitized;
+        String objectKey = resolveTargetObjectKey(category, request.fileName(), request.targetObjectKey());
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -91,7 +99,7 @@ public class S3StorageServiceImpl implements StorageService {
                 .build();
 
         PresignedPutObjectRequest presigned = s3Presigner.presignPutObject(presignRequest);
-        String fileUrl = "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + objectKey;
+        String fileUrl = buildBaseFileUrl(objectKey);
 
         return new PresignedUploadResponse(
                 presigned.url().toString(),
@@ -104,7 +112,7 @@ public class S3StorageServiceImpl implements StorageService {
     @Override
     public PresignedDownloadResponse generatePresignedDownloadUrl(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
-            throw new IllegalArgumentException("Đường dẫn tệp (objectKey) không được để trống");
+            throw new IllegalArgumentException(EMPTY_KEY_ERR);
         }
 
         String versionId = extractVersionId(objectKey);
@@ -150,26 +158,119 @@ public class S3StorageServiceImpl implements StorageService {
     }
 
     @Override
-    public void deleteFile(String objectKey) {
+    public List<S3ObjectVersionResponse> listObjectVersions(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
-            throw new IllegalArgumentException("Đường dẫn tệp (objectKey) không được để trống");
+            throw new IllegalArgumentException(EMPTY_KEY_ERR);
         }
 
         String cleanKey = extractObjectKey(objectKey);
-        downloadUrlCache.keySet().removeIf(k -> k.startsWith(cleanKey));
+        List<S3ObjectVersionResponse> versions = new ArrayList<>();
+
         if (s3Client != null) {
             try {
-                DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                ListObjectVersionsRequest listReq = ListObjectVersionsRequest.builder()
                         .bucket(bucketName)
-                        .key(cleanKey)
+                        .prefix(cleanKey)
                         .build();
-                s3Client.deleteObject(deleteRequest);
+                ListObjectVersionsResponse listRes = s3Client.listObjectVersions(listReq);
+                if (listRes.hasVersions()) {
+                    for (ObjectVersion ver : listRes.versions()) {
+                        if (cleanKey.equals(ver.key())) {
+                            String verId = ver.versionId();
+                            boolean hasRealVersion = verId != null && !verId.isBlank() && !"null".equalsIgnoreCase(verId);
+                            String versionedUrl = hasRealVersion
+                                    ? buildBaseFileUrl(cleanKey) + "?" + VERSION_PARAM + "=" + verId
+                                    : buildBaseFileUrl(cleanKey);
+                            versions.add(new S3ObjectVersionResponse(
+                                    cleanKey,
+                                    verId,
+                                    Boolean.TRUE.equals(ver.isLatest()),
+                                    ver.size() != null ? ver.size() : 0L,
+                                    ver.lastModified(),
+                                    ver.eTag(),
+                                    versionedUrl
+                            ));
+                        }
+                    }
+                }
+                versions.sort(Comparator.comparing(
+                        S3ObjectVersionResponse::lastModified,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                ));
             } catch (Exception ex) {
                 if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Không thể xóa object trên S3 [bucket={}, key={}]: {}", bucketName, cleanKey, ex.getMessage());
+                    LOGGER.warn("Không thể truy vấn danh sách phiên bản S3 [bucket={}, key={}]: {}",
+                            bucketName, cleanKey, ex.getMessage());
                 }
             }
         }
+        return versions;
+    }
+
+    @Override
+    public void deleteFile(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException(EMPTY_KEY_ERR);
+        }
+        String embeddedVersionId = extractVersionId(objectKey);
+        deleteFileVersion(objectKey, embeddedVersionId);
+    }
+
+    @Override
+    public void deleteFileVersion(String objectKey, String versionId) {
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException(EMPTY_KEY_ERR);
+        }
+
+        String cleanKey = extractObjectKey(objectKey);
+        String resolvedVersionId = (versionId != null && !versionId.isBlank())
+                ? versionId.trim()
+                : extractVersionId(objectKey);
+
+        if (resolvedVersionId != null && !resolvedVersionId.isBlank()) {
+            downloadUrlCache.remove(cleanKey + "#" + resolvedVersionId);
+        } else {
+            downloadUrlCache.keySet().removeIf(k -> k.equals(cleanKey) || k.startsWith(cleanKey + "#"));
+        }
+
+        if (s3Client != null) {
+            try {
+                DeleteObjectRequest.Builder deleteBuilder = DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(cleanKey);
+                if (resolvedVersionId != null && !resolvedVersionId.isBlank()) {
+                    deleteBuilder.versionId(resolvedVersionId);
+                }
+                s3Client.deleteObject(deleteBuilder.build());
+            } catch (Exception ex) {
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn("Không thể xóa object trên S3 [bucket={}, key={}, versionId={}]: {}",
+                            bucketName, cleanKey, resolvedVersionId, ex.getMessage());
+                }
+            }
+        }
+    }
+
+    private String resolveTargetObjectKey(StorageCategory category, String rawFileName, String targetObjectKey) {
+        String resolvedKey;
+        if (targetObjectKey != null && !targetObjectKey.isBlank()) {
+            String cleanTarget = extractObjectKey(targetObjectKey);
+            String expectedPrefix = category.getFolderName() + "/";
+            if (cleanTarget.startsWith(expectedPrefix) && cleanTarget.length() > expectedPrefix.length()) {
+                resolvedKey = cleanTarget;
+            } else {
+                String targetFileName = sanitizeFileName(cleanTarget);
+                resolvedKey = expectedPrefix + targetFileName;
+            }
+        } else {
+            String sanitized = sanitizeFileName(rawFileName);
+            resolvedKey = category.getFolderName() + "/" + sanitized;
+        }
+        return resolvedKey;
+    }
+
+    private String buildBaseFileUrl(String objectKey) {
+        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + objectKey;
     }
 
     public static String sanitizeFileName(String rawFileName) {
@@ -195,8 +296,8 @@ public class S3StorageServiceImpl implements StorageService {
                     int eqIdx = pair.indexOf('=');
                     if (eqIdx > 0) {
                         String key = pair.substring(0, eqIdx);
-                        if ("versionId".equalsIgnoreCase(key) && eqIdx < pair.length() - 1) {
-                            result = pair.substring(eqIdx + 1);
+                        if (VERSION_PARAM.equalsIgnoreCase(key) && eqIdx < pair.length() - 1) {
+                            result = URLDecoder.decode(pair.substring(eqIdx + 1), StandardCharsets.UTF_8);
                             break;
                         }
                     }

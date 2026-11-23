@@ -7,7 +7,12 @@ import {
     MOCK_FAQS,
     MOCK_FEEDBACKS,
 } from './data';
-import type { CreateDocumentRequest, DocumentApprovalRequest, DocumentResponse } from '../types/models/document';
+import type {
+    CreateDocumentRequest,
+    DocumentApprovalRequest,
+    DocumentResponse,
+    UpdateDocumentFileVersionRequest,
+} from '../types/models/document';
 import type {
     CreateMediaAssetRequest,
     MediaApprovalRequest,
@@ -81,8 +86,45 @@ export const handlers = [
         });
     }),
 
-    http.delete(`${BASE}/storage/file`, async () => {
+    http.get(`${BASE}/storage/versions`, async ({ request }) => {
+        if (import.meta.env.VITE_MOCK_STORAGE === 'false') {
+            return passthrough();
+        }
+        await delay(220);
+        const url = new URL(request.url);
+        const rawKey = url.searchParams.get('objectKey') || 'documents/sample.pdf';
+        const cleanKey = rawKey.split('?')[0].replace(/^https?:\/\/[^/]+\//, '');
+        const s3Base = 'https://project-f-media-storage.s3.ap-southeast-1.amazonaws.com';
+        const currentVer = new URLSearchParams(rawKey.split('?')[1] || '').get('versionId') || 'v2-latest-s3';
+
+        return ok([
+            {
+                objectKey: cleanKey,
+                versionId: currentVer,
+                isLatest: true,
+                sizeBytes: 1458200,
+                lastModified: new Date().toISOString(),
+                eTag: '"9f8e7d6c5b4a"',
+                fileUrl: `${s3Base}/${cleanKey}?versionId=${currentVer}`,
+            },
+            {
+                objectKey: cleanKey,
+                versionId: 'v1-initial-s3',
+                isLatest: false,
+                sizeBytes: 1204100,
+                lastModified: new Date(Date.now() - 86400000).toISOString(),
+                eTag: '"1a2b3c4d5e6f"',
+                fileUrl: `${s3Base}/${cleanKey}?versionId=v1-initial-s3`,
+            },
+        ]);
+    }),
+
+    http.delete(`${BASE}/storage/file`, async ({ request }) => {
+        if (import.meta.env.VITE_MOCK_STORAGE === 'false') {
+            return passthrough();
+        }
         await delay(200);
+        void request;
         return ok(null);
     }),
 
@@ -92,7 +134,12 @@ export const handlers = [
             return passthrough();
         }
         await delay(600);
-        return new HttpResponse(null, { status: 200 });
+        return new HttpResponse(null, {
+            status: 200,
+            headers: {
+                'x-amz-version-id': `ver-${Date.now().toString(36)}`,
+            },
+        });
     }),
 
     // --- Documents ---
@@ -148,6 +195,24 @@ export const handlers = [
             return d;
         });
 
+        const updated = documentsState.find((d) => d.id === docId);
+        return ok(updated);
+    }),
+
+    http.patch(`${BASE}/events/:eventId/documents/:documentId/file-version`, async ({ params, request }) => {
+        await delay(250);
+        const docId = params.documentId as string;
+        const body = (await request.json()) as UpdateDocumentFileVersionRequest;
+        documentsState = documentsState.map((d) =>
+            d.id === docId
+                ? {
+                      ...d,
+                      fileUrl: body.fileUrl,
+                      version: body.version || d.version,
+                      updatedAt: new Date().toISOString(),
+                  }
+                : d,
+        );
         const updated = documentsState.find((d) => d.id === docId);
         return ok(updated);
     }),

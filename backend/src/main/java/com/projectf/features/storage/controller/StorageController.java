@@ -4,10 +4,12 @@ import com.projectf.common.response.ApiResponse;
 import com.projectf.features.storage.dto.request.PresignedUploadRequest;
 import com.projectf.features.storage.dto.response.PresignedDownloadResponse;
 import com.projectf.features.storage.dto.response.PresignedUploadResponse;
+import com.projectf.features.storage.dto.response.S3ObjectVersionResponse;
 import com.projectf.features.storage.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +19,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Storage", description = "AWS S3 Pre-signed URL upload và download")
+@Tag(name = "Storage", description = "AWS S3 Pre-signed URL upload, download và quản lý S3 Object Versioning")
 @RestController
 @RequestMapping("/v1/storage")
 public class StorageController {
+
+    private static final String OBJECT_KEY = "objectKey";
 
     private final StorageService storageService;
 
@@ -40,18 +44,32 @@ public class StorageController {
     @Operation(summary = "Sinh Pre-signed URL tải xuống từ S3")
     @GetMapping("/presigned-download")
     public ResponseEntity<ApiResponse<PresignedDownloadResponse>> createPresignedDownload(
-            @RequestParam("objectKey") String objectKey
+            @RequestParam(OBJECT_KEY) String objectKey
     ) {
         PresignedDownloadResponse response = storageService.generatePresignedDownloadUrl(objectKey);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    @Operation(summary = "Xóa tệp trên Amazon S3")
+    @Operation(summary = "Liệt kê lịch sử các phiên bản S3 (S3 Object Versioning) của một tệp")
+    @GetMapping("/versions")
+    public ResponseEntity<ApiResponse<List<S3ObjectVersionResponse>>> listObjectVersions(
+            @RequestParam(OBJECT_KEY) String objectKey
+    ) {
+        List<S3ObjectVersionResponse> versions = storageService.listObjectVersions(objectKey);
+        return ResponseEntity.ok(ApiResponse.ok(versions));
+    }
+
+    @Operation(summary = "Xóa tệp hoặc một phiên bản cụ thể trên Amazon S3")
     @DeleteMapping("/file")
     public ResponseEntity<ApiResponse<Void>> deleteFile(
-            @RequestParam("objectKey") String objectKey
+            @RequestParam(OBJECT_KEY) String objectKey,
+            @RequestParam(value = "versionId", required = false) String versionId
     ) {
-        storageService.deleteFile(objectKey);
+        if (versionId != null && !versionId.isBlank()) {
+            storageService.deleteFileVersion(objectKey, versionId);
+        } else {
+            storageService.deleteFile(objectKey);
+        }
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

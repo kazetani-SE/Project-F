@@ -3,6 +3,7 @@ package com.projectf.features.document.service.impl;
 import com.projectf.common.enums.ApprovalStatus;
 import com.projectf.features.document.dto.request.CreateDocumentRequest;
 import com.projectf.features.document.dto.request.DocumentApprovalRequest;
+import com.projectf.features.document.dto.request.UpdateDocumentFileVersionRequest;
 import com.projectf.features.document.dto.response.DocumentResponse;
 import com.projectf.features.document.entity.EventDocument;
 import com.projectf.features.document.mapper.DocumentMapper;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DocumentServiceImpl implements DocumentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentServiceImpl.class);
+    private static final String NOT_FOUND_PREFIX = "Không tìm thấy tài liệu với ID: ";
 
     private static final Set<String> VALID_TYPES = Set.of(
             "MASTER_PLAN",
@@ -60,7 +62,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     public DocumentResponse getDocumentById(UUID documentId) {
         EventDocument doc = docRepo.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài liệu với ID: " + documentId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_PREFIX + documentId));
         return docMapper.toResponse(doc);
     }
 
@@ -122,7 +124,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public DocumentResponse updateApproval(UUID documentId, DocumentApprovalRequest request) {
         EventDocument doc = docRepo.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài liệu với ID: " + documentId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_PREFIX + documentId));
 
         if (request.status() == ApprovalStatus.REJECTED
                 && (request.rejectionReason() == null || request.rejectionReason().isBlank())) {
@@ -140,9 +142,28 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
+    public DocumentResponse updateFileVersion(UUID documentId, UpdateDocumentFileVersionRequest request) {
+        EventDocument doc = docRepo.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_PREFIX + documentId));
+
+        if (doc.getStatus() == ApprovalStatus.APPROVED) {
+            throw new IllegalStateException("Không thể thay đổi phiên bản tệp S3 của tài liệu đã được phê duyệt chính thức");
+        }
+
+        doc.setFileUrl(request.fileUrl().trim());
+        if (request.version() != null && !request.version().isBlank()) {
+            doc.setVersion(request.version().trim());
+        }
+
+        EventDocument updated = docRepo.save(doc);
+        return docMapper.toResponse(updated);
+    }
+
+    @Override
+    @Transactional
     public void deleteDocument(UUID documentId) {
         EventDocument doc = docRepo.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài liệu với ID: " + documentId));
+                .orElseThrow(() -> new IllegalArgumentException(NOT_FOUND_PREFIX + documentId));
 
         if (doc.getStatus() == ApprovalStatus.APPROVED) {
             throw new IllegalStateException("Không thể xóa tài liệu đã được phê duyệt chính thức");

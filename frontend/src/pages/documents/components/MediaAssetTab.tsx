@@ -12,6 +12,7 @@ import {
     FileIcon,
     AlertCircle,
     Download,
+    History,
 } from 'lucide-react';
 import {
     getMediaAssetsByEvent,
@@ -21,7 +22,11 @@ import {
     updateMediaApproval,
     deleteMediaAsset,
 } from '../../../services/mediaService';
-import { getPresignedDownloadUrl } from '../../../services/storageService';
+import {
+    getPresignedDownloadUrl,
+    extractS3VersionId,
+} from '../../../services/storageService';
+import { S3VersionHistoryList } from '../../../components/common/S3VersionHistoryList';
 import { ConfirmationDialog } from '../../../components/ui/ConfirmationDialog';
 import { useSuccessToast } from '../../../components/ui/toastContext';
 import { validateUploadFile } from '../../../services/uploadWorkflow';
@@ -120,8 +125,9 @@ export const MediaAssetTab: React.FC<Props> = ({
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const { uploadFile } = useS3Upload();
 
-    // Lightbox & Delete dialog
+    // Lightbox, S3 Version History & Delete dialog
     const [lightboxAsset, setLightboxAsset] = useState<MediaAssetResponse | null>(null);
+    const [versionHistoryAsset, setVersionHistoryAsset] = useState<MediaAssetResponse | null>(null);
     const [deleteTargetAsset, setDeleteTargetAsset] = useState<MediaAssetResponse | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -254,10 +260,17 @@ export const MediaAssetTab: React.FC<Props> = ({
                 validateUploadFile(selectedFile, 'MEDIA');
 
                 const previewRes = await generateMediaPreview(selectedFile);
+                const targetDesignKey = editingAsset?.designFileUrl || null;
+                const targetPreviewKey =
+                    editingAsset?.previewImageUrl &&
+                    editingAsset.previewImageUrl !== editingAsset.designFileUrl &&
+                    !editingAsset.previewImageUrl.includes('X-Amz-Signature')
+                        ? editingAsset.previewImageUrl
+                        : null;
 
                 // 1. Nếu là ảnh chuẩn web: dùng chính file đó làm preview
                 if (previewRes.isOriginalWebImage) {
-                    const uploadRes = await uploadFile(selectedFile, 'MEDIA');
+                    const uploadRes = await uploadFile(selectedFile, 'MEDIA', targetDesignKey);
                     uploadedFileUrl = uploadRes.fileUrl;
                     uploadedPreviewUrl = uploadRes.fileUrl;
                 } else if (previewRes.previewBlob) {
@@ -266,13 +279,13 @@ export const MediaAssetTab: React.FC<Props> = ({
                         type: 'image/webp',
                     });
                     const [origRes, thumbRes] = await Promise.all([
-                        uploadFile(selectedFile, 'MEDIA'),
-                        uploadFile(thumbFile, 'MEDIA'),
+                        uploadFile(selectedFile, 'MEDIA', targetDesignKey),
+                        uploadFile(thumbFile, 'MEDIA', targetPreviewKey),
                     ]);
                     uploadedFileUrl = origRes.fileUrl;
                     uploadedPreviewUrl = thumbRes.fileUrl;
                 } else {
-                    const uploadRes = await uploadFile(selectedFile, 'MEDIA');
+                    const uploadRes = await uploadFile(selectedFile, 'MEDIA', targetDesignKey);
                     uploadedFileUrl = uploadRes.fileUrl;
                     uploadedPreviewUrl = null;
                 }
@@ -616,16 +629,26 @@ export const MediaAssetTab: React.FC<Props> = ({
                                                 </button>
                                             )}
 
-                                            {/* Tùy chọn Tải file / Xóa (nếu có file hoặc có quyền xóa) */}
+                                            {/* Tùy chọn Tải file / Lịch sử S3 / Xóa */}
                                             {asset.designFileUrl && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDownloadOriginal(asset.designFileUrl!)}
-                                                    className="h-7 w-7 rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors shadow-xs"
-                                                    title="Tải file thiết kế gốc"
-                                                >
-                                                    <Download className="h-3.5 w-3.5" />
-                                                </button>
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setVersionHistoryAsset(asset)}
+                                                        className="h-7 w-7 rounded-md border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-500 hover:text-emerald-700 flex items-center justify-center transition-colors shadow-xs"
+                                                        title="Quản lý phiên bản S3 (S3 Object Versioning)"
+                                                    >
+                                                        <History className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadOriginal(asset.designFileUrl!)}
+                                                        className="h-7 w-7 rounded-md border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors shadow-xs"
+                                                        title="Tải file thiết kế gốc"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </>
                                             )}
 
                                             {!asset.isPrinted && canManageMedia && (
@@ -909,6 +932,76 @@ export const MediaAssetTab: React.FC<Props> = ({
                                 {MEDIA_ASSET_TYPE_LABELS[lightboxAsset.assetType]}
                                 {lightboxAsset.specifications ? ` · ${lightboxAsset.specifications}` : ''}
                             </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Quản lý Phiên bản S3 cho Ấn phẩm truyền thông */}
+            {versionHistoryAsset && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+                    <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl border border-slate-200">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">
+                                    Lịch sử phiên bản S3: {versionHistoryAsset.title}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {MEDIA_ASSET_TYPE_LABELS[versionHistoryAsset.assetType]}
+                                    {extractS3VersionId(versionHistoryAsset.designFileUrl)
+                                        ? ` · Phiên bản hiện tại: #${extractS3VersionId(versionHistoryAsset.designFileUrl)?.slice(0, 10)}`
+                                        : ''}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setVersionHistoryAsset(null)}
+                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <S3VersionHistoryList
+                            fileUrl={versionHistoryAsset.designFileUrl}
+                            canModify={canManageMedia && !versionHistoryAsset.isPrinted}
+                            onRestoreVersion={async (s3Ver) => {
+                                const isWebImg = /\.(png|jpe?g|webp|gif|svg)$/i.test(s3Ver.objectKey);
+                                const updated = await updateMediaAsset(
+                                    versionHistoryAsset.id,
+                                    {
+                                        assetType: versionHistoryAsset.assetType,
+                                        title: versionHistoryAsset.title,
+                                        specifications: versionHistoryAsset.specifications,
+                                        designFileUrl: s3Ver.fileUrl,
+                                        previewImageUrl: isWebImg
+                                            ? s3Ver.fileUrl
+                                            : versionHistoryAsset.previewImageUrl,
+                                        approvalStatus: versionHistoryAsset.approvalStatus,
+                                    },
+                                    eventId,
+                                );
+                                setVersionHistoryAsset(updated);
+                                showToast(
+                                    `Đã khôi phục ấn phẩm "${updated.title}" về phiên bản S3 #${s3Ver.versionId.slice(0, 8)}!`,
+                                );
+                                await fetchAssets();
+                            }}
+                            onVersionDeleted={(deletedVerId) => {
+                                showToast(
+                                    `Đã xóa phiên bản S3 #${deletedVerId.slice(0, 8)} khỏi Bucket.`,
+                                );
+                            }}
+                        />
+
+                        <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+                            <button
+                                type="button"
+                                onClick={() => setVersionHistoryAsset(null)}
+                                className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                Đóng
+                            </button>
                         </div>
                     </div>
                 </div>

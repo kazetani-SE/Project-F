@@ -17,6 +17,16 @@ public record PresignedUploadRequest(
         Long fileSize,
 
         @NotNull(message = "Danh mục lưu trữ không được để trống")
-        StorageCategory category
+        StorageCategory category,
+
+        String targetObjectKey
 ) {
+    public PresignedUploadRequest(
+            String fileName,
+            String mimeType,
+            Long fileSize,
+            StorageCategory category
+    ) {
+        this(fileName, mimeType, fileSize, category, null);
+    }
 }

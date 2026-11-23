@@ -4,6 +4,7 @@ import type {
     DocumentResponse,
     CreateDocumentRequest,
     DocumentApprovalRequest,
+    UpdateDocumentFileVersionRequest,
 } from '../types/models/document.ts';
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
@@ -55,6 +56,19 @@ export async function updateDocumentApproval(
     const path = eventId
         ? `/events/${eventId}/documents/${documentId}/approval`
         : `/documents/${documentId}/approval`;
+    const res = await apiClient.patch<ApiResponse<DocumentResponse>>(path, data);
+    return res.data.data;
+}
+
+export async function updateDocumentFileVersion(
+    documentId: string,
+    data: UpdateDocumentFileVersionRequest,
+    eventId?: string,
+): Promise<DocumentResponse> {
+    if (eventId) inFlightRequests.delete(`documents:${eventId}`);
+    const path = eventId
+        ? `/events/${eventId}/documents/${documentId}/file-version`
+        : `/documents/${documentId}/file-version`;
     const res = await apiClient.patch<ApiResponse<DocumentResponse>>(path, data);
     return res.data.data;
 }
