@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { financeService } from '../../services/financeService';
+import { financeService } from '../../../../services/financeService';
 import type {
     BudgetItem,
     BudgetCategory,
@@ -7,7 +7,7 @@ import type {
     ProjectedBudgetItem,
     CreateBudgetItemRequest,
     ApprovalStatus,
-} from '../../types/models/finance';
+} from '../../../../types/models/finance';
 
 export function useBudgetItems(eventId?: string) {
     const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);

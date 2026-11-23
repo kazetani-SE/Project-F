@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, RefreshCw, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
-import { useExpenses } from '../../../hooks/finance/useExpenses';
+import { useExpenses } from './hooks/useExpenses';
 import { ExpenseSummaryPart } from '../../../components/finance/expenses/parts/ExpenseSummaryPart';
 import { ExpenseFilterPart } from '../../../components/finance/expenses/parts/ExpenseFilterPart';
 import { ExpenseTablePart } from '../../../components/finance/expenses/parts/ExpenseTablePart';

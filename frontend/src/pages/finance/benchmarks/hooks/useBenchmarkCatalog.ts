@@ -6,8 +6,8 @@ import type {
     UpdateBudgetCategoryRequest,
     CreateBenchmarkRequest,
     UpdateBenchmarkRequest,
-} from '../../types/models/finance';
-import { financeService } from '../../services/financeService';
+} from '../../../../types/models/finance';
+import { financeService } from '../../../../services/financeService';
 
 export function useBenchmarkCatalog(eventId?: string) {
     const [categories, setCategories] = useState<BudgetCategory[]>([]);

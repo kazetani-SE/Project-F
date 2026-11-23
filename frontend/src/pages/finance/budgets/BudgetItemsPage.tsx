@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Sparkles, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
-import { useBudgetItems } from '../../../hooks/finance/useBudgetItems';
+import { useBudgetItems } from './hooks/useBudgetItems';
 import { BudgetSummaryPart } from '../../../components/finance/budgets/parts/BudgetSummaryPart';
 import { BudgetFilterPart } from '../../../components/finance/budgets/parts/BudgetFilterPart';
 import { BudgetItemTablePart } from '../../../components/finance/budgets/parts/BudgetItemTablePart';

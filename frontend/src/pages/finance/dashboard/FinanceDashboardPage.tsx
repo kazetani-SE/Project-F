@@ -1,7 +1,7 @@
 import { RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useActiveEvent } from '../../../context/activeEventContext';
-import { useFinanceDashboard } from '../../../hooks/finance/useFinanceDashboard';
+import { useFinanceDashboard } from './hooks/useFinanceDashboard';
 import { DashboardKpiPart } from '../../../components/finance/dashboard/parts/DashboardKpiPart';
 import { BudgetProgressPart } from '../../../components/finance/dashboard/parts/BudgetProgressPart';
 import { QuickNavPart } from '../../../components/finance/dashboard/parts/QuickNavPart';

@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { financeService } from '../../services/financeService';
+import { financeService } from '../../../../services/financeService';
 import type {
     Expense,
     BudgetItem,
     ExpenseReceipt,
     CreateExpenseRequest,
     CreateReceiptRequest,
-} from '../../types/models/finance';
+} from '../../../../types/models/finance';
 
 export function useExpenses(eventId?: string) {
     const [expenses, setExpenses] = useState<Expense[]>([]);

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { financeService } from '../../services/financeService';
-import type { EventBudgetSummary } from '../../types/models/finance';
+import { financeService } from '../../../../services/financeService';
+import type { EventBudgetSummary } from '../../../../types/models/finance';
 
 interface UseFinanceDashboardOptions {
     eventId?: string;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Scale, Plus, RefreshCw, CheckCircle, AlertTriangle, X, Tag } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
-import { useBenchmarkCatalog } from '../../../hooks/finance/useBenchmarkCatalog';
+import { useBenchmarkCatalog } from './hooks/useBenchmarkCatalog';
 import { BenchmarkFilterPart } from '../../../components/finance/benchmarks/parts/BenchmarkFilterPart';
 import { BenchmarkTablePart } from '../../../components/finance/benchmarks/parts/BenchmarkTablePart';
 import { CategoryGridPart } from '../../../components/finance/benchmarks/parts/CategoryGridPart';
