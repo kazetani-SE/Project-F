@@ -1,0 +1,12 @@
+target/
+.idea/
+.git/
+.gitignore
+.postman/
+postman/
+.env
+.env.*
+!.env.example
+*.log
+*.iml
+README.md

@@ -93,6 +93,20 @@ npm install
 npm run dev
 ```
 
+### 3. Khởi chạy Fullstack bằng Docker Compose
+```powershell
+Copy-Item .env.docker.example .env
+# Cập nhật thông tin Database / Supabase / AWS S3 trong file .env
+
+# Chạy Backend + Frontend (kết nối Supabase / Amazon RDS qua .env)
+docker compose up -d --build
+
+# Hoặc chạy kèm PostgreSQL 15 local
+docker compose --profile local-db up -d --build
+```
+- Frontend (Nginx + Reverse Proxy `/api`): `http://localhost`
+- Backend API / Swagger UI: `http://localhost:8080/api/swagger-ui.html`
+
 ---
 
 ## 📄 Giấy Phép (License)

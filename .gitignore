@@ -3,3 +3,6 @@
 .postman
 postman
 codex.md
+.env
+.env.local
+

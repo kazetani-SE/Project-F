@@ -1,0 +1,95 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: project-f-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 8080
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/project_f_db}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-project-f-media-storage-fcode}
+      AWS_S3_PRESIGNED_EXPIRATION_MINUTES: ${AWS_S3_PRESIGNED_EXPIRATION_MINUTES:-10}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://localhost:5173}
+      SUPABASE_AUTH_ISSUER: ${SUPABASE_AUTH_ISSUER:-}
+      SUPABASE_JWKS_URI: ${SUPABASE_JWKS_URI:-}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-host.docker.internal}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-54325}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-false}
+      SPRING_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:-false}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-Project F <no-reply@projectf.local>}
+      APP_LOGIN_URL: ${APP_LOGIN_URL:-http://localhost/login}
+      BENCHMARK_AI_MODE: ${BENCHMARK_AI_MODE:-cache}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - project-f-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
+        VITE_MOCK_STORAGE: ${VITE_MOCK_STORAGE:-false}
+    container_name: project-f-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - project-f-net
+
+  # Optional local PostgreSQL 15 database:
+  # Run with: docker compose --profile local-db up -d --build
+  postgres:
+    image: postgres:15-alpine
+    container_name: project-f-postgres
+    profiles:
+      - local-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-project_f_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-project_f_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - project-f-net
+
+volumes:
+  postgres_data:
+
+networks:
+  project-f-net:
+    driver: bridge
