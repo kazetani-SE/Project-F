@@ -24,6 +24,7 @@ import {
 } from '../../../services/knowledgeService';
 import { getPresignedDownloadUrl } from '../../../services/storageService';
 import { FeedbackImportModal } from './FeedbackImportModal';
+import { FeedbackAiReportPanel } from './FeedbackAiReportPanel';
 import { ManualFeedbackModal } from './ManualFeedbackModal';
 import { ConfirmationDialog } from '../../../components/ui/ConfirmationDialog';
 import { useSuccessToast } from '../../../components/ui/toastContext';
@@ -500,6 +501,9 @@ export const FeedbackSection: React.FC<Props> = ({ eventId, onCountChange }) => 
                 </div>
             ) : (
                 <>
+                    {/* AI Agent: Báo cáo tổng hợp Feedback kèm kiểm tra dữ liệu mới (Snapshot Staleness) */}
+                    <FeedbackAiReportPanel eventId={eventId} totalFeedbacksCount={feedbacks.length} />
+
                     {/* =================================================================
                         1. KHỐI 3 CARD THỐNG KÊ TỔNG QUAN (ĐIỂM TB | PHÂN BỐ ĐIỂM | THEO ĐỐI TƯỢNG)
                        ================================================================= */}

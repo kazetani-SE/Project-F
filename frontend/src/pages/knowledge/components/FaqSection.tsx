@@ -7,6 +7,7 @@ import {
     AlertCircle,
     Loader2,
     XCircle,
+    Sparkles,
     Upload,
 } from 'lucide-react';
 import {
@@ -14,6 +15,7 @@ import {
     createFaq,
     updateFaqPin,
 } from '../../../services/knowledgeService';
+import { FaqAiSuggestModal } from './FaqAiSuggestModal';
 import {
     type FaqResponse,
     type CreateFaqRequest,
@@ -22,10 +24,11 @@ import { FaqImportModal } from './FaqImportModal';
 
 interface Props {
     seriesId: string;
+    eventId?: string;
     onCountChange?: (count: number) => void;
 }
 
-export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
+export const FaqSection: React.FC<Props> = ({ seriesId, eventId, onCountChange }) => {
     const [faqs, setFaqs] = useState<FaqResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -36,6 +39,7 @@ export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
 
     // Create & Import Modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isAiSuggestOpen, setIsAiSuggestOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [formQuestion, setFormQuestion] = useState('');
     const [formAnswer, setFormAnswer] = useState('');
@@ -163,8 +167,9 @@ export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
                     </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                     <button
+                        type="button"
                         onClick={() => setIsImportModalOpen(true)}
                         className="flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 shadow-xs hover:bg-emerald-100 hover:border-emerald-400 transition-colors"
                         title="Nhập danh sách câu hỏi FAQ từ tệp Word (.docx) hoặc Excel (.xlsx, .xls, .csv)"
@@ -174,6 +179,17 @@ export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
                     </button>
 
                     <button
+                        type="button"
+                        onClick={() => setIsAiSuggestOpen(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+                        title="AI hỗ trợ gợi ý các câu hỏi thường gặp dựa trên phản hồi và sự cố"
+                    >
+                        <Sparkles className="h-4 w-4 text-emerald-600" />
+                        <span>Gợi ý câu hỏi AI</span>
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() => setIsCreateModalOpen(true)}
                         className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
                     >
@@ -348,6 +364,15 @@ export const FaqSection: React.FC<Props> = ({ seriesId, onCountChange }) => {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={fetchFaqs}
+            />
+
+            {/* Modal AI Gợi ý câu hỏi FAQ để quản trị viên điền câu trả lời */}
+            <FaqAiSuggestModal
+                seriesId={seriesId}
+                eventId={eventId}
+                isOpen={isAiSuggestOpen}
+                onClose={() => setIsAiSuggestOpen(false)}
+                onSavedSuccess={fetchFaqs}
             />
         </div>
     );

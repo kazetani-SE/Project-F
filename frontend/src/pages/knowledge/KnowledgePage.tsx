@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, HelpCircle, MessageSquare } from 'lucide-react';
+import { AlertTriangle, HelpCircle, MessageSquare, Bot } from 'lucide-react';
 import { IncidentSection } from './components/IncidentSection';
 import { FaqSection } from './components/FaqSection';
 import { FeedbackSection } from './components/FeedbackSection';
+import { KnowledgeAiChatDrawer } from './components/KnowledgeAiChatDrawer';
 import { useActiveEvent } from '../../context/activeEventContext';
 import { getIncidentsByEvent, getFaqsBySeries, getFeedbacksByEvent } from '../../services/knowledgeService';
 
@@ -52,6 +53,7 @@ export const KnowledgePage: React.FC = () => {
     const [incidentCount, setIncidentCount] = useState<number | null>(null);
     const [faqCount, setFaqCount] = useState<number | null>(null);
     const [feedbackCount, setFeedbackCount] = useState<number | null>(null);
+    const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -83,24 +85,35 @@ export const KnowledgePage: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header & Breadcrumb matching Figma design */}
-            <div>
-                <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-                    <Link to="/events" className="hover:text-emerald-600 transition-colors">
-                        Sự kiện
-                    </Link>
-                    <span>/</span>
-                    <span className="text-slate-500">
-                        {currentEvent?.name || 'Chi tiết sự kiện'}
-                    </span>
-                    <span>/</span>
-                    <span className="text-slate-600">Kho tri thức</span>
-                </nav>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                        <Link to="/events" className="hover:text-emerald-600 transition-colors">
+                            Sự kiện
+                        </Link>
+                        <span>/</span>
+                        <span className="text-slate-500">
+                            {currentEvent?.name || 'Chi tiết sự kiện'}
+                        </span>
+                        <span>/</span>
+                        <span className="text-slate-600">Kho tri thức</span>
+                    </nav>
 
-                <div className="mt-1">
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                        Kho tri thức
-                    </h1>
+                    <div className="mt-1">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                            Kho tri thức
+                        </h1>
+                    </div>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={() => setIsAiChatOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition-colors"
+                >
+                    <Bot className="h-4 w-4 text-emerald-400" />
+                    <span>Trợ lý AI</span>
+                </button>
             </div>
 
             {/* Tab navigation matching Figma */}
@@ -201,6 +214,7 @@ export const KnowledgePage: React.FC = () => {
                 {activeTab === 'FAQS' && (
                     <FaqSection
                         seriesId={seriesId}
+                        eventId={eventId}
                         onCountChange={setFaqCount}
                     />
                 )}
@@ -211,6 +225,15 @@ export const KnowledgePage: React.FC = () => {
                     />
                 )}
             </div>
+
+            {/* Chatbot Trợ lý Kho Tri Thức Đa Mùa (RAG) */}
+            <KnowledgeAiChatDrawer
+                eventId={eventId}
+                seriesId={seriesId}
+                eventName={currentEvent?.name}
+                isOpen={isAiChatOpen}
+                onClose={() => setIsAiChatOpen(false)}
+            />
         </div>
     );
 };

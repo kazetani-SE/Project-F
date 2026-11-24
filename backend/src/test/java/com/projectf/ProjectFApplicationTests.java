@@ -5,6 +5,7 @@ import com.projectf.features.event.repository.EventOrganizerRepository;
 import com.projectf.features.event.repository.EventRepository;
 import com.projectf.features.event.repository.EventSeriesRepository;
 import com.projectf.features.knowledge.repository.FaqRepository;
+import com.projectf.features.knowledge.repository.FeedbackAiReportRepository;
 import com.projectf.features.knowledge.repository.FeedbackRepository;
 import com.projectf.features.knowledge.repository.IncidentRepository;
 import com.projectf.features.media.repository.MediaAssetRepository;
@@ -38,6 +39,9 @@ class ProjectFApplicationTests {
 
     @MockBean
     private FeedbackRepository feedbackRepository;
+
+    @MockBean
+    private FeedbackAiReportRepository feedbackAiReportRepository;
 
     @MockBean
     private EventRepository eventRepository;
