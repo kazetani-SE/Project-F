@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, ChevronRight, Menu, Search } from 'lucide-react';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';
@@ -10,8 +11,28 @@ const LABELS: Record<string, string> = {
     events: 'Sự kiện', budget: 'Budget', members: 'Thành viên', series: 'Chuỗi sự kiện',
     overview: 'Tổng quan', documents: 'Tài liệu & Ấn phẩm', finance: 'Tài chính',
     budgets: 'Dự toán ngân sách', expenses: 'Thực chi & Duyệt chi', benchmarks: 'Benchmark',
-    organizers: 'Thành viên BTC', knowledge: 'Kho tri thức',
+    organizers: 'Thành viên BTC', knowledge: 'Kho tri thức', new: 'Thêm mới',
 };
+
+const dynamicBreadcrumbLabels = new Map<string, string>();
+const breadcrumbListeners = new Set<() => void>();
+let breadcrumbVersion = 0;
+
+export function setBreadcrumbLabel(segment: string, label: string) {
+    if (!segment || !label || dynamicBreadcrumbLabels.get(segment) === label) return;
+    dynamicBreadcrumbLabels.set(segment, label);
+    breadcrumbVersion += 1;
+    breadcrumbListeners.forEach((listener) => listener());
+}
+
+function subscribeBreadcrumbs(listener: () => void) {
+    breadcrumbListeners.add(listener);
+    return () => { breadcrumbListeners.delete(listener); };
+}
+
+function getBreadcrumbSnapshot() {
+    return breadcrumbVersion;
+}
 
 const initials = (name: string) =>
     name.split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase();
@@ -20,10 +41,13 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
     const { pathname } = useLocation();
     const { currentEvent } = useActiveEvent();
     const { user } = useAuth();
+    useSyncExternalStore(subscribeBreadcrumbs, getBreadcrumbSnapshot);
 
     const segments = pathname.split('/').filter(Boolean);
     const crumbs = segments.map((seg, i) => ({
-        label: seg === currentEvent?.id ? currentEvent.name : (LABELS[seg] ?? seg),
+        label: seg === currentEvent?.id
+            ? currentEvent.name
+            : (LABELS[seg] ?? dynamicBreadcrumbLabels.get(seg) ?? seg),
         to: '/' + segments.slice(0, i + 1).join('/'),
     }));
 

@@ -1,5 +1,6 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { setBreadcrumbLabel } from '../../components/layout/Header';
 import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, RetryNotice, secondary } from '../../components/ui/CrudUi';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
 import { useSuccessToast } from '../../components/ui/toastContext';
@@ -148,6 +149,11 @@ function MemberDetail({ id }: { id: string }) {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const notify = useSuccessToast();
+    useEffect(() => {
+        if (resource.data?.fullName) {
+            setBreadcrumbLabel(id, resource.data.fullName);
+        }
+    }, [id, resource.data?.fullName]);
     if (resource.isLoading) return <Loading />;
     if (!resource.data) return <RetryNotice error={resource.error} onRetry={resource.reload} />;
 
