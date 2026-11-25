@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AxiosAdapter } from 'axios';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, AuthSession } from '../../src/services/cognitoClient';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../../src/context/AuthProvider';
 import { apiClient, setAccessToken } from '../../src/services/apiClient';
@@ -13,10 +13,10 @@ import { ResetPasswordPage } from '../../src/pages/auth/ResetPasswordPage';
 import type { AuthUser } from '../../src/types/models/auth';
 
 const mock = vi.hoisted(() => ({
-    listener: null as ((event: AuthChangeEvent, session: Session | null) => void) | null,
+    listener: null as ((event: AuthChangeEvent, session: AuthSession | null) => void) | null,
 }));
 
-vi.mock('../../src/services/supabaseClient', () => {
+vi.mock('../../src/services/cognitoClient', () => {
     const auth = {
         onAuthStateChange(callback: typeof mock.listener) {
             mock.listener = callback;
@@ -27,7 +27,7 @@ vi.mock('../../src/services/supabaseClient', () => {
             return { error: null };
         },
     };
-    return { useMock: false, supabase: { auth }, requireSupabase: () => ({ auth }) };
+    return { useMock: false, cognito: { auth }, requireCognito: () => ({ auth }) };
 });
 
 const originalAdapter = apiClient.defaults.adapter;
@@ -51,7 +51,7 @@ function renderProtected() {
 }
 
 const profile: AuthUser = { id: 'member', fullName: 'An', email: 'an@example.com', clubRole: 'MEMBER' };
-const session = (token: string) => ({ access_token: token, user: { id: 'auth-id' } }) as Session;
+const session = (token: string): AuthSession => ({ access_token: token, user: { id: 'auth-id' } });
 
 it('restores the session, applies refreshed bearer tokens, and clears the token on logout', async () => {
     const adapter = vi.fn<AxiosAdapter>().mockImplementation(async (config) => ({

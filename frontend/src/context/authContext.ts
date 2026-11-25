@@ -10,7 +10,7 @@ export interface AuthState {
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     sendReset: (email: string) => Promise<void>;
-    updatePassword: (password: string) => Promise<void>;
+    updatePassword: (password: string, code?: string, email?: string) => Promise<void>;
     retry: () => void;
 }
 
