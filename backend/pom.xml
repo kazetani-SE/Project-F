@@ -15,7 +15,7 @@
     <artifactId>club-management-backend</artifactId>
     <version>1.0.0</version>
     <name>Project F - Club Management Backend</name>
-    <description>Backend API service for Project F Club Management built with Spring Boot and Supabase PostgreSQL</description>
+    <description>Backend API service for Project F Club Management built with Spring Boot and Amazon RDS PostgreSQL</description>
 
     <properties>
         <java.version>21</java.version>
@@ -95,13 +95,25 @@
             <artifactId>s3</artifactId>
         </dependency>
 
+        <!-- AWS SDK v2 for Amazon Cognito User Pools -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>cognitoidentityprovider</artifactId>
+        </dependency>
+
+        <!-- AWS SDK v2 for Amazon SES v2 (Email Delivery) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sesv2</artifactId>
+        </dependency>
+
         <!-- AWS SDK v2 for Amazon Bedrock Runtime (AI Agent & Chatbot) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>
         </dependency>
 
-        <!-- PostgreSQL JDBC Driver (Supabase Cloud Database) -->
+        <!-- PostgreSQL JDBC Driver (Amazon RDS PostgreSQL) -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

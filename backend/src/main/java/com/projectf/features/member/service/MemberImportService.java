@@ -164,7 +164,7 @@ public class MemberImportService {
                 }
             } catch (RuntimeException exception) {
                 status = "AUTH_FAILED";
-                reason = "Đã tạo hồ sơ nhưng cấp tài khoản thất bại; kiểm tra Supabase Auth";
+                reason = "Đã tạo hồ sơ nhưng cấp tài khoản thất bại; kiểm tra cấu hình AWS Cognito";
             }
         } catch (ApiException exception) {
             reason = "DUPLICATE_RESOURCE".equals(exception.getCode())

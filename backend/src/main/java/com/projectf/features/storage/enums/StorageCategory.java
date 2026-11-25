@@ -70,12 +70,10 @@ public enum StorageCategory {
             if (semicolon > 0) {
                 normalized = normalized.substring(0, semicolon).trim();
             }
-            if ("image/jpg".equals(normalized)) {
+            if (Constants.MIME_JPG.equals(normalized)) {
                 normalized = Constants.MIME_JPEG;
             }
-            isAllowed = allowedMimeTypes.isEmpty()
-                    || allowedMimeTypes.contains(normalized)
-                    || allowedMimeTypes.contains("image/jpg");
+            isAllowed = allowedMimeTypes.isEmpty() || allowedMimeTypes.contains(normalized);
         }
         return isAllowed;
     }

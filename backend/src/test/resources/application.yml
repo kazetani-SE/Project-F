@@ -1,6 +1,7 @@
 # Cấu hình kiểm thử (Unit / Integration Test)
-SUPABASE_AUTH_ISSUER: https://project-f.example/auth/v1
-SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+AWS_COGNITO_REGION: ap-southeast-1
+AWS_COGNITO_USER_POOL_ID: ap-southeast-1_testPool
+AWS_COGNITO_CLIENT_ID: test-cognito-client-id
 spring:
   mail:
     host: 127.0.0.1

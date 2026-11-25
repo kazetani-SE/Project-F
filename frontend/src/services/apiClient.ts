@@ -1,4 +1,4 @@
-import { useMock } from './supabaseClient.ts';
+import { useMock } from './cognitoClient.ts';
 import axios, { AxiosError } from 'axios';
 import type {ApiError} from "../types/common/api.ts";
 

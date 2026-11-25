@@ -4,3 +4,6 @@
 postman
 codex.md
 supabase/rds-migrations
+.env
+.env.local
+

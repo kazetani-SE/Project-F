@@ -49,7 +49,7 @@ public class OpenApiConfig {
                 .type(SecurityScheme.Type.HTTP)
                 .scheme("bearer")
                 .bearerFormat("JWT")
-                .description("Nhập Bearer Token (Supabase JWT) để xác thực các yêu cầu API được bảo vệ.");
+                .description("Nhập Bearer Token (AWS Cognito JWT) để xác thực các yêu cầu API được bảo vệ.");
 
         return new OpenAPI()
                 .info(apiInfo)
