@@ -82,8 +82,6 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || '/api/v1' }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_USE_MOCK: 'false'
           VITE_MOCK_STORAGE: 'false'
         run: npm run build
