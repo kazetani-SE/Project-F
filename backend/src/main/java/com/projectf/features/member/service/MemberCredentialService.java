@@ -82,21 +82,27 @@ public class MemberCredentialService {
     public String provision(MemberResponse member) {
         requireUserPoolId();
         String email = member.email().strip().toLowerCase(Locale.ROOT);
-        UUID existing = members.findConfirmedAuthUserIdByEmail(email)
-                .or(() -> findExistingCognitoUserSub(email))
-                .orElse(null);
+        UUID linkedAuthId = members.findById(member.id()).map(ClubMember::getAuthUserId).orElse(null);
+        UUID existingInDb = members.findConfirmedAuthUserIdByEmail(email).orElse(null);
         String result;
-        if (existing != null) {
-            link(member, existing);
+        if (linkedAuthId != null || existingInDb != null) {
+            UUID targetId = linkedAuthId != null ? linkedAuthId : existingInDb;
+            link(member, targetId);
             result = "AUTH_EXISTS";
         } else {
             String password = generatePassword();
-            UUID createdId = createCognitoUser(email, member.fullName(), password);
-            link(member, createdId);
+            UUID cognitoId = findExistingCognitoUserSub(email)
+                    .map(existingSub -> {
+                        setPermanentPassword(email, password);
+                        return existingSub;
+                    })
+                    .orElseGet(() -> createCognitoUser(email, member.fullName(), password));
             try {
                 send(member, password);
+                link(member, cognitoId);
                 result = "CREATED";
             } catch (MailException exception) {
+                // Không link auth_user_id vào club_members khi gửi mail thất bại để lần bấm cấp tài khoản tiếp theo vẫn gửi lại được mail mới.
                 result = EMAIL_FAILED;
             }
         }
@@ -105,20 +111,26 @@ public class MemberCredentialService {
 
     public void resend(MemberResponse member) {
         requireUserPoolId();
-        ClubMember entity = members.findById(member.id())
-                .orElseThrow(() -> new IllegalArgumentException("Member not found"));
-        if (entity.getAuthUserId() == null) {
-            throw new IllegalArgumentException("Member has no linked Auth user");
-        }
         String email = member.email().strip().toLowerCase(Locale.ROOT);
         String password = generatePassword();
+        UUID authId = members.findById(member.id()).map(ClubMember::getAuthUserId)
+                .or(() -> findExistingCognitoUserSub(email))
+                .map(existingId -> {
+                    setPermanentPassword(email, password);
+                    return existingId;
+                })
+                .orElseGet(() -> createCognitoUser(email, member.fullName(), password));
+        send(member, password);
+        link(member, authId);
+    }
+
+    private void setPermanentPassword(String email, String password) {
         cognito.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
                 .userPoolId(userPoolId)
                 .username(email)
                 .password(password)
                 .permanent(true)
                 .build());
-        send(member, password);
     }
 
     private UUID createCognitoUser(String email, String fullName, String password) {
