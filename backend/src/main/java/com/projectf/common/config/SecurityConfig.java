@@ -21,6 +21,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
     private static final String[] SWAGGER = {"/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"};
+    private static final String[] PUBLIC_AUTH = {
+        "/v1/auth/login", "/v1/auth/refresh", "/v1/auth/forgot-password", "/v1/auth/reset-password"
+    };
     private static final String[] EVENT_INTERNAL = {
         "/v1/events/{eventId}/documents/**", "/v1/events/{eventId}/media-assets/**",
         "/v1/events/{eventId}/incidents/**", "/v1/events/{eventId}/feedbacks/**",
@@ -46,6 +49,7 @@ public class SecurityConfig {
                                 writeError(response, json, 403, "FORBIDDEN", "Access denied")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER).permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_AUTH).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/me").authenticated()
                         // ExpenseService hiện đọc chi tiết theo ID toàn cục, chưa xác thực eventId của bản ghi.
