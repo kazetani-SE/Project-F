@@ -6,6 +6,7 @@ import java.util.Set;
 public enum StorageCategory {
     RECEIPT(15L * 1024 * 1024, "receipts", Set.of(
             Constants.MIME_JPEG,
+            Constants.MIME_JPG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             Constants.MIME_PDF,
@@ -22,6 +23,7 @@ public enum StorageCategory {
             Constants.MIME_PLAIN)),
     MEDIA(100L * 1024 * 1024, "media", Set.of(
             Constants.MIME_JPEG,
+            Constants.MIME_JPG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             "image/svg+xml",
@@ -32,6 +34,7 @@ public enum StorageCategory {
             Constants.MIME_PDF)),
     FEEDBACK(50L * 1024 * 1024, "feedbacks", Set.of(
             Constants.MIME_JPEG,
+            Constants.MIME_JPG,
             Constants.MIME_PNG,
             Constants.MIME_WEBP,
             Constants.MIME_PDF,
@@ -62,13 +65,24 @@ public enum StorageCategory {
     public boolean isAllowedMimeType(String mimeType) {
         boolean isAllowed = false;
         if (mimeType != null && !mimeType.isBlank()) {
-            isAllowed = allowedMimeTypes.isEmpty() || allowedMimeTypes.contains(mimeType.toLowerCase(Locale.ROOT));
+            String normalized = mimeType.trim().toLowerCase(Locale.ROOT);
+            int semicolon = normalized.indexOf(';');
+            if (semicolon > 0) {
+                normalized = normalized.substring(0, semicolon).trim();
+            }
+            if ("image/jpg".equals(normalized)) {
+                normalized = Constants.MIME_JPEG;
+            }
+            isAllowed = allowedMimeTypes.isEmpty()
+                    || allowedMimeTypes.contains(normalized)
+                    || allowedMimeTypes.contains("image/jpg");
         }
         return isAllowed;
     }
 
     private static final class Constants {
         private static final String MIME_JPEG = "image/jpeg";
+        private static final String MIME_JPG = "image/jpg";
         private static final String MIME_PNG = "image/png";
         private static final String MIME_WEBP = "image/webp";
         private static final String MIME_PDF = "application/pdf";
