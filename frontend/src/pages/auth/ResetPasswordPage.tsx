@@ -17,11 +17,13 @@ export function ResetPasswordPage() {
                 const values = new FormData(event.currentTarget);
                 void mutate(async () => {
                     const password = String(values.get('password'));
+                    const code = String(values.get('code') ?? '').trim();
                     if (password !== values.get('confirm')) throw new Error('Mật khẩu xác nhận không khớp.');
-                    await updatePassword(password);
+                    await updatePassword(password, code || undefined);
                     navigate(ROUTE_PATHS.LOGIN, { replace: true, state: { passwordUpdated: true } });
                 });
             }}>
+                <label className="block">Mã xác nhận (OTP từ Email)<input className={field} type="text" name="code" autoComplete="one-time-code" placeholder="Nhập mã 6 số từ email (nếu có)" /></label>
                 <label className="block">Mật khẩu mới<input className={field} type="password" name="password" autoComplete="new-password" minLength={8} required /></label>
                 <label className="block">Xác nhận mật khẩu<input className={field} type="password" name="confirm" autoComplete="new-password" minLength={8} required /></label>
                 <div className="flex flex-wrap items-center gap-3">

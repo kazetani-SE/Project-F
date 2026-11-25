@@ -12,7 +12,10 @@ export function ForgotPasswordPage() {
     const { busy, error, mutate } = useMutation();
     return <AuthCard title="Quên mật khẩu">
         <ErrorNotice error={error} />
-        {sent ? <p role="status">Nếu email đã đăng ký, bạn sẽ nhận được liên kết đặt lại mật khẩu.</p> :
+        {sent ? <div className="space-y-3" role="status">
+            <p>Nếu email đã đăng ký, AWS Cognito đã gửi mã xác nhận (OTP) tới hộp thư của bạn.</p>
+            <Link className={button} to={ROUTE_PATHS.RESET_PASSWORD}>Nhập mã xác nhận & đặt mật khẩu mới</Link>
+        </div> :
             <form className="space-y-4" onSubmit={(event) => {
                 event.preventDefault();
                 const values = new FormData(event.currentTarget);

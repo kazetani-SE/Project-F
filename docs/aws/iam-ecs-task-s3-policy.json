@@ -17,6 +17,28 @@
         "arn:aws:s3:::project-f-fcode",
         "arn:aws:s3:::project-f-fcode/*"
       ]
+    },
+    {
+      "Sid": "ProjectFCognitoAdminMemberProvisioning",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:AdminCreateUser",
+        "cognito-idp:AdminSetUserPassword",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:ListUsers"
+      ],
+      "Resource": [
+        "arn:aws:cognito-idp:ap-southeast-1:*:userpool/*"
+      ]
+    },
+    {
+      "Sid": "ProjectFSesSendEmail",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
     }
   ]
 }
