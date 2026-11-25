@@ -1,56 +1,79 @@
 package com.projectf.features.auth.service;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.projectf.common.exception.ApiException;
 import com.projectf.common.security.AccessPolicy;
-import java.time.Duration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.CognitoIdentityProviderException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.GetUserRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.GetUserResponse;
 
 @Component
 public class VerifiedEmail {
-    private final RestClient auth;
+    private static final String ACCESS_TOKEN_USE = "access";
+    private final CognitoIdentityProviderClient cognito;
 
-    public VerifiedEmail(@Value("${SUPABASE_AUTH_ISSUER}") String issuer,
-                         @Value("${SUPABASE_PUBLISHABLE_KEY}") String publishableKey) {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(5));
-        auth = RestClient.builder().requestFactory(factory).baseUrl(issuer)
-                .defaultHeader("apikey", publishableKey).build();
+    public VerifiedEmail(CognitoIdentityProviderClient cognito) {
+        this.cognito = cognito;
     }
 
     public String forToken(Jwt jwt) {
-        AuthUser user;
+        String email = jwt.getClaimAsString("email");
+        Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
+        String verified;
+        if (email != null && !email.isBlank() && Boolean.TRUE.equals(emailVerified)) {
+            verified = email.strip();
+        } else if (ACCESS_TOKEN_USE.equals(jwt.getClaimAsString("token_use"))) {
+            verified = resolveFromCognitoUserInfo(jwt);
+        } else {
+            throw AccessPolicy.forbidden();
+        }
+        return verified;
+    }
+
+    private String resolveFromCognitoUserInfo(Jwt jwt) {
+        GetUserResponse response;
         try {
-            user = auth.get().uri("/user").headers(headers -> headers.setBearerAuth(jwt.getTokenValue()))
-                    .retrieve().body(AuthUser.class);
-        } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode().value() == 401 || exception.getStatusCode().value() == 403) {
+            response = cognito.getUser(GetUserRequest.builder()
+                    .accessToken(jwt.getTokenValue())
+                    .build());
+        } catch (CognitoIdentityProviderException exception) {
+            int status = exception.statusCode();
+            if (status == 400 || status == 401 || status == 403) {
                 throw AccessPolicy.forbidden(exception);
             }
             throw unavailable(exception);
-        } catch (RestClientException exception) {
+        } catch (SdkException exception) {
             throw unavailable(exception);
         }
-        String email = jwt.getClaimAsString("email");
-        if (user == null || user.emailConfirmedAt() == null || user.emailConfirmedAt().isBlank()
-                || !jwt.getSubject().equals(user.id()) || email == null || email.isBlank()
-                || !email.equalsIgnoreCase(user.email())) {
+        String sub = attribute(response, "sub");
+        String email = attribute(response, "email");
+        String emailVerified = attribute(response, "email_verified");
+        if (email == null || email.isBlank() || !"true".equalsIgnoreCase(emailVerified)
+                || sub == null || !sub.equalsIgnoreCase(jwt.getSubject())) {
             throw AccessPolicy.forbidden();
         }
-        return email;
+        return email.strip();
+    }
+
+    private static String attribute(GetUserResponse response, String name) {
+        String value = null;
+        if (response != null && response.hasUserAttributes()) {
+            for (AttributeType attr : response.userAttributes()) {
+                if (name.equals(attr.name())) {
+                    value = attr.value();
+                    break;
+                }
+            }
+        }
+        return value;
     }
 
     private static ApiException unavailable(Throwable cause) {
         return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_UNAVAILABLE", "Account verification unavailable", cause);
     }
-
-    private record AuthUser(String id, String email, @JsonProperty("email_confirmed_at") String emailConfirmedAt) { }
 }

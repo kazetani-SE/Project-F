@@ -3,7 +3,7 @@ import { ROUTE_PATHS } from '../../app/router/route';
 import { useAuth } from '../../context/authContext';
 import { useMutation } from '../../hooks/useMutation';
 import { button, ErrorNotice, field, link } from '../../components/ui/CrudUi';
-import { useMock } from '../../services/supabaseClient';
+import { useMock } from '../../services/cognitoClient';
 import { AuthCard } from './AuthCard';
 
 function redirectPath(state: unknown) {

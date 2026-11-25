@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AuthContext } from './authContext';
 import { ROUTE_PATHS } from '../app/router/route';
 import { setAccessToken } from '../services/apiClient';
-import { requireSupabase, supabase, useMock } from '../services/supabaseClient';
+import { cognito, requireCognito, useMock } from '../services/cognitoClient';
 import { shellService } from '../services/shellService';
 import type { ApiError } from '../types/common/api';
 import type { AuthUser } from '../types/models/auth';
@@ -14,16 +14,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [mockSignedIn, setMockSignedIn] = useState(
         () => useMock && sessionStorage.getItem(MOCK_SIGNED_OUT) !== 'true',
     );
-    const [account, setAccount] = useState<string | null | undefined>(supabase ? undefined : null);
+    const [account, setAccount] = useState<string | null | undefined>(cognito ? undefined : null);
     const [recovery, setRecovery] = useState(false);
     const [profile, setProfile] = useState<{ account: string; user?: AuthUser; error?: ApiError }>();
     const [attempt, setAttempt] = useState(0);
     const currentAccount = useMock ? (mockSignedIn ? 'mock' : null) : account;
 
     useEffect(() => {
-        if (!supabase) return;
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            // Dùng token mới nhất khi Supabase khôi phục hoặc làm mới phiên.
+        if (!cognito) return;
+        const { data: { subscription } } = cognito.auth.onAuthStateChange((event, session) => {
+            // Dùng token mới nhất khi AWS Cognito khôi phục hoặc làm mới phiên.
             const id = session?.user.id ?? null;
             setAccessToken(session?.access_token ?? null);
             if (event === 'PASSWORD_RECOVERY' && id) sessionStorage.setItem(RECOVERY_USER, id);
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setMockSignedIn(true);
             return;
         }
-        const { error } = await requireSupabase().auth.signInWithPassword({ email, password });
+        const { error } = await requireCognito().auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (profile?.error) {
             setProfile(undefined);
@@ -67,19 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(undefined);
             return;
         }
-        const { error } = await requireSupabase().auth.signOut({ scope: 'local' });
+        const { error } = await requireCognito().auth.signOut({ scope: 'local' });
         if (error) throw error;
     }
 
     async function sendReset(email: string) {
         const redirectTo = new URL(ROUTE_PATHS.RESET_PASSWORD, window.location.origin).href;
-        const { error } = await requireSupabase().auth.resetPasswordForEmail(email, { redirectTo });
+        const { error } = await requireCognito().auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
     }
 
-    async function updatePassword(password: string) {
-        if (!recovery) throw new Error('Liên kết đặt lại mật khẩu không hợp lệ.');
-        const { error } = await requireSupabase().auth.updateUser({ password });
+    async function updatePassword(password: string, code?: string, email?: string) {
+        if (!recovery && !code) throw new Error('Liên kết đặt lại mật khẩu không hợp lệ.');
+        const { error } = await requireCognito().auth.updateUser({ password, code, email });
         if (error) throw error;
         await signOut();
     }

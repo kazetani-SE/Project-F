@@ -9,7 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.projectf.common.config.JwtConfig;
+import com.projectf.common.config.CognitoJwtConfig;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -23,11 +23,12 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class JwtVerificationTest {
-    private static final String ISSUER = "https://auth.example.test/auth/v1";
+class CognitoJwtTest {
+    private static final String ISSUER = "https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_testPool";
+    private static final String CLIENT_ID = "cognito-client-123";
 
     @Test
-    void acceptsOnlyValidSignedUserTokensForThisIssuerAndAudience() throws Exception {
+    void acceptsOnlyValidSignedCognitoUserTokensForThisIssuerAndClient() throws Exception {
         RSAKey key = new RSAKeyGenerator(2048).keyID("test").generate();
         byte[] jwks = new JWKSet(key.toPublicJWK()).toString().getBytes(StandardCharsets.UTF_8);
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -40,36 +41,45 @@ class JwtVerificationTest {
         });
         server.start();
         try {
-            JwtDecoder decoder = new JwtConfig().jwtDecoder(ISSUER,
-                    "http://127.0.0.1:" + server.getAddress().getPort() + "/jwks", "authenticated");
+            JwtDecoder decoder = new CognitoJwtConfig().cognitoJwtDecoder(ISSUER,
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/jwks", CLIENT_ID);
             String subject = UUID.randomUUID().toString();
-            String valid = signed(key, ISSUER, "authenticated", subject, Instant.now().plusSeconds(300));
-            assertEquals(subject, decoder.decode(valid).getSubject());
-            String invalidSubject = signed(key, ISSUER, "authenticated", "not-a-uuid", Instant.now().plusSeconds(300));
-            assertThrows(JwtException.class, () -> decoder.decode(invalidSubject));
-            String missingExpiry = signed(key, ISSUER, "authenticated", subject, null);
-            assertThrows(JwtException.class, () -> decoder.decode(missingExpiry));
-            String expired = signed(key, ISSUER, "authenticated", subject, Instant.now().minusSeconds(120));
-            assertThrows(JwtException.class, () -> decoder.decode(expired));
-            String wrongAudience = signed(key, ISSUER, "another-api", subject, Instant.now().plusSeconds(300));
-            assertThrows(JwtException.class, () -> decoder.decode(wrongAudience));
-            String wrongIssuer = signed(key, "https://other.example.test", "authenticated", subject,
+            String validIdToken = signedCognito(key, ISSUER, CLIENT_ID, subject, "id",
                     Instant.now().plusSeconds(300));
+            assertEquals(subject, decoder.decode(validIdToken).getSubject());
+
+            String validAccessToken = signedCognito(key, ISSUER, CLIENT_ID, subject, "access",
+                    Instant.now().plusSeconds(300));
+            assertEquals(subject, decoder.decode(validAccessToken).getSubject());
+
+            String expired = signedCognito(key, ISSUER, CLIENT_ID, subject, "id",
+                    Instant.now().minusSeconds(120));
+            assertThrows(JwtException.class, () -> decoder.decode(expired));
+
+            String wrongClient = signedCognito(key, ISSUER, "another-client", subject, "id",
+                    Instant.now().plusSeconds(300));
+            assertThrows(JwtException.class, () -> decoder.decode(wrongClient));
+
+            String wrongIssuer = signedCognito(key, "https://cognito-idp.ap-southeast-1.amazonaws.com/otherPool",
+                    CLIENT_ID, subject, "id", Instant.now().plusSeconds(300));
             assertThrows(JwtException.class, () -> decoder.decode(wrongIssuer));
+
             RSAKey otherKey = new RSAKeyGenerator(2048).keyID("test").generate();
-            String forged = signed(otherKey, ISSUER, "authenticated", subject, Instant.now().plusSeconds(300));
+            String forged = signedCognito(otherKey, ISSUER, CLIENT_ID, subject, "id",
+                    Instant.now().plusSeconds(300));
             assertThrows(JwtException.class, () -> decoder.decode(forged));
         } finally {
             server.stop(0);
         }
     }
 
-    private static String signed(RSAKey key, String issuer, String audience, String subject, Instant expires)
-            throws Exception {
+    private static String signedCognito(RSAKey key, String issuer, String clientId, String subject, String tokenUse,
+            Instant expires) throws Exception {
         SignedJWT token = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256)
                 .keyID(key.getKeyID()).type(JOSEObjectType.JWT).build(), new JWTClaimsSet.Builder()
-                .issuer(issuer).audience(audience).subject(subject).expirationTime(expires == null ? null : Date.from(expires))
-                .build());
+                .issuer(issuer).audience(clientId).subject(subject).expirationTime(Date.from(expires))
+                .claim("token_use", tokenUse).claim("client_id", clientId)
+                .claim("email", "member@example.test").claim("email_verified", true).build());
         token.sign(new RSASSASigner(key));
         return token.serialize();
     }
