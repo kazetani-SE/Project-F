@@ -119,7 +119,7 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
         event.setExpectedEndDate(LocalDate.of(2026, 11, 11));
         when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
 
-        mvc.perform(patch("/v1/events/{id}/status", event.getId()).with(adminToken())
+        mvc.perform(patch("/v1/events/{id}/status", event.getId()).with(leadToken(event.getId()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"IN_PROGRESS\",\"actualStartDate\":\"2026-11-10\"}"))
                 .andExpect(status().isBadRequest())
@@ -134,7 +134,7 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
         event.setActualStartDate(LocalDate.of(2026, 11, 10));
         when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
 
-        mvc.perform(patch("/v1/events/{id}/status", event.getId()).with(adminToken())
+        mvc.perform(patch("/v1/events/{id}/status", event.getId()).with(leadToken(event.getId()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"IN_PROGRESS\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_EVENT_DATE_RANGE"));
@@ -147,7 +147,7 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
         event.setStatus(EventStatus.IN_PROGRESS);
         event.setActualStartDate(LocalDate.of(2026, 11, 10));
         when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
-        var admin = adminToken();
+        var admin = leadToken(event.getId());
         String fields = """
                 "seasonName":"2026","title":"Season","expectedStartDate":"2026-11-10",
                 "expectedEndDate":"2026-11-11","actualEndDate":"2026-11-09"
@@ -169,7 +169,7 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
         event.setActualStartDate(LocalDate.of(2026, 11, 10));
         when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
         when(events.saveAndFlush(event)).thenReturn(event);
-        var admin = adminToken();
+        var admin = leadToken(event.getId());
 
         String fields = """
                 "seasonName":"2026","title":"New title","expectedStartDate":"2026-11-10",
@@ -204,6 +204,32 @@ class CoreDomainRoutesTest extends ProjectFApplicationTests {
                 .andExpect(jsonPath("$.data.eventId").value(eventId.toString()))
                 .andExpect(jsonPath("$.data.memberName").value("Organizer Name"))
                 .andExpect(jsonPath("$.data.role").value("PLAN"));
+    }
+
+    @Test
+    void eventWriteRejectsClubAdminWithoutEventAssignment() throws Exception {
+        mvc.perform(patch("/v1/events/{eventId}/status", UUID.randomUUID()).with(adminToken())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"APPROVED\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void eventWriteRequiresAuthentication() throws Exception {
+        mvc.perform(patch("/v1/events/{eventId}/status", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"APPROVED\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private JwtRequestPostProcessor leadToken(UUID eventId) {
+        UUID subject = UUID.randomUUID();
+        var member = new ClubMember();
+        member.setId(UUID.randomUUID());
+        member.setClubRole(ClubRole.MEMBER);
+        when(members.findByAuthUserId(subject)).thenReturn(Optional.of(member));
+        var assignment = new EventOrganizer();
+        assignment.setRole(com.projectf.features.event.entity.EventRole.LEAD_HEADER);
+        when(organizers.findByEventIdAndMemberId(eventId, member.getId())).thenReturn(Optional.of(assignment));
+        return jwt().jwt(token -> token.subject(subject.toString()));
     }
 
     private JwtRequestPostProcessor adminToken() {

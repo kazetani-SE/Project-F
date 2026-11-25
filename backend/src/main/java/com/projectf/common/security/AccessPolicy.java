@@ -7,6 +7,7 @@ import com.projectf.features.event.repository.EventOrganizerRepository;
 import com.projectf.features.member.dto.response.MemberResponse;
 import com.projectf.features.member.service.MemberService;
 import java.util.Optional;
+import java.util.Arrays;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -58,16 +59,22 @@ public class AccessPolicy {
     }
 
     public boolean canManageEvent(UUID eventId, Authentication authentication) {
-        return findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
-                || hasRole(eventId, member.id(), EventRole.LEAD_HEADER)).orElse(false);
+        return hasAnyEventRole(eventId, authentication, EventRole.LEAD_HEADER);
+    }
+
+    public boolean hasAnyEventRole(UUID eventId, Authentication authentication, EventRole... roles) {
+        return eventId != null && roles != null && roles.length > 0
+                && findActiveMember(authentication)
+                        .flatMap(member -> organizers.findByEventIdAndMemberId(eventId, member.id()))
+                        .map(organizer -> Arrays.stream(roles).anyMatch(role -> role != null && role == organizer.getRole()))
+                        .orElse(false);
     }
 
     public boolean hasEventRole(UUID eventId, Authentication authentication, String role) {
         boolean allowed;
         try {
             EventRole eventRole = EventRole.valueOf(role);
-            allowed = findActiveMember(authentication).map(member -> hasAdminRole(member.clubRole())
-                    || hasRole(eventId, member.id(), eventRole)).orElse(false);
+            allowed = hasAnyEventRole(eventId, authentication, eventRole);
         } catch (IllegalArgumentException exception) {
             allowed = false;
         }

@@ -9,7 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.projectf.common.config.SupabaseJwtConfig;
+import com.projectf.common.config.JwtConfig;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +23,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class SupabaseJwtTest {
+class JwtVerificationTest {
     private static final String ISSUER = "https://auth.example.test/auth/v1";
 
     @Test
@@ -40,11 +40,15 @@ class SupabaseJwtTest {
         });
         server.start();
         try {
-            JwtDecoder decoder = new SupabaseJwtConfig().supabaseJwtDecoder(ISSUER,
-                    "http://127.0.0.1:" + server.getAddress().getPort() + "/jwks");
+            JwtDecoder decoder = new JwtConfig().jwtDecoder(ISSUER,
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/jwks", "authenticated");
             String subject = UUID.randomUUID().toString();
             String valid = signed(key, ISSUER, "authenticated", subject, Instant.now().plusSeconds(300));
             assertEquals(subject, decoder.decode(valid).getSubject());
+            String invalidSubject = signed(key, ISSUER, "authenticated", "not-a-uuid", Instant.now().plusSeconds(300));
+            assertThrows(JwtException.class, () -> decoder.decode(invalidSubject));
+            String missingExpiry = signed(key, ISSUER, "authenticated", subject, null);
+            assertThrows(JwtException.class, () -> decoder.decode(missingExpiry));
             String expired = signed(key, ISSUER, "authenticated", subject, Instant.now().minusSeconds(120));
             assertThrows(JwtException.class, () -> decoder.decode(expired));
             String wrongAudience = signed(key, ISSUER, "another-api", subject, Instant.now().plusSeconds(300));
@@ -64,8 +68,8 @@ class SupabaseJwtTest {
             throws Exception {
         SignedJWT token = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256)
                 .keyID(key.getKeyID()).type(JOSEObjectType.JWT).build(), new JWTClaimsSet.Builder()
-                .issuer(issuer).audience(audience).subject(subject).expirationTime(Date.from(expires))
-                .claim("role", "authenticated").build());
+                .issuer(issuer).audience(audience).subject(subject).expirationTime(expires == null ? null : Date.from(expires))
+                .build());
         token.sign(new RSASSASigner(key));
         return token.serialize();
     }

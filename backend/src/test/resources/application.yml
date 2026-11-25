@@ -1,5 +1,8 @@
 # Cấu hình kiểm thử (Unit / Integration Test)
 SUPABASE_AUTH_ISSUER: https://project-f.example/auth/v1
+JWT_ISSUER: https://project-f.example/auth/v1
+JWT_JWKS_URI: https://project-f.example/auth/v1/.well-known/jwks.json
+JWT_AUDIENCE: project-f-api
 SUPABASE_PUBLISHABLE_KEY: test-publishable-key
 spring:
   mail:

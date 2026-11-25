@@ -13,26 +13,25 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 @Configuration
-public class SupabaseJwtConfig {
+public class JwtConfig {
     @Bean
-    public JwtDecoder supabaseJwtDecoder(@Value("${SUPABASE_AUTH_ISSUER}") String issuer,
-            @Value("${SUPABASE_JWKS_URI:${SUPABASE_AUTH_ISSUER}/.well-known/jwks.json}") String jwksUri) {
+    public JwtDecoder jwtDecoder(@Value("${JWT_ISSUER}") String issuer,
+            @Value("${JWT_JWKS_URI}") String jwksUri, @Value("${JWT_AUDIENCE}") String audience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
                 .jwsAlgorithms(algorithms -> {
                     algorithms.add(SignatureAlgorithm.RS256);
                     algorithms.add(SignatureAlgorithm.ES256);
                 }).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer),
-                SupabaseJwtConfig::validateUserToken));
+                jwt -> validateUserToken(jwt, audience)));
         return decoder;
     }
 
-    private static OAuth2TokenValidatorResult validateUserToken(Jwt jwt) {
-        boolean valid = jwt.getExpiresAt() != null && jwt.getAudience() != null && jwt.getAudience().contains("authenticated")
-                && "authenticated".equals(jwt.getClaimAsString("role"))
-                && !Boolean.TRUE.equals(jwt.getClaimAsBoolean("is_anonymous")) && isUuid(jwt.getSubject());
+    private static OAuth2TokenValidatorResult validateUserToken(Jwt jwt, String audience) {
+        boolean valid = jwt.getExpiresAt() != null && jwt.getAudience() != null
+                && !audience.isBlank() && jwt.getAudience().contains(audience) && isUuid(jwt.getSubject());
         return valid ? OAuth2TokenValidatorResult.success()
-                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Expected a Supabase user token", null));
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Expected an access token for this API with a UUID subject", null));
     }
 
     private static boolean isUuid(String subject) {
