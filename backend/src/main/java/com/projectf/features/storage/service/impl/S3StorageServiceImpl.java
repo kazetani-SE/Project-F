@@ -78,10 +78,13 @@ public class S3StorageServiceImpl implements StorageService {
         String sanitized = sanitizeFileName(request.fileName());
         String objectKey = category.getFolderName() + "/" + sanitized;
 
+        String rawMime = request.mimeType();
+        String contentType = (rawMime != null && "image/jpg".equalsIgnoreCase(rawMime.trim())) ? "image/jpeg" : rawMime;
+
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(objectKey)
-                .contentType(request.mimeType())
+                .contentType(contentType)
                 .build();
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()

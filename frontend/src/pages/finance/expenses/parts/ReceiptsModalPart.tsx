@@ -1,33 +1,59 @@
-import React, { useState } from 'react';
-import { X, Plus, RefreshCw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Plus, RefreshCw, ScanLine, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ReceiptThumbnailItem } from '../components/ReceiptThumbnailItem';
 import { FileUploader } from '../../../../components/common/FileUploader';
 import { useS3Upload } from '../../../../hooks/useS3Upload';
+import { useBillScan } from '../../hooks/useBillScan';
+import { validateUploadFile } from '../../../../services/uploadWorkflow';
 import type { Expense, CreateReceiptRequest, ExpenseReceipt } from '../../../../types/models/finance';
 
 interface ReceiptsModalPartProps {
     isOpen: boolean;
     expense: Expense | null;
+    eventId?: string;
     isSubmitting?: boolean;
     onClose: () => void;
     onAddReceipt: (expenseId: string, data: CreateReceiptRequest) => Promise<void>;
     onDeleteReceipt?: (receipt: ExpenseReceipt) => void;
-    onViewImage: (url: string) => void;
 }
 
 export const ReceiptsModalPart: React.FC<ReceiptsModalPartProps> = ({
     isOpen,
     expense,
+    eventId,
     isSubmitting = false,
     onClose,
     onAddReceipt,
-    onDeleteReceipt
+    onDeleteReceipt,
 }) => {
     const [receiptCode, setReceiptCode] = useState('');
     const [supplierName, setSupplierName] = useState('');
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [validationError, setValidationError] = useState<string | null>(null);
+    const [scanSuccess, setScanSuccess] = useState(false);
     const { isUploading, progress, error: uploadError, uploadFile, reset: resetUpload } = useS3Upload();
+    const { isScanning, scan, error: scanError, reset: resetScan } = useBillScan(eventId || expense?.eventId || '');
+
+    const canScan = useMemo(() => {
+        if (!receiptFile) return false;
+        try {
+            validateUploadFile(receiptFile, 'RECEIPT');
+            return true;
+        } catch {
+            return false;
+        }
+    }, [receiptFile]);
+
+    const handleScan = async () => {
+        if (!receiptFile || isBusy) return;
+        setScanSuccess(false);
+        const result = await scan(receiptFile);
+        if (result) {
+            if (result.receiptCode) setReceiptCode(result.receiptCode);
+            if (result.storeName) setSupplierName(result.storeName);
+            setScanSuccess(true);
+        }
+    };
 
     if (!isOpen || !expense) return null;
 
@@ -36,7 +62,7 @@ export const ReceiptsModalPart: React.FC<ReceiptsModalPartProps> = ({
         setValidationError(null);
 
         if (!receiptFile) {
-            setValidationError('Vui lòng chọn tệp hình ảnh hoặc PDF hóa đơn chứng từ.');
+            setValidationError('Vui lòng chọn tệp hình ảnh (JPG, PNG, WEBP) hoặc PDF hóa đơn chứng từ.');
             return;
         }
 
@@ -53,13 +79,15 @@ export const ReceiptsModalPart: React.FC<ReceiptsModalPartProps> = ({
             setReceiptCode('');
             setSupplierName('');
             setReceiptFile(null);
+            setScanSuccess(false);
             resetUpload();
+            resetScan();
         } catch {
             // Handled by error modal
         }
     };
 
-    const isBusy = isSubmitting || isUploading;
+    const isBusy = isSubmitting || isUploading || isScanning;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -129,14 +157,43 @@ export const ReceiptsModalPart: React.FC<ReceiptsModalPartProps> = ({
                         onFileSelect={(file) => {
                             setReceiptFile(file);
                             setValidationError(null);
+                            setScanSuccess(false);
                         }}
                         isUploading={isUploading}
                         progress={progress}
                         error={uploadError}
                         label="Tải lên hóa đơn chứng từ (Amazon S3) *"
-                        description="Hỗ trợ JPG, PNG, WEBP, PDF (Tối đa 15MB)"
+                        description="Hỗ trợ JPG, JPEG, PNG, WEBP, PDF (Tối đa 15MB)"
                         disabled={isBusy}
                     />
+
+                    {/* Scan Bill with AI Button & Feedback */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleScan}
+                                disabled={isBusy || !canScan}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+                            >
+                                {isScanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                                {isScanning ? 'Đang quét...' : 'Quét hóa đơn bằng AI'}
+                            </button>
+                            {scanSuccess && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg animate-in fade-in">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Đã quét & điền thông tin tự động
+                                </span>
+                            )}
+                        </div>
+
+                        {scanError && (
+                            <div className="flex items-start gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                                <span>Lỗi quét hóa đơn: {scanError}</span>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="flex justify-end pt-1">
                         <button

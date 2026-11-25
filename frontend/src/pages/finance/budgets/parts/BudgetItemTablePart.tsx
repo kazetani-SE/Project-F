@@ -7,6 +7,7 @@ interface BudgetItemTablePartProps {
     items: BudgetItem[];
     categories: BudgetCategory[];
     loading?: boolean;
+    onViewDetail: (item: BudgetItem) => void;
     onApprove: (item: BudgetItem) => void;
     onReject: (item: BudgetItem) => void;
     onDelete: (item: BudgetItem) => void;
@@ -16,6 +17,7 @@ export const BudgetItemTablePart: React.FC<BudgetItemTablePartProps> = ({
     items,
     categories,
     loading = false,
+    onViewDetail,
     onApprove,
     onReject,
     onDelete,
@@ -56,6 +58,7 @@ export const BudgetItemTablePart: React.FC<BudgetItemTablePartProps> = ({
                                 key={item.id}
                                 item={item}
                                 categories={categories}
+                                onViewDetail={onViewDetail}
                                 onApprove={onApprove}
                                 onReject={onReject}
                                 onDelete={onDelete}

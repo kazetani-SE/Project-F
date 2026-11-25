@@ -45,6 +45,7 @@ export const STORAGE_LIMIT_LABELS: Record<StorageCategory, string> = {
 export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
     RECEIPT: [
         'image/jpeg',
+        'image/jpg',
         'image/png',
         'image/webp',
         'application/pdf',
@@ -65,6 +66,7 @@ export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
     ],
     MEDIA: [
         'image/jpeg',
+        'image/jpg',
         'image/png',
         'image/webp',
         'image/svg+xml',
@@ -82,6 +84,7 @@ export const ALLOWED_MIME_TYPES: Record<StorageCategory, string[]> = {
         'application/pdf',
         'text/plain',
         'image/jpeg',
+        'image/jpg',
         'image/png',
         'image/webp',
     ],
