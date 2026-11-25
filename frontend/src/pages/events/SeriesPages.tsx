@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { setBreadcrumbLabel } from '../../components/layout/Header';
 import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, RetryNotice, secondary } from '../../components/ui/CrudUi';
 import { useSuccessToast } from '../../components/ui/toastContext';
 import { ROUTE_PATHS, ROUTES } from '../../app/router/route';
@@ -70,6 +71,11 @@ function SeriesDetail({ id }: { id: string }) {
     const [editing, setEditing] = useState(false);
     const notify = useSuccessToast();
     const resource = useResource(useCallback(() => seriesService.get(id), [id]));
+    useEffect(() => {
+        if (resource.data?.name) {
+            setBreadcrumbLabel(id, resource.data.name);
+        }
+    }, [id, resource.data?.name]);
     if (resource.isLoading) return <Loading />;
     if (!resource.data) return <RetryNotice error={resource.error} onRetry={resource.reload} />;
     const series = resource.data;

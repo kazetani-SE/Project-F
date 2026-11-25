@@ -1,5 +1,6 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { setBreadcrumbLabel } from '../../components/layout/Header';
 import { button, ErrorNotice, field, link, Loading, PageHeader, Pagination, panel, RetryNotice, secondary } from '../../components/ui/CrudUi';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
 import { useSuccessToast } from '../../components/ui/toastContext';
@@ -117,7 +118,18 @@ export function NewMemberPage() {
         <PageHeader title="Thêm thành viên" />
         <MemberForm onCancel={() => navigate(ROUTE_PATHS.MEMBERS)} save={async (fields, studentId) => {
             const member = await memberService.create({ ...fields, studentId });
-            notify('Đã thêm thành viên.');
+            try {
+                const status = await memberService.provisionCredentials(member.id);
+                if (status === 'EMAIL_FAILED') {
+                    notify('Đã thêm thành viên và tạo tài khoản, nhưng gửi email thất bại. Hãy bấm gửi lại ở trang chi tiết.');
+                } else if (status === 'AUTH_EXISTS') {
+                    notify('Đã thêm thành viên và liên kết với tài khoản Cognito đã có.');
+                } else {
+                    notify('Đã thêm thành viên và gửi email tài khoản.');
+                }
+            } catch {
+                notify('Đã thêm hồ sơ thành viên. Hãy bấm "Cấp tài khoản & gửi email" ở trang chi tiết.');
+            }
             navigate(ROUTES.member(member.id));
         }} />
     </section>;
@@ -133,9 +145,15 @@ function MemberDetail({ id }: { id: string }) {
     const admin = isClubAdmin(user?.clubRole);
     const resource = useResource(useCallback(() => memberService.get(id), [id]));
     const status = useMutation();
+    const credentialAction = useMutation();
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const notify = useSuccessToast();
+    useEffect(() => {
+        if (resource.data?.fullName) {
+            setBreadcrumbLabel(id, resource.data.fullName);
+        }
+    }, [id, resource.data?.fullName]);
     if (resource.isLoading) return <Loading />;
     if (!resource.data) return <RetryNotice error={resource.error} onRetry={resource.reload} />;
 
@@ -147,8 +165,9 @@ function MemberDetail({ id }: { id: string }) {
     ];
 
     return <section className="space-y-5">
-        <Link className={link} to={ROUTE_PATHS.MEMBERS}>Danh sách thành viên</Link>
-        <PageHeader title={member.fullName} action={admin && !editing && <button className={button} disabled={status.busy} onClick={() => setEditing(true)}>Chỉnh sửa</button>} />
+        <Link className={`${secondary} inline-flex items-center gap-1.5`} to={ROUTE_PATHS.MEMBERS}>← Quay lại danh sách</Link>
+        <PageHeader title={member.fullName} action={admin && !editing && <button className={button} disabled={status.busy || credentialAction.busy} onClick={() => setEditing(true)}>Chỉnh sửa</button>} />
+        <ErrorNotice error={credentialAction.error} />
         {editing && admin ? <MemberForm member={member} onCancel={() => setEditing(false)} save={async (data) => {
             const updated = await memberService.update(id, data);
             resource.replace(updated);
@@ -159,9 +178,32 @@ function MemberDetail({ id }: { id: string }) {
             {facts.map(([label, value]) => <div key={label}><dt className="text-sm text-slate-500">{label}</dt><dd>{value ?? '—'}</dd></div>)}
         </dl>}
         {admin && !editing && <>
-            <button className={secondary} onClick={() => setConfirming(true)}>
-                {member.active ? 'Ngừng hoạt động' : 'Kích hoạt lại'}
-            </button>
+            <div className="flex flex-wrap gap-3">
+                <button className={button} type="button" disabled={credentialAction.busy || status.busy} onClick={() => void credentialAction.mutate(async () => {
+                    const result = await memberService.provisionCredentials(id);
+                    if (result === 'EMAIL_FAILED') {
+                        notify('Đã tạo tài khoản Cognito nhưng gửi email SES thất bại. Bạn có thể bấm "Gửi lại mật khẩu mới".');
+                    } else if (result === 'AUTH_EXISTS') {
+                        notify('Tài khoản Cognito đã tồn tại và đã được liên kết (giữ nguyên mật khẩu hiện tại).');
+                    } else {
+                        notify(`Đã cấp tài khoản và gửi email mật khẩu tới ${member.email}.`);
+                    }
+                })}>
+                    {credentialAction.busy ? 'Đang xử lý…' : 'Cấp tài khoản & gửi email'}
+                </button>
+                <button className={secondary} type="button" disabled={credentialAction.busy || status.busy} onClick={() => {
+                    if (!window.confirm(`Đặt lại mật khẩu mới cho ${member.fullName} và gửi qua email ${member.email}?`)) return;
+                    void credentialAction.mutate(async () => {
+                        await memberService.resendCredentials(id);
+                        notify(`Đã tạo mật khẩu mới và gửi email tới ${member.email}.`);
+                    });
+                }}>
+                    Gửi lại mật khẩu mới
+                </button>
+                <button className={secondary} type="button" disabled={credentialAction.busy || status.busy} onClick={() => setConfirming(true)}>
+                    {member.active ? 'Ngừng hoạt động' : 'Kích hoạt lại'}
+                </button>
+            </div>
             {confirming && <ConfirmationDialog
                 title={member.active ? 'Ngừng hoạt động thành viên' : 'Kích hoạt lại thành viên'}
                 message={`Bạn có muốn ${member.active ? 'ngừng hoạt động' : 'kích hoạt lại'} thành viên ${member.fullName}?`}
