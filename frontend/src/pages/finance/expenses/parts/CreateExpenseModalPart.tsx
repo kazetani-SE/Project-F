@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, RefreshCw, ScanLine } from 'lucide-react';
+import { X, RefreshCw, ScanLine, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatVND } from '../../components/CurrencyText';
 import { FileUploader } from '../../../../components/common/FileUploader';
 import { useS3Upload } from '../../../../hooks/useS3Upload';
@@ -39,11 +39,12 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
     const [initReceiptCode, setInitReceiptCode] = useState('');
     const [initReceiptSupplier, setInitReceiptSupplier] = useState('');
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
+    const [scanSuccess, setScanSuccess] = useState(false);
     const { isUploading, progress, error: uploadError, uploadFile, reset: resetUpload } = useS3Upload();
 
     // Danh sách người chi trả + quét hóa đơn
     const { options: memberOptions, isLoading: isLoadingMembers, error: memberError } = useMemberOptions(isOpen);
-    const { isScanning, scan, reset: resetScan } = useBillScan(eventId);
+    const { isScanning, scan, reset: resetScan, error: scanError } = useBillScan(eventId);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -57,6 +58,7 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
         setInitReceiptCode('');
         setInitReceiptSupplier('');
         setReceiptFile(null);
+        setScanSuccess(false);
         resetUpload();
         resetScan();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,8 +103,12 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
     // ===== HÀM QUÉT: gọi API rồi điền form =====
     const handleScan = async () => {
         if (!receiptFile || isBusy) return;
+        setScanSuccess(false);
         const result = await scan(receiptFile);
-        if (result) applyScanResult(result);
+        if (result) {
+            applyScanResult(result);
+            setScanSuccess(true);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -283,25 +289,45 @@ export const CreateExpenseModalPart: React.FC<CreateExpenseModalPartProps> = ({
                         <FileUploader
                             category="RECEIPT"
                             selectedFile={receiptFile}
-                            onFileSelect={setReceiptFile}
+                            onFileSelect={(file) => {
+                                setReceiptFile(file);
+                                setScanSuccess(false);
+                            }}
                             isUploading={isUploading}
                             progress={progress}
                             error={uploadError}
                             label="Tải lên ảnh/PDF hóa đơn"
-                            description="Hỗ trợ JPG, PNG, WEBP, PDF, DOCX, XLSX (Tối đa 15MB)"
+                            description="Hỗ trợ JPG, JPEG, PNG, WEBP, PDF (Tối đa 15MB)"
                             disabled={isBusy}
                         />
 
-                        {/* ===== NÚT QUÉT HÓA ĐƠN ===== */}
-                        <button
-                            type="button"
-                            onClick={handleScan}
-                            disabled={isBusy || !canScan}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-                        >
-                            {isScanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
-                            {isScanning ? 'Đang quét...' : 'Quét hóa đơn bằng AI'}
-                        </button>
+                        {/* ===== NÚT QUÉT HÓA ĐƠN & KẾT QUẢ ===== */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleScan}
+                                    disabled={isBusy || !canScan}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+                                >
+                                    {isScanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
+                                    {isScanning ? 'Đang quét...' : 'Quét hóa đơn bằng AI'}
+                                </button>
+                                {scanSuccess && (
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg animate-in fade-in">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Đã quét & điền dữ liệu tự động
+                                    </span>
+                                )}
+                            </div>
+
+                            {scanError && (
+                                <div className="flex items-start gap-1.5 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
+                                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                                    <span>Lỗi quét hóa đơn: {scanError}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div>

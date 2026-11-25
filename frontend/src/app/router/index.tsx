@@ -9,7 +9,7 @@ import ExpensesPage from '../../pages/finance/expenses/ExpensesPage.tsx';
 import BenchmarkPage from '../../pages/finance/benchmarks/BenchmarkPage.tsx';
 
 export const shellRoutes: RouteObject[] = [
-    { index: true, element: <Navigate to="/overview" replace /> },
+    { index: true, element: <Navigate to={ROUTE_PATHS.EVENTS} replace /> },
     { path: ROUTE_PATHS.OVERVIEW, element: <FinanceDashboardPage /> },
     { path: ROUTE_PATHS.FINANCE_DASHBOARD, element: <FinanceDashboardPage /> },
     { path: ROUTE_PATHS.FINANCE_BUDGETS, element: <BudgetItemsPage /> },
