@@ -196,7 +196,9 @@ it.each([
     ['VICEPRESIDENT', 'Event contents'],
     ['MEMBER', 'Forbidden route'],
 ] as const)('handles a null event role for a %s', async (clubRole, visibleText) => {
-    vi.spyOn(shellService, 'listEvents').mockResolvedValue([]);
+    vi.spyOn(shellService, 'listEvents').mockResolvedValue([{
+        id: event.id, name: event.title, seasonLabel: event.seasonName, status: event.status,
+    }]);
     vi.spyOn(shellService, 'fetchRole').mockResolvedValue(null);
     localStorage.setItem(STORAGE_KEY_ACTIVE_EVENT, event.id);
     render(<AuthContext value={auth(clubRole)}><MemoryRouter initialEntries={['/events/event-1/overview']}>
