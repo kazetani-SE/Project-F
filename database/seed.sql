@@ -1,5 +1,7 @@
+BEGIN;
+SET LOCAL search_path = public, pg_catalog;
 -- ============================================================================
--- PROJECT F — DATABASE SEED DATA (supabase/seed.sql)
+-- PROJECT F — DATABASE SEED DATA (database/seed.sql)
 -- Dữ liệu mẫu chuẩn hóa cho tất cả các phân hệ:
 -- 1. club_members (Thành viên CLB)
 -- 2. event_series (Chuỗi sự kiện thường niên)
@@ -19,16 +21,16 @@
 -- ----------------------------------------------------------------------------
 INSERT INTO club_members (id, student_id, full_name, email, phone, department, club_role, batch, is_active)
 VALUES
-    ('00000000-0000-4000-a000-000000000001', 'SE180001', 'Nguyễn Huy Phong', 'phongnhse180001@fpt.edu.vn', '0901234501', 'PLAN', 'PRESIDENT', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000002', 'SE180002', 'Nguyễn Xuân Tân', 'tannxse180002@fpt.edu.vn', '0901234502', 'ACADEMIC', 'VICEPRESIDENT', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000003', 'SE180003', 'Nguyễn Trọng Hiếu', 'hieuntse180003@fpt.edu.vn', '0901234503', 'MEDIA', 'VICEPRESIDENT', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000004', 'SE180004', 'Trần Hoàng Nam', 'namthse180004@fpt.edu.vn', '0901234504', 'HR', 'MEMBER', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000005', 'SE180005', 'Lê Thị Thảo', 'thaoltse180005@fpt.edu.vn', '0901234505', 'HR', 'MEMBER', 'K19', TRUE),
-    ('00000000-0000-4000-a000-000000000006', 'SE180006', 'Phạm Quốc Bảo', 'baopqse180006@fpt.edu.vn', '0901234506', 'PLAN', 'MEMBER', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000007', 'SE180007', 'Đặng Thu Hà', 'hadtse180007@fpt.edu.vn', '0901234507', 'PLAN', 'MEMBER', 'K19', TRUE),
-    ('00000000-0000-4000-a000-000000000008', 'SE180008', 'Vũ Minh Quân', 'quanvmse180008@fpt.edu.vn', '0901234508', 'MEDIA', 'MEMBER', 'K18', TRUE),
-    ('00000000-0000-4000-a000-000000000009', 'SE180009', 'Ngô Phương Linh', 'linhnpse180009@fpt.edu.vn', '0901234509', 'MEDIA', 'MEMBER', 'K19', TRUE),
-    ('00000000-0000-4000-a000-000000000010', 'SE180010', 'Đỗ Gia Huy', 'huydgse180010@fpt.edu.vn', '0901234510', 'ACADEMIC', 'MEMBER', 'K18', TRUE)
+    ('00000000-0000-4000-a000-000000000001', 'SE180001', 'Nguyễn Huy Phong', 'phongnhse180001@example.test', '0901234501', 'PLAN', 'PRESIDENT', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000002', 'SE180002', 'Nguyễn Xuân Tân', 'tannxse180002@example.test', '0901234502', 'ACADEMIC', 'VICEPRESIDENT', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000003', 'SE180003', 'Nguyễn Trọng Hiếu', 'hieuntse180003@example.test', '0901234503', 'MEDIA', 'VICEPRESIDENT', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000004', 'SE180004', 'Trần Hoàng Nam', 'namthse180004@example.test', '0901234504', 'HR', 'MEMBER', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000005', 'SE180005', 'Lê Thị Thảo', 'thaoltse180005@example.test', '0901234505', 'HR', 'MEMBER', 'K19', TRUE),
+    ('00000000-0000-4000-a000-000000000006', 'SE180006', 'Phạm Quốc Bảo', 'baopqse180006@example.test', '0901234506', 'PLAN', 'MEMBER', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000007', 'SE180007', 'Đặng Thu Hà', 'hadtse180007@example.test', '0901234507', 'PLAN', 'MEMBER', 'K19', TRUE),
+    ('00000000-0000-4000-a000-000000000008', 'SE180008', 'Vũ Minh Quân', 'quanvmse180008@example.test', '0901234508', 'MEDIA', 'MEMBER', 'K18', TRUE),
+    ('00000000-0000-4000-a000-000000000009', 'SE180009', 'Ngô Phương Linh', 'linhnpse180009@example.test', '0901234509', 'MEDIA', 'MEMBER', 'K19', TRUE),
+    ('00000000-0000-4000-a000-000000000010', 'SE180010', 'Đỗ Gia Huy', 'huydgse180010@example.test', '0901234510', 'ACADEMIC', 'MEMBER', 'K18', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
@@ -198,3 +200,5 @@ VALUES (
     '[]'::jsonb
 )
 ON CONFLICT (id) DO NOTHING;
+
+COMMIT;

@@ -3,7 +3,7 @@
 .postman
 postman
 codex.md
-supabase/rds-migrations
+/docs/
 .env
 .env.local
 

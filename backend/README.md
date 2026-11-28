@@ -9,7 +9,7 @@ Dịch vụ Backend RESTful API cho **Hệ thống Quản lý Tổ chức Sự k
 - **Ngôn ngữ**: Java 21 (LTS)
 - **Framework**: Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `spring-boot-starter-validation`, `spring-boot-starter-security`)
 - **Cơ sở dữ liệu**: PostgreSQL 15+ (Amazon RDS for PostgreSQL trên Production / PostgreSQL Local hoặc Cloud ở môi trường Dev)
-- **Database Migration**: Flyway (`src/main/resources/db/migration/V1__init_schema.sql`)
+- **Database**: PostgreSQL 15+. On an empty database run `psql -v ON_ERROR_STOP=1 -d project_f_db -f database/init_database.sql` from the repository root. For demo data run the same command with `database/seed.sql`. Docker Compose profile `local-db` loads both on first volume initialization.
 - **Lưu trữ đối tượng**: AWS SDK for Java v2 — Amazon S3 (Pre-signed PUT/GET URL)
 - **Build Tool**: Apache Maven (kèm sẵn Maven Wrapper `mvnw`, `mvnw.cmd`)
 
@@ -56,15 +56,12 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate # Lược đồ CSDL được quản lý chặt chẽ qua Flyway
+      ddl-auto: validate # Lược đồ CSDL được quản lý chặt chẽ qua database/init_database.sql
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
 
 aws:
   region: ${AWS_REGION:ap-southeast-1}

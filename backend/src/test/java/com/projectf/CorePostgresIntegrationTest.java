@@ -151,13 +151,9 @@ class CorePostgresIntegrationTest {
     }
 
     @Test
-    void nativeClaimRequiresMatchingConfirmedEmailAndOnlyClaimsOnce() {
+    void nativeClaimLinksMatchingMemberOnlyOnce() {
         UUID verified = UUID.fromString("00000000-0000-4000-8000-000000000003");
-        UUID unconfirmed = UUID.fromString("00000000-0000-4000-8000-000000000004");
-        UUID mismatch = UUID.fromString("00000000-0000-4000-8000-000000000005");
-
-        assertTrue(memberService.claimAccount(unconfirmed, "two@example.test").isEmpty());
-        assertTrue(memberService.claimAccount(mismatch, "two@example.test").isEmpty());
+        assertTrue(memberService.claimAccount(verified, "unknown@example.test").isEmpty());
         assertEquals("SE000003", memberService.claimAccount(verified, "tWo@EXAMPLE.test").orElseThrow().studentId());
         assertEquals(0, members.claimAccount(verified, "two@example.test"));
         assertEquals("SE000003", memberService.findByAuthUserId(verified).orElseThrow().studentId());
@@ -179,37 +175,9 @@ class CorePostgresIntegrationTest {
 
     private static void migrate(String url, String username, String password) throws Exception {
         try (var connection = DriverManager.getConnection(url, username, password);
-             var sql = connection.createStatement();
-             var files = Files.list(Path.of("..", "supabase", "migrations"))) {
+             var sql = connection.createStatement()) {
+            sql.execute(Files.readString(Path.of("..", "database", "init_database.sql")));
             sql.execute("""
-                    do $$
-                    begin
-                        if to_regclass('public.club_members') is not null or to_regnamespace('auth') is not null then
-                            raise exception 'Core integration tests require an empty database';
-                        end if;
-                        if not exists (select from pg_roles where rolname = 'anon') then
-                            create role anon;
-                        end if;
-                        if not exists (select from pg_roles where rolname = 'authenticated') then
-                            create role authenticated;
-                        end if;
-                    end
-                    $$;
-                    create schema auth;
-                    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
-                    alter table auth.users enable row level security;
-                    """);
-            for (Path migration : files.filter(path -> path.toString().endsWith(".sql")).sorted().toList()) {
-                sql.execute(Files.readString(migration));
-            }
-            sql.execute("""
-                    insert into auth.users(id) values
-                        ('00000000-0000-4000-8000-000000000001'),
-                        ('00000000-0000-4000-8000-000000000002');
-                    insert into auth.users(id, email, email_confirmed_at) values
-                        ('00000000-0000-4000-8000-000000000003','Two@example.test',current_timestamp),
-                        ('00000000-0000-4000-8000-000000000004','two@example.test',null),
-                        ('00000000-0000-4000-8000-000000000005','other@example.test',current_timestamp);
                     insert into club_members(id,student_id,full_name,email,department,club_role,batch,is_active,auth_user_id) values
                         ('00000000-0000-4000-8000-000000000021','SE000001','President','admin@example.test','PLAN',
                             'PRESIDENT','K20',true,'00000000-0000-4000-8000-000000000001'),
