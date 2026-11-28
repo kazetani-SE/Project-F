@@ -1,115 +1,107 @@
 # Kiến Trúc Kỹ Thuật & Hạ Tầng Triển Khai AWS (Technical & Deployment Architecture)
 
-Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết kế hạ tầng đám mây Cloud-Native trên nền tảng **Amazon Web Services (AWS)** cho hệ thống **Project F**.
+Tài liệu này mô tả kiến trúc phần mềm Client-Server và thiết kế hạ tầng đám mây Cloud-Native thực tế trên nền tảng **Amazon Web Services (AWS)** cho hệ thống **Project F** (File bản vẽ Draw.io đồng bộ: `docs/aws/project-f-architecture.drawio`).
 
 ---
 
 ## 1. Mô Hình Kiến Trúc Client-Server (Client-Server Architecture)
 
-### 1.1. Tầng Client (Presentation Layer)
-- Ứng dụng giao diện người dùng (React 19 + TypeScript + Vite) được đóng gói dưới dạng Single Page Application (SPA), lưu trữ tĩnh trên **Amazon S3** và phân phối toàn cầu qua mạng lưới CDN **Amazon CloudFront** với chứng chỉ bảo mật HTTPS (AWS Certificate Manager - ACM).
-- Giao tiếp với hệ thống Backend thông qua các RESTful API chuẩn hóa (HTTP/HTTPS, định dạng dữ liệu JSON).
-- Tương tác trực tiếp với Amazon S3 khi tải tệp dung lượng lớn thông qua cơ chế **Pre-signed PUT/GET URL** để tối ưu hóa băng thông cho Backend server.
+### 1.1. Tầng Client & Edge (Presentation & CDN Security Layer)
+- Ứng dụng giao diện người dùng (React 19 + TypeScript + Vite) được đóng gói dưới dạng Single Page Application (SPA), lưu trữ riêng tư trên **Amazon S3 (`project-f-fcode-web`)** với **Origin Access Control (OAC)** và phân phối toàn cầu qua **Amazon CloudFront (`E2LJYITZ24MT4R`)**.
+- Bảo vệ lớp biên bởi **AWS WAF (`project-f-waf`)** với Rate Limiting (`2,000 req/5 phút/IP`), IP Reputation, Known Bad Inputs, SQLi Rule Set và Common Rule Set tinh chỉnh riêng cho REST API của Project F.
+- Điều hướng SPA bằng **CloudFront Function (`project-f-spa-rewrite`)** tại `viewer-request` và định tuyến thống nhất `/api/*` về **Application Load Balancer (`project-f-alb`)** trên cùng một tên miền (loại bỏ triệt để vấn đề Mixed Content & Cookie/CORS).
+- Tương tác trực tiếp với bucket lưu trữ tệp **Amazon S3 (`project-f-fcode`)** thông qua cơ chế **Pre-signed PUT/GET URL** (TTL 10 phút) để giải phóng băng thông cho tầng container Backend.
 
-### 1.2. Tầng Backend Server (Application & Business Logic Layer)
-- Xây dựng trên nền tảng **Java 21 & Spring Boot 3**, tổ chức theo kiến trúc **Package-by-Feature (Vertical Slice)** kết hợp phân tách rõ các tầng `Controller -> Service -> Repository` (3-Tier Architecture) bên trong từng feature.
-- Quản lý truy cập dữ liệu bằng **Spring Data JPA / Hibernate**, hỗ trợ ánh xạ các kiểu dữ liệu nâng cao của PostgreSQL:
-  - `UUID` (Khóa chính tự sinh qua `gen_random_uuid()`)
-  - PostgreSQL `ENUM` (`department_enum`, `event_status_enum`, `approval_status_enum`, `incident_severity_enum`, `event_role_enum`, `club_role_enum`)
-  - PostgreSQL `ARRAY` (`department_enum[]` trong bảng `event_incidents`)
-  - `JSONB` (`custom_responses` trong bảng `event_feedbacks`)
-  - Read-only Views (`v_event_budget_summary`, `v_projected_budget_from_previous_season`)
-- Quản lý phiên bản lược đồ cơ sở dữ liệu (Database Versioning) đồng bộ và nhất quán qua **Supabase Migration** (quản lý file migration SQL và áp dụng trực tiếp lên cơ sở dữ liệu PostgreSQL).
-- Bảo mật ứng dụng bằng **Spring Security** kết hợp kiểm soát truy cập dựa trên vai trò cấp CLB (`club_role_enum`) và cấp sự kiện (`event_role_enum`).
+### 1.2. Tầng Backend Container (Application & Business Logic Layer)
+- Xây dựng trên nền tảng **Java 21 & Spring Boot 3.3.4**, tổ chức theo kiến trúc **Package-by-Feature (Vertical Slice)** kết hợp phân tách rõ `Controller -> Service -> Repository`.
+- Đóng gói Docker Image lưu trữ trên **Amazon ECR (`project-f-backend`)** và vận hành Serverless Container trên **Amazon ECS Fargate (`project-f-cluster` / `project-f-backend-service`)**.
+- **Xác thực & Phân quyền**: Tích hợp **Amazon Cognito User Pool (`ap-southeast-1_UXatbaZ41`)** chuẩn OAuth2/JWT Resource Server kết hợp kiểm soát truy cập cấp CLB (`club_role_enum`) và cấp sự kiện (`event_role_enum`).
+- **Tích hợp Đa Dịch Vụ Đám Mây**:
+  - **Amazon SES v2** (`sealfpthackathon.io.vn` — Production Access): Gửi email thông báo và khôi phục tài khoản.
+  - **Amazon Bedrock (`ap-southeast-2` — Sydney)**: Định tuyến thông minh `AiModelRouter` giữa `FAST` (`apac.anthropic.claude-3-haiku-20240307-v1:0`) và `DEEP` (`apac.anthropic.claude-3-5-sonnet-20241022-v2:0`), tự động **Multi-Provider Fallback** sang **Google Gemini API** và `LocalHeuristicAiEngine` nếu Bedrock gián đoạn.
+  - **AWS Systems Manager (Parameter Store)**: Tiêm trực tiếp các biến nhạy cảm (`SecureString` KMS) vào Fargate Task lúc khởi chạy.
 
 ---
 
 ## 2. Hạ Tầng Đám Mây AWS (AWS Cloud Services Infrastructure)
 
 ```mermaid
-flowchart TB
-    UserBrowser["Trình duyệt người dùng (Client Browser)"]
+flowchart LR
+    Users["Người dùng (Users)"]
+    WAF["AWS WAF\n(project-f-waf)"]
+    CF["Amazon CloudFront\n(SPA + /api/* Routing)"]
+    S3Web[("S3 Web SPA\n(project-f-fcode-web + OAC)")]
+    S3Media[("S3 Media Storage\n(project-f-fcode + Lifecycle)")]
 
-    subgraph CDN["Phân phối Giao diện Frontend"]
-        CF["Amazon CloudFront (CDN)\n[HTTPS Edge Distribution]"]
-        S3FE[("Amazon S3 (SPA Hosting)\nBuild artifacts: HTML, CSS, JS")]
-    end
+    subgraph SG_Region["AWS Region: ap-southeast-1 (Singapore)"]
+        IGW["Internet Gateway\n(projectf-igw)"]
+        subgraph VPC["VPC: projectf-vpc (10.0.0.0/16)"]
+            ALB["Application Load Balancer\n(alb-sg: CloudFront Prefix List Only)"]
+            VPCE["S3 Gateway VPC Endpoint\n(projectf-vpce-s3)"]
 
-    subgraph AWS["AWS Cloud (VPC)"]
-        subgraph PublicSubnet["Public Subnet"]
-            EC2["Amazon EC2\n(Nginx Reverse Proxy + Spring Boot Backend)\n[IAM Instance Profile Attached]"]
+            subgraph AZ1A["AZ: ap-southeast-1a"]
+                Fargate1A["AWS Fargate Primary\n(Spring Boot API | Min=1)"]
+                RDS[("Amazon RDS PostgreSQL 18\n(Private Single-AZ | Encrypted)")]
+            end
+
+            subgraph AZ1B["AZ: ap-southeast-1b"]
+                Fargate1B["AWS Fargate Burst Task\n(Auto Scaling Max=2 | CPU > 70%)"]
+            end
         end
 
-        subgraph PrivateSubnet["Private Subnet"]
-            RDS[("Amazon RDS for PostgreSQL 15+\n(Port 5432 - Private Only)\nAutomated Backups & Snapshots")]
-        end
+        Cognito["Amazon Cognito\n(User Pool)"]
+        SES["Amazon SES v2\n(Production)"]
+        ECR["Amazon ECR"]
+        ECS["Amazon ECS + Auto Scaling"]
+        SSM["SSM Parameter Store\n(SecureString)"]
+        CW["CloudWatch\n(Logs, Metrics & Alarms)"]
+        SNS["Amazon SNS\n(project-f-ops-alerts)"]
+        CT["AWS CloudTrail\n(project-f-audit-trail)"]
     end
 
-    S3Assets[("Amazon S3 (Media Storage)\nDocuments, Media, Receipts\n[Block Public Access]")]
-    CW["Amazon CloudWatch\n(Logs, Metrics, Alarms)"]
-    SNS["Amazon SNS\n(Email Alerts)"]
-    CT["AWS CloudTrail\n(Audit & Governance)"]
+    subgraph SYD_Region["AWS Region: ap-southeast-2 (Sydney)"]
+        Bedrock["Amazon Bedrock\n(Claude Haiku & Sonnet APAC)"]
+    end
 
-    UserBrowser -- "1. Truy cập Web (HTTPS)" --> CF
-    CF -- "Origin Request" --> S3FE
-    UserBrowser -- "2. REST API (HTTPS /api/v1/*)" --> EC2
-    EC2 -- "3. Sinh Pre-signed URL (AWS SDK)" --> S3Assets
-    UserBrowser -- "4. Upload/Download trực tiếp qua Pre-signed URL" --> S3Assets
-    EC2 -- "5. JDBC (Port 5432 via Security Group)" --> RDS
-    EC2 -. "App Logs & Metrics" .-> CW
-    RDS -. "DB Metrics" .-> CW
-    CW -. "Kích hoạt cảnh báo lỗi 5xx / quá tải" .-> SNS
-    AWS -. "API Activity Audit" .-> CT
+    GH["GitHub Actions\n(OIDC Keyless CI/CD)"]
+
+    Users --> WAF --> CF
+    CF -- "/* (CF Function)" --> S3Web
+    CF -- "/api/*" --> IGW --> ALB
+    ALB --> Fargate1A
+    ALB -. "Scale-out Traffic" .-> Fargate1B
+    Fargate1A & Fargate1B -- "TCP 5432" --> RDS
+    Fargate1A -- "Via S3 Gateway Endpoint" --> VPCE --> S3Media
+    Users -- "Pre-signed PUT/GET" --> S3Media
+    Fargate1A --> Cognito & SES
+    Fargate1A -- "Cross-Region SDK" --> Bedrock
+    SSM -. "Inject Secrets" .-> Fargate1A
+    CW -- "5XX / High CPU Alarms" --> SNS
+    GH -- "AssumeRoleWithWebIdentity (OIDC)" --> ECR & S3Web
+    ECR -.-> ECS -.-> Fargate1A
 ```
 
-### 2.1. Mạng & Bảo mật Hạ tầng (Amazon VPC & Security Groups)
-- Thiết lập mạng ảo **Amazon VPC** chia tách rõ:
-  - **Public Subnet**: Chứa Reverse Proxy (Nginx) và Application Server (EC2).
-  - **Private Subnet**: Chứa cơ sở dữ liệu Amazon RDS for PostgreSQL.
-- Cấu hình **Security Groups** theo nguyên tắc *Least Privilege*:
-  - Security Group của EC2: Chỉ mở cổng `80` (HTTP), `443` (HTTPS) cho người dùng và cổng `22` (SSH giới hạn IP quản trị).
-  - Security Group của RDS Database: **Chỉ chấp nhận kết nối ở cổng `5432` từ Security Group của EC2 Application Server**, tuyệt đối không mở truy cập trực tiếp ra Internet.
+### 2.1. Mạng VPC, Endpoint Nội Bộ & Security Groups (`Least Privilege`)
+- **VPC (`projectf-vpc` — `10.0.0.0/16`)** trải trên 2 Availability Zones (`ap-southeast-1a`, `ap-southeast-1b`):
+  - **Public Subnets** (`10.0.0.0/20`, `10.0.16.0/20`): Đặt ALB và ECS Fargate Tasks (tiết kiệm chi phí NAT Gateway).
+  - **Private Subnets** (`10.0.128.0/20`, `10.0.144.0/20`): Cô lập hoàn toàn cơ sở dữ liệu Amazon RDS khỏi Internet.
+  - **S3 Gateway VPC Endpoint (`projectf-vpce-s3`)**: Gắn vào cả Public và Private Route Tables, định tuyến toàn bộ lưu lượng S3 nội bộ qua mạng xương sống AWS miễn phí.
+- **Chuỗi khóa Security Groups 3 lớp**:
+  1. `alb-sg`: **Chỉ nhận `TCP 80` từ AWS Managed Prefix List của CloudFront (`pl-31a34658`)** — chặn mọi truy cập đi vòng qua WAF/CloudFront.
+  2. `projectf-ecs-sg`: **Chỉ nhận `TCP 8080` từ `alb-sg`**, đóng toàn bộ truy cập trực tiếp từ Internet dù Task có Public IP.
+  3. `rds-sg`: **Chỉ nhận `TCP 5432` từ `projectf-ecs-sg`**.
 
-### 2.2. Dịch vụ Máy chủ Ứng dụng (Amazon EC2 & IAM Role)
-- Triển khai dịch vụ Backend Spring Boot trên máy chủ ảo **Amazon EC2** (sử dụng **Nginx** làm Reverse Proxy và quản lý chứng chỉ SSL/TLS).
-- Gắn trực tiếp **IAM Role (EC2 Instance Profile)** cho máy chủ EC2 để cấp quyền gọi tới các dịch vụ AWS khác (như Amazon S3, Amazon CloudWatch) một cách an toàn mà **không cần lưu trữ cứng (hardcode) Access Key / Secret Key** trong mã nguồn hay file cấu hình.
+### 2.2. Chiến Lược Co Giãn Đa AZ Tiết Kiệm Chi Phí (ECS Fargate Auto Scaling + Single-AZ RDS)
+- **ECS Fargate Auto Scaling (`Min=1`, `Max=2`)**:
+  - Trạng thái bình thường chạy **1 Fargate Task** (tiết kiệm 50% chi phí compute cơ sở).
+  - Khi CPU trung bình đạt ngưỡng **`70%`** (hoặc Memory đạt **`80%`**), **Application Auto Scaling** tự động khởi tạo **Task thứ 2 ở AZ còn lại**, cho phép ALB phân tải đồng thời trên cả 2 AZ (`1a` & `1b`) và tự thu hồi khi hết cao điểm.
+  - Đồng bộ Health Check giữa ALB Target Group và Container tại `/api/v3/api-docs` (`HealthyThresholdCount = 2`).
+- **Amazon RDS for PostgreSQL 18 (`projectf-database-1`)**:
+  - Vận hành chế độ **Single-AZ (`ap-southeast-1a`)** trên `db.t4g.micro` để tối ưu ngân sách FinOps, tắt `PubliclyAccessible`, bật **KMS Encryption**, **Performance Insights** và **`DeletionProtection`**.
 
-### 2.3. Cơ sở Dữ liệu Quan hệ Quản lý (Amazon RDS for PostgreSQL)
-- Sử dụng **Amazon RDS** chạy **PostgreSQL 15+** đặt trong Private Subnet.
-- Kích hoạt tính năng sao lưu tự động (**Automated Backups**) và **Snapshot** định kỳ để bảo toàn dữ liệu tài chính và tri thức qua các nhiệm kỳ CLB.
-
-### 2.4. Lưu trữ Đối tượng Đám mây (Amazon S3 & Luồng Pre-signed URL)
-Toàn bộ tệp tĩnh dung lượng lớn bao gồm: ảnh hóa đơn chứng từ (`expense_receipts`), tài liệu kế hoạch (`event_documents`), ấn phẩm thiết kế (`event_media_assets`) và tệp đính kèm khảo sát (`event_feedbacks`) được lưu trữ tập trung trên **Amazon S3 Bucket** (chặn Public Access mặc định).
-- Cấu hình **S3 Lifecycle Rules** để tự động chuyển tài liệu/ấn phẩm của các mùa sự kiện đã hoàn thành (`COMPLETED`) sang lớp lưu trữ giá rẻ (**S3 Standard-IA** hoặc **S3 Glacier**) sau 90 ngày, tối ưu hóa chi phí hạ tầng.
-
-#### Luồng tải tệp lên (Pre-signed Upload Flow):
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Client (Frontend)
-    participant API as Backend EC2 (Spring Boot)
-    participant S3 as Amazon S3 Bucket
-    participant DB as Amazon RDS (PostgreSQL)
-
-    User->>API: POST /api/v1/storage/presigned-upload (fileName, mimeType, fileSize, category)
-    Note over API: Kiểm tra RBAC & Giới hạn dung lượng:<br/>- Hóa đơn (RECEIPT): <= 15MB (JPG/PNG/WEBP/PDF)<br/>- Tài liệu (DOCUMENT): <= 50MB
-    API->>S3: Yêu cầu tạo Pre-signed PUT URL (AWS SDK v2, TTL: 5-10 phút)
-    S3-->>API: Trả về Pre-signed PUT URL + objectKey
-    API-->>User: Trả về { uploadUrl, fileUrl / objectKey }
-    User->>S3: PUT Binary File trực tiếp lên S3 qua uploadUrl
-    S3-->>User: 200 OK
-    User->>API: Gửi xác nhận lưu metadata kèm fileUrl / imageUrl
-    API->>DB: INSERT / UPDATE đường dẫn định danh vào bảng tương ứng
-    DB-->>API: Thành công
-    API-->>User: 201 Created / 200 OK
-```
-
-### 2.5. Giám sát, Nhật ký & Cảnh báo (Amazon CloudWatch, Amazon SNS & AWS CloudTrail)
-- **Amazon CloudWatch**: Thu thập log ứng dụng từ EC2, theo dõi chỉ số hiệu năng (CPU, Memory, Disk, RDS Connections) và thiết lập cảnh báo (**CloudWatch Alarms**) khi hệ thống quá tải hoặc phát sinh lỗi `5xx`.
-- **Amazon SNS**: Đăng ký Topic thông báo qua Email để nhận cảnh báo tức thời từ CloudWatch Alarms khi có sự cố hệ thống.
-- **AWS CloudTrail**: Ghi nhận toàn bộ lịch sử tác động lên hạ tầng AWS và kiểm vết truy cập tài nguyên bảo mật.
-
-### 2.6. Phân phối Giao diện Tĩnh (Amazon S3 Static Hosting & Amazon CloudFront CDN)
-- Bản build tĩnh của ứng dụng Frontend (`frontend/dist/`) được đồng bộ lên **Amazon S3 Bucket** (chế độ bảo mật chặn truy cập công khai trực tiếp).
-- **Amazon CloudFront** đóng vai trò là CDN phân phối nội dung toàn cầu, tự động cache các tệp tĩnh (`.js`, `.css`, hình ảnh) tại các Edge Location, hỗ trợ nén Gzip/Brotli và bảo mật HTTPS với độ trễ tối thiểu cho người dùng cuối.
-- Cấu hình **Custom Error Response** trên CloudFront (trỏ mã lỗi 403/404 về `/index.html` với mã HTTP 200) để đảm bảo cơ chế Routing của Single Page Application (React Router) hoạt động trơn tru.
+### 2.3. CI/CD Không Khóa Tĩnh (GitHub Actions + IAM OIDC) & Quản Trị Vận Hành
+- **GitHub Actions OIDC (`project-f-github-actions-role`)**: Xác thực phi trạng thái qua `token.actions.githubusercontent.com` (`AssumeRoleWithWebIdentity`) để đẩy image lên ECR (có Lifecycle Policy tự dọn untagged images sau 1 ngày), cập nhật ECS Fargate Rolling Deployment (kèm Deployment Circuit Breaker tự rollback) và đồng bộ S3/CloudFront.
+- **Giám sát, Cảnh báo & Kiểm toán**:
+  - **Amazon CloudWatch + Amazon SNS (`project-f-ops-alerts`)**: Theo dõi log `/ecs/project-f-backend` và kích hoạt cảnh báo email tự động qua SNS khi phát sinh lỗi `ALB 5XX >= 5` hoặc `ECS/RDS CPU > 80%`.
+  - **AWS CloudTrail (`project-f-audit-trail`)**: Ghi nhật ký kiểm toán đa vùng (Multi-Region) có xác thực toàn vẹn file vào S3 (`project-f-cloudtrail-499388132896`, tự động hết hạn sau 90 ngày).
+  - **Cost Explorer & AWS Budgets (`ProjectF-Monthly-Cap`)**: Kiểm soát định mức chi tiêu hàng tháng.

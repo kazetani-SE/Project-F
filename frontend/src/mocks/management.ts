@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { MOCK_EVENTS, MOCK_ROLES, MOCK_SERIES_ID, MOCK_USER } from './data';
+import type { UpdateProfileRequest } from '../types/models/auth';
 import type { PageResponse } from '../types/common/api';
 import type { CreateMemberRequest, MemberFields, MemberResponse } from '../types/models/member';
 import type { EventFields, EventResponse, EventSeriesResponse, EventStatusRequest, OrganizerFields, OrganizerResponse, SeriesFields } from '../types/models/event';
@@ -45,8 +46,21 @@ function paginate<T>(items: T[], request: Request) {
     });
 }
 
+function currentAccount() {
+    const { id, fullName, email, clubRole, phone } = members.find((item) => item.id === MOCK_USER.id) ?? MOCK_USER;
+    return { id, fullName, email, clubRole, phone };
+}
+
 export const managementHandlers = [
-    http.get(`${base}/auth/me`, () => ok(MOCK_USER)),
+    http.get(`${base}/auth/me`, () => ok(currentAccount())),
+    http.patch(`${base}/auth/me`, async ({ request }) => {
+        const { fullName, phone } = await request.json() as UpdateProfileRequest;
+        const member = members.find((item) => item.id === MOCK_USER.id);
+        if (!member) return missing();
+        member.fullName = fullName.trim();
+        member.phone = phone?.trim() || null;
+        return ok(currentAccount());
+    }),
     http.get(`${base}/members`, ({ request }) => {
         const query = new URL(request.url).searchParams;
         const keyword = query.get('keyword')?.toLowerCase();

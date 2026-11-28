@@ -43,14 +43,14 @@ flowchart TB
         GW["LlmGateway\n(Multi-Provider Adapter)"]
     end
 
-    subgraph Providers["Hạ tầng AI (AWS Cloud & Local)"]
-        BEDROCK_FAST["AWS Bedrock - FAST Tier\n(Claude 3 Haiku / Amazon Nova Lite)\n⚡ Tốc độ ~1s | Siêu tiết kiệm"]
-        BEDROCK_DEEP["AWS Bedrock - DEEP Tier\n(Claude 3.5 Sonnet / Claude 3 Opus)\n🧠 Suy luận sâu đa chiều"]
-        GEMINI["Google Gemini API\n(Hỗ trợ Dev Local)"]
-        FALLBACK["LocalHeuristicAiEngine\n(Smart Fallback khi chạy Offline)"]
+    subgraph Providers["Hạ tầng AI (AWS Sydney ap-southeast-2 & Multi-Fallback)"]
+        BEDROCK_FAST["AWS Bedrock (ap-southeast-2) - FAST Tier\n(apac.anthropic.claude-3-haiku)\n⚡ Tốc độ ~1s | Siêu tiết kiệm"]
+        BEDROCK_DEEP["AWS Bedrock (ap-southeast-2) - DEEP Tier\n(apac.anthropic.claude-3-5-sonnet-v2)\n🧠 Suy luận sâu đa chiều"]
+        GEMINI["Google Gemini API\n(Auto Fallback khi Bedrock gián đoạn)"]
+        FALLBACK["LocalHeuristicAiEngine\n(Smart Fallback khi Offline / Hết Quota)"]
     end
 
-    subgraph DB["PostgreSQL 15+ (Supabase / Amazon RDS)"]
+    subgraph DB["PostgreSQL 15+ (Amazon RDS)"]
         TBL_DATA[("event_feedbacks\nevent_faqs\nevent_incidents")]
         TBL_REPORT[("event_feedback_ai_reports\n(Lưu Cache Báo cáo + Snapshot Watermark)")]
     end
@@ -63,7 +63,7 @@ flowchart TB
     ROUTER --> GW
     GW -- "Tier = FAST" --> BEDROCK_FAST
     GW -- "Tier = DEEP" --> BEDROCK_DEEP
-    GW -. "Dev Local" .-> GEMINI
+    GW -. "Fallback tự động" .-> GEMINI
     GW -. "No API Key / Offline" .-> FALLBACK
 ```
 
@@ -84,7 +84,7 @@ Trên **Amazon Bedrock**, chi phí được tính theo từng 1.000 Input/Output
 
 ## 3. Cơ Chế Lưu Trữ Báo Cáo AI & Phát Hiện Dữ Liệu Mới (`Snapshot Staleness Detection`)
 
-Để tránh việc mỗi thành viên mở tab Feedback lại kích hoạt một lệnh gọi AI tốn phí trên AWS Bedrock, kết quả báo cáo tổng hợp được lưu trữ bền vững trong bảng `event_feedback_ai_reports` (quản lý qua **Supabase Migration**).
+Để tránh việc mỗi thành viên mở tab Feedback lại kích hoạt một lệnh gọi AI tốn phí trên AWS Bedrock, kết quả báo cáo tổng hợp được lưu trữ bền vững trong bảng `event_feedback_ai_reports` trên Amazon RDS PostgreSQL.
 
 Tuy nhiên, dữ liệu khảo sát trong `event_feedbacks` có thể được cập nhật thêm (ví dụ: Admin import thêm file Excel đợt 2). Hệ thống giải quyết bài toán đồng bộ này bằng kỹ thuật **Snapshot Watermark**:
 
@@ -105,19 +105,19 @@ Hệ thống hỗ trợ 3 chế độ hoạt động linh hoạt thông qua cấ
 ```yaml
 app:
   ai:
-    # Chọn: bedrock | gemini | heuristic (Mặc định tự động phát hiện và fallback về heuristic nếu chưa có key)
+    # Chọn: bedrock | gemini | heuristic (Khi provider=bedrock bị lỗi/timeout sẽ tự động fallback sang Gemini rồi về LocalHeuristicAiEngine)
     provider: ${AI_PROVIDER:bedrock}
     bedrock:
-      region: ${AWS_REGION:ap-southeast-1}
-      fast-model-id: ${BEDROCK_FAST_MODEL_ID:anthropic.claude-3-haiku-20240307-v1:0}
-      deep-model-id: ${BEDROCK_DEEP_MODEL_ID:anthropic.claude-3-5-sonnet-20240620-v1:0}
+      region: ${AWS_BEDROCK_REGION:ap-southeast-2}
+      fast-model-id: ${BEDROCK_FAST_MODEL_ID:apac.anthropic.claude-3-haiku-20240307-v1:0}
+      deep-model-id: ${BEDROCK_DEEP_MODEL_ID:apac.anthropic.claude-3-5-sonnet-20241022-v2:0}
     gemini:
       api-key: ${GEMINI_API_KEY:}
       fast-model-id: ${GEMINI_FAST_MODEL_ID:gemini-2.5-flash}
       deep-model-id: ${GEMINI_DEEP_MODEL_ID:gemini-2.5-pro}
 ```
 
-- **Trên máy chủ Amazon EC2**: Gắn quyền `bedrock:InvokeModel` vào **EC2 IAM Instance Profile**, đặt `AI_PROVIDER=bedrock` (không cần lưu trữ bất kỳ API Key nào trong code).
+- **Trên AWS ECS Fargate (`ap-southeast-1` gọi Bedrock Sydney `ap-southeast-2`)**: Gắn quyền `bedrock:InvokeModel` vào `project-f-ecs-task-role`, đặt `AI_PROVIDER=bedrock` và `AWS_BEDROCK_REGION=ap-southeast-2`. Nếu Bedrock quá tải hoặc gián đoạn, `LlmGateway` tự động chuyển tiếp liền mạch sang `GEMINI_API_KEY` (nạp từ AWS SSM Parameter Store).
 - **Trên máy Local khi phát triển**:
   - Nếu đã cấu hình `aws configure` có quyền Bedrock: Chạy trực tiếp với AWS Bedrock.
   - Nếu dùng Gemini API miễn phí từ Google AI Studio: Đặt `AI_PROVIDER=gemini` và `GEMINI_API_KEY=...`.

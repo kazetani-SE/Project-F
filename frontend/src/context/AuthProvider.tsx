@@ -5,7 +5,7 @@ import { setAccessToken } from '../services/apiClient';
 import { cognito, requireCognito, useMock } from '../services/cognitoClient';
 import { shellService } from '../services/shellService';
 import type { ApiError } from '../types/common/api';
-import type { AuthUser } from '../types/models/auth';
+import type { AuthUser, UpdateProfileRequest } from '../types/models/auth';
 
 const MOCK_SIGNED_OUT = 'pf.mockSignedOut';
 const RECOVERY_USER = 'pf.recoveryUser';
@@ -84,13 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signOut();
     }
 
+    async function updateProfile(request: UpdateProfileRequest) {
+        const user = await shellService.updateProfile(request);
+        setProfile((previous) => previous?.account === currentAccount && previous?.user?.id === user.id
+            ? { account: previous.account, user }
+            : previous);
+        return user;
+    }
+
     const loaded = profile?.account === currentAccount ? profile : undefined;
     return <AuthContext value={{
         user: loaded?.user ?? null,
         error: loaded?.error ?? null,
         isLoading: currentAccount === undefined || Boolean(currentAccount && !recovery && !loaded),
         recovery,
-        signIn, signOut, sendReset, updatePassword,
+        signIn, signOut, updateProfile, sendReset, updatePassword,
         retry: () => { setProfile(undefined); setAttempt((value) => value + 1); },
     }}>{children}</AuthContext>;
 }

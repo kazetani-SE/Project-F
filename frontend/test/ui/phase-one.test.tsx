@@ -15,7 +15,7 @@ afterEach(cleanup);
 function auth(overrides: Partial<AuthState> = {}): AuthState {
     return {
         user: null, isLoading: false, error: null, recovery: false,
-        signIn: vi.fn(), signOut: vi.fn(), sendReset: vi.fn(), updatePassword: vi.fn(), retry: vi.fn(),
+        signIn: vi.fn(), signOut: vi.fn(), updateProfile: vi.fn(), sendReset: vi.fn(), updatePassword: vi.fn(), retry: vi.fn(),
         ...overrides,
     };
 }
@@ -49,7 +49,7 @@ describe('access and authentication', () => {
 
     it('directs a club member away from a write-only route', () => {
         renderRoute('/members/new', auth({ user: {
-            id: 'member-id', fullName: 'An', email: 'an@example.com', clubRole: 'MEMBER',
+            id: 'member-id', fullName: 'An', email: 'an@example.com', clubRole: 'MEMBER', phone: null,
         } }));
         expect(screen.getByText('Access denied')).toBeTruthy();
     });

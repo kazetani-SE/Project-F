@@ -5,6 +5,7 @@ export const ROUTE_PATHS = {
     RESET_PASSWORD: '/reset-password',
     FORBIDDEN: '/403',
     MEMBERS: '/members',
+    PROFILE: '/profile',
     MEMBER_NEW: '/members/new',
     MEMBER_DETAIL: '/members/:id',
     SERIES: '/series',

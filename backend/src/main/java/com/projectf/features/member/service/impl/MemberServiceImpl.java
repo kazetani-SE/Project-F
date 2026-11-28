@@ -1,6 +1,7 @@
 package com.projectf.features.member.service.impl;
 
 import com.projectf.common.exception.ApiException;
+import com.projectf.common.security.AccessPolicy;
 import com.projectf.features.member.dto.request.CreateMemberRequest;
 import com.projectf.features.member.dto.request.MemberFilterRequest;
 import com.projectf.features.member.dto.request.UpdateMemberRequest;
@@ -104,6 +105,18 @@ public class MemberServiceImpl implements MemberService {
         } catch (DataIntegrityViolationException exception) {
             throw duplicateEmail(exception);
         }
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse updateOwnProfile(UUID memberId, UUID authUserId, String fullName, String phone) {
+        ClubMember member = getForUpdate(memberId);
+        if (!Boolean.TRUE.equals(member.getActive()) || !authUserId.equals(member.getAuthUserId())) {
+            throw AccessPolicy.forbidden();
+        }
+        member.setFullName(fullName.strip());
+        member.setPhone(StringUtils.hasText(phone) ? phone.strip() : null);
+        return mapper.toResponse(members.saveAndFlush(member));
     }
 
     @Override

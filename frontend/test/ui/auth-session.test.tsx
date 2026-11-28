@@ -10,6 +10,7 @@ import { apiClient, setAccessToken } from '../../src/services/apiClient';
 import { LogoutButton } from '../../src/components/layout/LogoutButton';
 import { RequireAuth } from '../../src/components/layout/RequireAuth';
 import { ResetPasswordPage } from '../../src/pages/auth/ResetPasswordPage';
+import ProfilePage from '../../src/pages/profile/ProfilePage';
 import type { AuthUser } from '../../src/types/models/auth';
 
 const mock = vi.hoisted(() => ({
@@ -50,7 +51,7 @@ function renderProtected() {
     </MemoryRouter></AuthProvider>);
 }
 
-const profile: AuthUser = { id: 'member', fullName: 'An', email: 'an@example.com', clubRole: 'MEMBER' };
+const profile: AuthUser = { id: 'member', fullName: 'An', email: 'an@example.com', clubRole: 'MEMBER', phone: null };
 const session = (token: string): AuthSession => ({ access_token: token, user: { id: 'auth-id' } });
 
 it('restores the session, applies refreshed bearer tokens, and clears the token on logout', async () => {
@@ -88,4 +89,34 @@ it('lets a recovery user leave reset password and return to login', async () => 
     await userEvent.click(cancel);
     expect(await screen.findByText('Login route')).toBeTruthy();
     expect(sessionStorage.getItem('pf.recoveryUser')).toBeNull();
+});
+
+it('saves only editable profile fields with the signed-in account token', async () => {
+    const updatedProfile = { ...profile, fullName: 'Nguyễn An', phone: '0901234567' };
+    const adapter = vi.fn<AxiosAdapter>().mockImplementation(async (config) => ({
+        data: { success: true, data: config.method === 'patch' ? updatedProfile : profile },
+        status: 200, statusText: 'OK', headers: {}, config,
+    }));
+    apiClient.defaults.adapter = adapter;
+    render(<AuthProvider><MemoryRouter initialEntries={['/profile']}>
+        <Routes><Route element={<RequireAuth />}>
+            <Route path="/profile" element={<ProfilePage />} />
+        </Route></Routes>
+    </MemoryRouter></AuthProvider>);
+    act(() => mock.listener?.('INITIAL_SESSION', session('profile-token')));
+
+    const input = userEvent.setup();
+    const name = await screen.findByLabelText('Họ và tên');
+    expect(screen.getByLabelText('Email đăng nhập').hasAttribute('readonly')).toBe(true);
+    await input.clear(name);
+    await input.type(name, updatedProfile.fullName);
+    await input.type(screen.getByLabelText('Số điện thoại'), updatedProfile.phone);
+    await input.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+
+    expect((await screen.findByRole('status')).textContent).toBe('Đã lưu hồ sơ.');
+    const request = adapter.mock.calls[1][0];
+    expect(request.method).toBe('patch');
+    expect(request.url).toBe('/auth/me');
+    expect(request.headers.get('Authorization')).toBe('Bearer profile-token');
+    expect(JSON.parse(request.data)).toEqual({ fullName: updatedProfile.fullName, phone: updatedProfile.phone });
 });
