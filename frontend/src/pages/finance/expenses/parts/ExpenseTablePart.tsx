@@ -7,6 +7,7 @@ interface ExpenseTablePartProps {
     expenses: Expense[];
     budgetItems: BudgetItem[];
     loading?: boolean;
+    onViewDetail: (exp: Expense) => void;
     onOpenReceipts: (exp: Expense) => void;
     onApprove: (exp: Expense) => void;
     onReject: (exp: Expense) => void;
@@ -17,6 +18,7 @@ export const ExpenseTablePart: React.FC<ExpenseTablePartProps> = ({
     expenses,
     budgetItems,
     loading = false,
+    onViewDetail,
     onOpenReceipts,
     onApprove,
     onReject,
@@ -58,6 +60,7 @@ export const ExpenseTablePart: React.FC<ExpenseTablePartProps> = ({
                                 key={exp.id}
                                 expense={exp}
                                 budgetItems={budgetItems}
+                                onViewDetail={onViewDetail}
                                 onOpenReceipts={onOpenReceipts}
                                 onApprove={onApprove}
                                 onReject={onReject}

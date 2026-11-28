@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Sparkles, RefreshCw, AlertCircle, X } from 'lucide-react';
+import { Plus, Sparkles, RefreshCw, AlertCircle, X, Download, Upload } from 'lucide-react';
 import { useActiveEvent } from '../../../context/activeEventContext';
 import { useBudgetItems } from '../hooks/useBudgetItems';
 import { BudgetSummaryPart } from './parts/BudgetSummaryPart';
@@ -7,10 +7,14 @@ import { BudgetFilterPart } from './parts/BudgetFilterPart';
 import { BudgetItemTablePart } from './parts/BudgetItemTablePart';
 import { CreateBudgetItemModalPart } from './parts/CreateBudgetItemModalPart';
 import { AutoProjectModalPart } from './parts/AutoProjectModalPart';
+import { BudgetItemDetailModalPart } from './parts/BudgetItemDetailModalPart';
+import { ImportBudgetItemsModalPart } from './parts/ImportBudgetItemsModalPart';
+import { exportBudgetItemTemplate } from './utils/budgetExcelUtils';
 import { RejectReasonModal } from '../components/RejectReasonModal';
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
+import { ConfirmApproveBudgetItemModal } from '../components/ConfirmApproveBudgetItemModal';
 import { ErrorModal } from '../components/ErrorModal';
-import type { BudgetItem } from '../../../types/models/finance';
+import type { BudgetItem, CreateBudgetItemRequest } from '../../../types/models/finance';
 
 export default function BudgetItemsPage() {
     const { currentEvent, currentEventId, events } = useActiveEvent();
@@ -44,9 +48,12 @@ export default function BudgetItemsPage() {
 
     // Form Modals
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
     const [projectModalOpen, setProjectModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [targetRejectItem, setTargetRejectItem] = useState<BudgetItem | null>(null);
+    const [targetApproveItem, setTargetApproveItem] = useState<BudgetItem | null>(null);
+    const [selectedDetailItemId, setSelectedDetailItemId] = useState<string | null>(null);
 
     // Delete Confirmation Modal
     const [deleteTargetItem, setDeleteTargetItem] = useState<BudgetItem | null>(null);
@@ -54,6 +61,47 @@ export default function BudgetItemsPage() {
     const handleOpenRejectModal = (item: BudgetItem) => {
         setTargetRejectItem(item);
         setRejectModalOpen(true);
+    };
+
+    const handleOpenApproveModal = (item: BudgetItem) => {
+        setTargetApproveItem(item);
+    };
+
+    const handleConfirmApproveItem = async () => {
+        if (!targetApproveItem) return;
+        try {
+            await approveBudgetItem(targetApproveItem);
+            setTargetApproveItem(null);
+            setSelectedDetailItemId(null);
+        } catch {
+            // ErrorModal will display the backend error
+        }
+    };
+
+    const handleBatchImport = async (items: CreateBudgetItemRequest[]) => {
+        let successCount = 0;
+        let failureCount = 0;
+        for (const item of items) {
+            try {
+                await createBudgetItem(item);
+                successCount++;
+            } catch {
+                failureCount++;
+            }
+        }
+        if (successCount > 0) {
+            setNotification({
+                type: 'success',
+                text: `Đã nhập thành công ${successCount} hạng mục dự trù${failureCount > 0 ? ` (${failureCount} thất bại)` : ''}!`,
+            });
+            await reloadData();
+        } else if (failureCount > 0) {
+            setNotification({
+                type: 'error',
+                text: `Nhập thất bại ${failureCount} hạng mục. Vui lòng kiểm tra lại dữ liệu.`,
+            });
+        }
+        return { successCount, failureCount };
     };
 
     const handleConfirmDelete = async () => {
@@ -103,6 +151,22 @@ export default function BudgetItemsPage() {
                         Làm mới
                     </button>
                     <button
+                        onClick={() => exportBudgetItemTemplate(categories)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-emerald-700 transition-colors"
+                        title="Tải file Excel mẫu để nhập hàng loạt"
+                    >
+                        <Download className="h-4 w-4 text-emerald-600" />
+                        Xuất Mẫu Excel
+                    </button>
+                    <button
+                        onClick={() => setImportModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100 transition-colors"
+                        title="Nhập nhiều hạng mục từ file Excel"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Nhập Excel (Import)
+                    </button>
+                    <button
                         onClick={() => setProjectModalOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3.5 py-2 text-sm font-semibold text-purple-700 shadow-sm hover:bg-purple-100 transition-colors"
                     >
@@ -148,12 +212,23 @@ export default function BudgetItemsPage() {
                 items={filteredItems}
                 categories={categories}
                 loading={loading}
-                onApprove={approveBudgetItem}
+                onViewDetail={(item) => setSelectedDetailItemId(item.id)}
+                onApprove={handleOpenApproveModal}
                 onReject={handleOpenRejectModal}
                 onDelete={(item) => setDeleteTargetItem(item)}
             />
 
             {/* Modals */}
+            <BudgetItemDetailModalPart
+                isOpen={!!selectedDetailItemId}
+                itemId={selectedDetailItemId}
+                eventId={currentEventId}
+                categories={categories}
+                onClose={() => setSelectedDetailItemId(null)}
+                onApprove={handleOpenApproveModal}
+                onReject={handleOpenRejectModal}
+            />
+
             <CreateBudgetItemModalPart
                 isOpen={createModalOpen}
                 categories={categories}
@@ -161,6 +236,13 @@ export default function BudgetItemsPage() {
                 isSubmitting={isSubmitting}
                 onClose={() => setCreateModalOpen(false)}
                 onSubmit={createBudgetItem}
+            />
+
+            <ImportBudgetItemsModalPart
+                isOpen={importModalOpen}
+                categories={categories}
+                onClose={() => setImportModalOpen(false)}
+                onImportItems={handleBatchImport}
             />
 
             <AutoProjectModalPart
@@ -189,6 +271,16 @@ export default function BudgetItemsPage() {
                         }
                     }
                 }}
+            />
+
+            {/* Approve Budget Item Confirmation Modal */}
+            <ConfirmApproveBudgetItemModal
+                isOpen={!!targetApproveItem}
+                item={targetApproveItem}
+                categories={categories}
+                isLoading={isSubmitting}
+                onClose={() => setTargetApproveItem(null)}
+                onConfirm={handleConfirmApproveItem}
             />
 
             {/* Delete Confirmation Modal */}

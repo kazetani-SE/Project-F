@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paperclip, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Eye, Paperclip, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { formatVND } from '../../components/CurrencyText';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { Expense, BudgetItem } from '../../../../types/models/finance';
@@ -7,6 +7,7 @@ import type { Expense, BudgetItem } from '../../../../types/models/finance';
 interface ExpenseTableRowProps {
     expense: Expense;
     budgetItems: BudgetItem[];
+    onViewDetail: (exp: Expense) => void;
     onOpenReceipts: (exp: Expense) => void;
     onApprove: (exp: Expense) => void;
     onReject: (exp: Expense) => void;
@@ -16,6 +17,7 @@ interface ExpenseTableRowProps {
 export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
     expense,
     budgetItems,
+    onViewDetail,
     onOpenReceipts,
     onApprove,
     onReject,
@@ -28,7 +30,12 @@ export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
     return (
         <tr className="hover:bg-slate-50/70 transition-colors">
             <td className="px-5 py-3.5">
-                <div className="font-semibold text-slate-900">{expense.itemName}</div>
+                <button
+                    onClick={() => onViewDetail(expense)}
+                    className="text-left font-semibold text-slate-900 hover:text-emerald-700 transition-colors"
+                >
+                    {expense.itemName}
+                </button>
                 {expense.budgetItemId && (
                     <div className="text-[11px] text-slate-400">
                         Khớp dự trù: {matchedBudgetItem?.itemName ?? expense.budgetItemId}
@@ -65,6 +72,13 @@ export const ExpenseTableRow: React.FC<ExpenseTableRowProps> = ({
             </td>
             <td className="px-4 py-3.5 text-right">
                 <div className="flex items-center justify-end gap-1.5">
+                    <button
+                        onClick={() => onViewDetail(expense)}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                        title="Xem chi tiết"
+                    >
+                        <Eye className="h-4 w-4" />
+                    </button>
                     {expense.status !== 'APPROVED' && (
                         <button
                             onClick={() => onApprove(expense)}

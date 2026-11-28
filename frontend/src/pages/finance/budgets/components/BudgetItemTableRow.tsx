@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { formatVND } from '../../components/CurrencyText';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BudgetItem, BudgetCategory } from '../../../../types/models/finance';
@@ -7,6 +7,7 @@ import type { BudgetItem, BudgetCategory } from '../../../../types/models/financ
 interface BudgetItemTableRowProps {
     item: BudgetItem;
     categories: BudgetCategory[];
+    onViewDetail: (item: BudgetItem) => void;
     onApprove: (item: BudgetItem) => void;
     onReject: (item: BudgetItem) => void;
     onDelete: (item: BudgetItem) => void;
@@ -15,6 +16,7 @@ interface BudgetItemTableRowProps {
 export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
     item,
     categories,
+    onViewDetail,
     onApprove,
     onReject,
     onDelete,
@@ -26,7 +28,12 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
     return (
         <tr className="hover:bg-slate-50/70 transition-colors">
             <td className="px-5 py-3.5">
-                <div className="font-semibold text-slate-900">{item.itemName}</div>
+                <button
+                    onClick={() => onViewDetail(item)}
+                    className="text-left font-semibold text-slate-900 hover:text-emerald-700 transition-colors"
+                >
+                    {item.itemName}
+                </button>
                 <div className="text-xs text-slate-400">{categoryName}</div>
                 {item.benchmark?.supplierName && (
                     <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
@@ -37,6 +44,7 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-emerald-700 underline hover:text-emerald-800"
+                                onClick={(e) => e.stopPropagation()}
                             >
                                 {item.benchmark.supplierName}
                             </a>
@@ -68,6 +76,13 @@ export const BudgetItemTableRow: React.FC<BudgetItemTableRowProps> = ({
             </td>
             <td className="px-4 py-3.5 text-right">
                 <div className="flex items-center justify-end gap-1.5">
+                    <button
+                        onClick={() => onViewDetail(item)}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                        title="Xem chi tiết"
+                    >
+                        <Eye className="h-4 w-4" />
+                    </button>
                     {item.approvalStatus !== 'APPROVED' && (
                         <button
                             onClick={() => onApprove(item)}

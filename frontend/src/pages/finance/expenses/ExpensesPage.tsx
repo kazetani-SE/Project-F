@@ -7,9 +7,11 @@ import { ExpenseFilterPart } from './parts/ExpenseFilterPart';
 import { ExpenseTablePart } from './parts/ExpenseTablePart';
 import { CreateExpenseModalPart } from './parts/CreateExpenseModalPart';
 import { ReceiptsModalPart } from './parts/ReceiptsModalPart';
+import { ExpenseDetailModalPart } from './parts/ExpenseDetailModalPart';
 import { ReceiptLightboxPart } from './parts/ReceiptLightboxPart';
 import { RejectReasonModal } from '../components/RejectReasonModal';
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
+import { ConfirmApproveExpenseModal } from '../components/ConfirmApproveExpenseModal';
 import { ErrorModal } from '../components/ErrorModal';
 import type { Expense, ExpenseReceipt } from '../../../types/models/finance';
 
@@ -42,10 +44,12 @@ export default function ExpensesPage() {
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [receiptsModalOpen, setReceiptsModalOpen] = useState(false);
     const [currentExpenseForReceipts, setCurrentExpenseForReceipts] = useState<Expense | null>(null);
+    const [selectedDetailExpenseId, setSelectedDetailExpenseId] = useState<string | null>(null);
     const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
 
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [targetRejectExpense, setTargetRejectExpense] = useState<Expense | null>(null);
+    const [targetApproveExpense, setTargetApproveExpense] = useState<Expense | null>(null);
 
     // Delete Confirmation Modals
     const [deleteExpenseTarget, setDeleteExpenseTarget] = useState<Expense | null>(null);
@@ -59,6 +63,21 @@ export default function ExpensesPage() {
     const handleOpenRejectModal = (exp: Expense) => {
         setTargetRejectExpense(exp);
         setRejectModalOpen(true);
+    };
+
+    const handleOpenApproveModal = (exp: Expense) => {
+        setTargetApproveExpense(exp);
+    };
+
+    const handleConfirmApproveExpense = async () => {
+        if (!targetApproveExpense) return;
+        try {
+            await approveExpense(targetApproveExpense);
+            setTargetApproveExpense(null);
+            setSelectedDetailExpenseId(null);
+        } catch {
+            // Error modal will be displayed
+        }
     };
 
     const handleConfirmDeleteExpense = async () => {
@@ -162,19 +181,26 @@ export default function ExpensesPage() {
                 expenses={filteredExpenses}
                 budgetItems={budgetItems}
                 loading={loading}
+                onViewDetail={(exp) => setSelectedDetailExpenseId(exp.id)}
                 onOpenReceipts={handleOpenReceiptsModal}
-                onApprove={async (exp) => {
-                    try {
-                        await approveExpense(exp);
-                    } catch {
-                        // Error modal will be displayed
-                    }
-                }}
+                onApprove={handleOpenApproveModal}
                 onReject={handleOpenRejectModal}
                 onDelete={(exp) => setDeleteExpenseTarget(exp)}
             />
 
             {/* Modals */}
+            <ExpenseDetailModalPart
+                isOpen={!!selectedDetailExpenseId}
+                expenseId={selectedDetailExpenseId}
+                eventId={currentEventId}
+                onClose={() => setSelectedDetailExpenseId(null)}
+                onApprove={handleOpenApproveModal}
+                onReject={handleOpenRejectModal}
+                onDeleteReceipt={(expId, rc) => {
+                    setDeleteReceiptTarget({ expenseId: expId, receipt: rc });
+                }}
+            />
+
             <CreateExpenseModalPart
                 isOpen={createModalOpen}
                 eventId={currentEventId ?? ''}
@@ -187,6 +213,7 @@ export default function ExpensesPage() {
             <ReceiptsModalPart
                 isOpen={receiptsModalOpen}
                 expense={currentExpenseForReceipts}
+                eventId={currentEventId}
                 isSubmitting={isSubmitting}
                 onClose={() => setReceiptsModalOpen(false)}
                 onAddReceipt={async (expId, data) => {
@@ -201,7 +228,6 @@ export default function ExpensesPage() {
                         setDeleteReceiptTarget({ expenseId: currentExpenseForReceipts.id, receipt });
                     }
                 }}
-                onViewImage={(url) => setLightboxImageUrl(url)}
             />
 
             <ReceiptLightboxPart
@@ -224,6 +250,15 @@ export default function ExpensesPage() {
                         }
                     }
                 }}
+            />
+
+            {/* Approve Expense Confirmation Modal */}
+            <ConfirmApproveExpenseModal
+                isOpen={!!targetApproveExpense}
+                expense={targetApproveExpense}
+                isLoading={isSubmitting}
+                onClose={() => setTargetApproveExpense(null)}
+                onConfirm={handleConfirmApproveExpense}
             />
 
             {/* Delete Expense Modal */}

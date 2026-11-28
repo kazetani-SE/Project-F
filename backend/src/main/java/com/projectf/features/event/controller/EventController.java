@@ -3,6 +3,8 @@ package com.projectf.features.event.controller;
 import com.projectf.common.response.ApiResponse;
 import com.projectf.common.response.PageResponse;
 import com.projectf.common.utils.Paging;
+import com.projectf.common.security.RequireEventRoles;
+import com.projectf.features.event.entity.EventRole;
 import com.projectf.features.event.dto.request.AssignOrganizerRequest;
 import com.projectf.features.event.dto.request.CreateEventRequest;
 import com.projectf.features.event.dto.request.CreateEventSeriesRequest;
@@ -100,13 +102,13 @@ public class EventController {
     }
 
     @PutMapping("/events/{eventId}")
-    @PreAuthorize("@accessPolicy.canManageEvent(#eventId, authentication)")
+    @RequireEventRoles(eventId = "#eventId", value = EventRole.LEAD_HEADER)
     public ApiResponse<EventResponse> update(@PathVariable UUID eventId, @Valid @RequestBody UpdateEventRequest request) {
         return ApiResponse.ok(events.update(eventId, request));
     }
 
     @PatchMapping("/events/{eventId}/status")
-    @PreAuthorize("@accessPolicy.canManageEvent(#eventId, authentication)")
+    @RequireEventRoles(eventId = "#eventId", value = EventRole.LEAD_HEADER)
     public ApiResponse<EventResponse> updateStatus(
             @PathVariable UUID eventId, @Valid @RequestBody UpdateEventStatusRequest request) {
         return ApiResponse.ok(events.updateStatus(eventId, request));

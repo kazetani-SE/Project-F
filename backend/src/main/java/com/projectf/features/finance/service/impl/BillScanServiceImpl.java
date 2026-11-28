@@ -23,6 +23,7 @@ public class BillScanServiceImpl implements BillScanService {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "image/jpeg",
+            "image/jpg",
             "image/png",
             "image/webp",
             "application/pdf",
@@ -61,9 +62,9 @@ public class BillScanServiceImpl implements BillScanService {
             throw new IllegalArgumentException("File quá lớn, tối đa 10MB.");
         }
 
-        String mimeType = normalizeMime(file.getContentType());
+        String mimeType = normalizeMime(file);
         if (mimeType == null || !ALLOWED_TYPES.contains(mimeType)) {
-            throw new IllegalArgumentException("Chỉ hỗ trợ ảnh JPEG, PNG, WEBP, HEIC/HEIF hoặc PDF.");
+            throw new IllegalArgumentException("Chỉ hỗ trợ ảnh JPG/JPEG, PNG, WEBP hoặc PDF.");
         }
 
         if (log.isInfoEnabled()) {
@@ -119,13 +120,31 @@ public class BillScanServiceImpl implements BillScanService {
         return result;
     }
 
-    private String normalizeMime(String contentType) {
+    private String normalizeMime(MultipartFile file) {
         String result = null;
-        if (contentType != null) {
-            String mime = contentType.trim().toLowerCase(Locale.ROOT);
-            int semicolon = mime.indexOf(';');
-            if (semicolon > 0) {
-                mime = mime.substring(0, semicolon).trim();
+        if (file != null) {
+            String contentType = file.getContentType();
+            String mime = null;
+            if (contentType != null && !contentType.isBlank() && !"application/octet-stream".equalsIgnoreCase(contentType.trim())) {
+                mime = contentType.trim().toLowerCase(Locale.ROOT);
+                int semicolon = mime.indexOf(';');
+                if (semicolon > 0) {
+                    mime = mime.substring(0, semicolon).trim();
+                }
+            } else {
+                String name = file.getOriginalFilename();
+                if (name != null) {
+                    String lower = name.toLowerCase(Locale.ROOT);
+                    if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+                        mime = "image/jpeg";
+                    } else if (lower.endsWith(".png")) {
+                        mime = "image/png";
+                    } else if (lower.endsWith(".webp")) {
+                        mime = "image/webp";
+                    } else if (lower.endsWith(".pdf")) {
+                        mime = "application/pdf";
+                    }
+                }
             }
             result = "image/jpg".equals(mime) ? "image/jpeg" : mime;
         }
