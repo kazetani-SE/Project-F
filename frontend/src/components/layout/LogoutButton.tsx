@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTE_PATHS } from '../../app/router/route';
 import { useAuth } from '../../context/authContext';
@@ -9,11 +10,14 @@ export function LogoutButton() {
     const navigate = useNavigate();
     const { busy, error, mutate } = useMutation();
     return <div>
-        <button className="whitespace-nowrap rounded px-2 py-1 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+        <button className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
             disabled={busy} onClick={() => void mutate(async () => {
                 await signOut();
                 navigate(ROUTE_PATHS.LOGIN, { replace: true });
-            })}>Đăng xuất</button>
+            })}>
+            <LogOut aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-400" />
+            {busy ? 'Đang đăng xuất…' : 'Đăng xuất'}
+        </button>
         <ErrorNotice error={error} />
     </div>;
 }

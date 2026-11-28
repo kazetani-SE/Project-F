@@ -1,13 +1,15 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     CalendarDays, Layers, Wallet, Users, X, Loader2, Lock,
-    LayoutDashboard, FileText, Calculator, Receipt, Scale, UserCog, BookOpen,
+    LayoutDashboard, FileText, Calculator, Receipt, Scale, UserCog, BookOpen, UserRound,
     type LucideIcon,
 } from 'lucide-react';
 import RoleBadge from '../ui/RoleBadge';
 import { useActiveEvent } from "../../context/activeEventContext.ts";
 import logo from "../../assets/NewFCode_Logo.png"
 import { ROUTE_PATHS } from '../../app/router/route';
+
+import { LogoutButton } from './LogoutButton';
 
 const SUB_ITEMS = [
     { to: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
@@ -72,10 +74,10 @@ export default function Sidebar({ open, onClose }: Props) {
 
     return (
         <aside
-            className={`fixed inset-y-0 left-0 z-40 flex w-64 select-none flex-col justify-between overflow-y-auto border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'
+            className={`fixed inset-y-0 left-0 z-40 flex w-64 select-none flex-col overflow-hidden border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'
                 }`}
         >
-            <div className="p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 {/* Brand */}
                 <div className="mb-8 flex items-center gap-3">
                     <img src={logo} alt="F-Code Logo" className="h-10 w-auto object-contain" />
@@ -151,16 +153,21 @@ export default function Sidebar({ open, onClose }: Props) {
                     <NavItem to={ROUTE_PATHS.SERIES} icon={Layers} label="Chuỗi sự kiện" onClick={onClose} />
                     <NavItem to="/members" icon={Users} label="Thành viên" onClick={onClose} />
                 </nav>
+
+                {/* Ghi chú chỉ hiện khi chưa chọn sự kiện */}
+                {!currentEvent && (
+                    <div className="m-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/30 p-4">
+                        <p className="text-xs leading-relaxed text-slate-500">
+                            Chọn một sự kiện để mở Tài liệu, Dự toán, Thực chi, Benchmark, BTC và Kho tri thức của sự kiện đó.
+                        </p>
+                    </div>
+                )}
             </div>
 
-            {/* Ghi chú chỉ hiện khi chưa chọn sự kiện */}
-            {!currentEvent && (
-                <div className="m-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/30 p-4">
-                    <p className="text-xs leading-relaxed text-slate-500">
-                        Chọn một sự kiện để mở Tài liệu, Dự toán, Thực chi, Benchmark, BTC và Kho tri thức của sự kiện đó.
-                    </p>
-                </div>
-            )}
+            <div className="shrink-0 space-y-1 border-t border-slate-200 p-3">
+                <NavItem to={ROUTE_PATHS.PROFILE} icon={UserRound} label="Hồ sơ cá nhân" onClick={onClose} />
+                <LogoutButton />
+            </div>
         </aside>
     );
 }

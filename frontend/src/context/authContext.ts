@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { AuthUser, ClubRole } from '../types/models/auth';
+import type { AuthUser, ClubRole, UpdateProfileRequest } from '../types/models/auth';
 import type { ApiError } from '../types/common/api';
 
 export interface AuthState {
@@ -9,6 +9,7 @@ export interface AuthState {
     recovery: boolean;
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
+    updateProfile: (request: UpdateProfileRequest) => Promise<AuthUser>;
     sendReset: (email: string) => Promise<void>;
     updatePassword: (password: string, code?: string, email?: string) => Promise<void>;
     retry: () => void;

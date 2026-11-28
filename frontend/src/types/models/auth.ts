@@ -4,4 +4,9 @@ export interface AuthUser {
     fullName: string;
     email: string;
     clubRole: ClubRole;
+    phone: string | null;
+}
+export interface UpdateProfileRequest {
+    fullName: string;
+    phone: string | null;
 }

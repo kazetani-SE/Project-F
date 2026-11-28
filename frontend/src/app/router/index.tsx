@@ -8,7 +8,10 @@ import BudgetItemsPage from '../../pages/finance/budgets/BudgetItemsPage.tsx';
 import ExpensesPage from '../../pages/finance/expenses/ExpensesPage.tsx';
 import BenchmarkPage from '../../pages/finance/benchmarks/BenchmarkPage.tsx';
 
+import ProfilePage from '../../pages/profile/ProfilePage';
+
 export const shellRoutes: RouteObject[] = [
+    { path: ROUTE_PATHS.PROFILE, element: <ProfilePage /> },
     { index: true, element: <Navigate to="/overview" replace /> },
     { path: ROUTE_PATHS.OVERVIEW, element: <FinanceDashboardPage /> },
     { path: ROUTE_PATHS.FINANCE_DASHBOARD, element: <FinanceDashboardPage /> },

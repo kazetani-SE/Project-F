@@ -10,6 +10,7 @@ import type {
 } from '../types/models/knowledge.ts';
 
 export const MOCK_USER: AuthUser = {
+    phone: null,
     id: '11111111-1111-4111-8111-111111111101',
     fullName: 'Nguyễn Văn An',
     email: 'an.nguyen@fcode.local',

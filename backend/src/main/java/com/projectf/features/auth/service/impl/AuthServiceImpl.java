@@ -7,6 +7,7 @@ import com.projectf.features.auth.dto.request.ForgotPasswordRequest;
 import com.projectf.features.auth.dto.request.LoginRequest;
 import com.projectf.features.auth.dto.request.RefreshTokenRequest;
 import com.projectf.features.auth.dto.request.ResetPasswordRequest;
+import com.projectf.features.auth.dto.request.UpdateProfileRequest;
 import com.projectf.features.auth.dto.response.AccountResponse;
 import com.projectf.features.auth.dto.response.AuthTokenResponse;
 import com.projectf.features.auth.service.AuthService;
@@ -79,8 +80,19 @@ public class AuthServiceImpl implements AuthService {
                 .or(() -> members.claimAccount(authUserId, verifiedEmail.forToken(jwt)))
                 .filter(linked -> Boolean.TRUE.equals(linked.active()))
                 .orElseThrow(AccessPolicy::forbidden);
+        return toAccount(member);
+    }
+
+    @Override
+    public AccountResponse updateProfile(Jwt jwt, UpdateProfileRequest request) {
+        AccountResponse account = resolveAccount(jwt);
+        return toAccount(members.updateOwnProfile(account.id(), UUID.fromString(jwt.getSubject()),
+                request.fullName(), request.phone()));
+    }
+
+    private static AccountResponse toAccount(MemberResponse member) {
         ClubRole role = member.clubRole() == null ? ClubRole.MEMBER : member.clubRole();
-        return new AccountResponse(member.id(), member.fullName(), member.email(), role);
+        return new AccountResponse(member.id(), member.fullName(), member.email(), role, member.phone());
     }
 
     @Override

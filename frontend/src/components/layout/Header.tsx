@@ -4,7 +4,6 @@ import { Bell, ChevronRight, Menu, Search } from 'lucide-react';
 import { CLUB_ROLE_LABEL } from '../../constants/enum/role';
 import {useActiveEvent} from "../../context/activeEventContext.ts";
 import {useAuth} from "../../context/authContext.ts";
-import { LogoutButton } from './LogoutButton';
 import EventSwitcher from './EventSwitcher';
 
 const LABELS: Record<string, string> = {
@@ -120,7 +119,6 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                         )}
                     </div>
                 </div>
-                <LogoutButton />
             </div>
         </header>
     );

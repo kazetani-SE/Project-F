@@ -5,6 +5,7 @@ import com.projectf.features.auth.dto.request.ForgotPasswordRequest;
 import com.projectf.features.auth.dto.request.LoginRequest;
 import com.projectf.features.auth.dto.request.RefreshTokenRequest;
 import com.projectf.features.auth.dto.request.ResetPasswordRequest;
+import com.projectf.features.auth.dto.request.UpdateProfileRequest;
 import com.projectf.features.auth.dto.response.AccountResponse;
 import com.projectf.features.auth.dto.response.AuthTokenResponse;
 import com.projectf.features.auth.service.AuthService;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,6 +58,14 @@ public class AuthController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(ApiResponse.ok(null));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<AccountResponse>> updateProfile(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ApiResponse.ok(auth.updateProfile(jwt, request)));
     }
 
     @GetMapping("/me")

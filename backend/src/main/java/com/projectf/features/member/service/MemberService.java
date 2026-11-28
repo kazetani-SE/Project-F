@@ -16,6 +16,7 @@ public interface MemberService {
     MemberResponse get(UUID memberId);
     Page<MemberResponse> list(MemberFilterRequest filters, Pageable pageable);
     MemberResponse update(UUID memberId, UpdateMemberRequest request);
+    MemberResponse updateOwnProfile(UUID memberId, UUID authUserId, String fullName, String phone);
     MemberResponse updateStatus(UUID memberId, boolean active);
     MemberResponse requireActiveForAssignment(UUID memberId);
     Map<UUID, String> findNames(Collection<UUID> memberIds);

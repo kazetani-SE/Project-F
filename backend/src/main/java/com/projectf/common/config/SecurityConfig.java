@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, PUBLIC_AUTH).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/v1/auth/me").authenticated()
                         // ExpenseService hiện đọc chi tiết theo ID toàn cục, chưa xác thực eventId của bản ghi.
                         .requestMatchers(HttpMethod.GET, "/events/{eventId}/v1/finance/expenses/{id}")
                         .access((authentication, context) -> new AuthorizationDecision(access.isAdmin(authentication.get())))
